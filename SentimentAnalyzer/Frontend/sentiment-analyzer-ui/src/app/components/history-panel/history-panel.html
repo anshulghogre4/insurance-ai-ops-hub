@@ -1,0 +1,84 @@
+<div class="flex flex-col h-full">
+  <!-- Header -->
+  <div class="flex items-center justify-between px-4 py-3 border-b" [style.borderColor]="'var(--border-secondary)'">
+    <h2 class="text-sm font-semibold flex items-center gap-2" [style.color]="'var(--text-primary)'">
+      <svg class="w-4 h-4" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      Analysis History
+    </h2>
+    <button (click)="onClose()" class="btn-ghost !p-1.5 !rounded-lg" aria-label="Close history panel">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Content -->
+  <div class="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+    <!-- Loading -->
+    @if (loading()) {
+      <div class="space-y-3 px-1">
+        @for (i of [1, 2, 3]; track i) {
+          <div class="rounded-xl p-3" [style.background]="'var(--bg-surface)'" [style.border]="'1px solid var(--border-secondary)'">
+            <div class="skeleton h-3 w-3/4 mb-2"></div>
+            <div class="skeleton h-3 w-1/2 mb-2"></div>
+            <div class="skeleton h-3 w-1/4"></div>
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Empty State -->
+    @else if (items().length === 0) {
+      <div class="flex flex-col items-center justify-center py-10 px-4 text-center">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center mb-3">
+          <svg class="w-6 h-6" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+        </div>
+        <p class="text-xs font-medium" [style.color]="'var(--text-secondary)'">No history yet</p>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Your past analyses will appear here</p>
+      </div>
+    }
+
+    <!-- History Items -->
+    @else {
+      @for (item of items(); track item.id) {
+        <button
+          (click)="onSelect(item)"
+          class="history-item w-full text-left rounded-xl p-3 transition-all duration-150 hover:scale-[1.01]"
+          [style.background]="'var(--bg-surface)'"
+          [style.border]="'1px solid var(--border-secondary)'"
+          [attr.aria-label]="'Load analysis: ' + truncateText(item.inputTextPreview, 40)">
+          <!-- Top row: sentiment + time -->
+          <div class="flex items-center justify-between mb-2">
+            <span class="badge text-[10px]" [class]="getSentimentBadgeClass(item.sentiment)">{{ item.sentiment }}</span>
+            <span class="text-[10px]" [style.color]="'var(--text-muted)'">{{ formatRelativeTime(item.createdAt) }}</span>
+          </div>
+
+          <!-- Text preview -->
+          <p class="text-xs leading-relaxed mb-2" [style.color]="'var(--text-primary)'">
+            {{ truncateText(item.inputTextPreview) }}
+          </p>
+
+          <!-- Bottom row: metadata badges -->
+          <div class="flex items-center flex-wrap gap-1.5">
+            @if (item.interactionType) {
+              <span class="badge badge-neutral text-[9px]">{{ item.interactionType }}</span>
+            }
+            @if (item.customerPersona) {
+              <span class="badge badge-info text-[9px]">{{ item.customerPersona }}</span>
+            }
+            @if (item.churnRisk) {
+              <span class="badge text-[9px]" [class]="getChurnBadgeClass(item.churnRisk)">Churn: {{ item.churnRisk }}</span>
+            }
+            @if (item.purchaseIntentScore > 0) {
+              <span class="badge badge-neutral text-[9px]">Intent: {{ item.purchaseIntentScore }}%</span>
+            }
+          </div>
+        </button>
+      }
+    }
+  </div>
+</div>

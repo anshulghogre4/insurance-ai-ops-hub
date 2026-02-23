@@ -1,0 +1,8 @@
+// Copy this file to environment.development.ts and fill in your values.
+// NEVER commit environment.development.ts to version control.
+export const environment = {
+  production: false,
+  supabaseUrl: 'https://your-project.supabase.co',
+  supabaseAnonKey: 'your-supabase-anon-key',
+  apiUrl: 'http://localhost:5143'
+};

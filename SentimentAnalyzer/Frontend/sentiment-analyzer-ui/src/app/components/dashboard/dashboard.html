@@ -1,0 +1,246 @@
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+  <!-- Header -->
+  <div class="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-fade-in-up">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold" [style.color]="'var(--text-primary)'">Analytics Dashboard</h1>
+        <p class="text-sm" [style.color]="'var(--text-secondary)'">Insurance sentiment trends and performance metrics</p>
+      </div>
+    </div>
+    <button (click)="refresh()" class="btn-ghost text-sm flex items-center gap-2">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+      </svg>
+      Refresh
+    </button>
+  </div>
+
+  <!-- Loading Skeleton -->
+  @if (isLoading()) {
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      @for (i of [1,2,3,4]; track i) {
+        <div class="glass-card-static p-5"><div class="skeleton h-4 w-24 mb-3"></div><div class="skeleton h-8 w-16 mb-2"></div><div class="skeleton h-3 w-20"></div></div>
+      }
+    </div>
+  }
+
+  @if (error()) {
+    <div class="glass-card-static p-4 mb-6 flex items-center gap-3 border-l-4 border-l-rose-500 animate-fade-in-up">
+      <svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+      </svg>
+      <span class="text-sm text-rose-400">{{ error() }}</span>
+    </div>
+  }
+
+  @if (!isLoading()) {
+    <!-- Metric Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <!-- Total Analyses -->
+      <div class="metric-card animate-fade-in-up">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Total Analyses</span>
+          <div class="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics.totalAnalyses }}</div>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">All time</p>
+      </div>
+
+      <!-- Avg Purchase Intent -->
+      <div class="metric-card animate-fade-in-up stagger-1">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Avg Purchase Intent</span>
+          <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics.avgPurchaseIntent }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
+        <div class="progress-track mt-2">
+          <div class="progress-fill bg-emerald-500" [style.width.%]="metrics.avgPurchaseIntent"></div>
+        </div>
+      </div>
+
+      <!-- Avg Sentiment -->
+      <div class="metric-card animate-fade-in-up stagger-2">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Avg Sentiment</span>
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/15 flex items-center justify-center">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ (metrics.avgSentimentScore * 100).toFixed(0) }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
+        <div class="progress-track mt-2">
+          <div class="progress-fill bg-cyan-500" [style.width.%]="metrics.avgSentimentScore * 100"></div>
+        </div>
+      </div>
+
+      <!-- High Risk Alerts -->
+      <div class="metric-card animate-fade-in-up stagger-3">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">High Risk Alerts</span>
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="metrics.highRiskCount > 0 ? 'bg-rose-500/15' : 'bg-emerald-500/15'">
+            <svg class="w-4 h-4" [class]="metrics.highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold" [class]="metrics.highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'">{{ metrics.highRiskCount }}</div>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Churn + complaint risks</p>
+      </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
+      <!-- Sentiment Distribution -->
+      <div class="glass-card-static p-6 animate-fade-in-up stagger-2">
+        <h3 class="section-title text-sm mb-5 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+          </svg>
+          Sentiment Distribution
+        </h3>
+        <div class="space-y-4">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                <span class="text-xs" [style.color]="'var(--text-secondary)'">Positive</span>
+              </div>
+              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.positive }}%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-emerald-500" [style.width.%]="sentimentDistribution.positive"></div></div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
+                <span class="text-xs" [style.color]="'var(--text-secondary)'">Negative</span>
+              </div>
+              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.negative }}%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-rose-500" [style.width.%]="sentimentDistribution.negative"></div></div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-cyan-500"></div>
+                <span class="text-xs" [style.color]="'var(--text-secondary)'">Neutral</span>
+              </div>
+              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.neutral }}%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-cyan-500" [style.width.%]="sentimentDistribution.neutral"></div></div>
+          </div>
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
+                <span class="text-xs" [style.color]="'var(--text-secondary)'">Mixed</span>
+              </div>
+              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.mixed }}%</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill bg-amber-500" [style.width.%]="sentimentDistribution.mixed"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customer Personas -->
+      <div class="glass-card-static p-6 animate-fade-in-up stagger-3">
+        <h3 class="section-title text-sm mb-5 flex items-center gap-2">
+          <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+          Customer Personas
+        </h3>
+        @if (topPersonas.length === 0) {
+          <div class="text-center py-6">
+            <p class="text-sm" [style.color]="'var(--text-muted)'">No persona data yet</p>
+          </div>
+        } @else {
+          <div class="space-y-4">
+            @for (persona of topPersonas; track persona.name) {
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-xs" [style.color]="'var(--text-secondary)'">{{ persona.name }}</span>
+                  <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ persona.count }}</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill bg-gradient-to-r from-indigo-500 to-purple-500" [style.width.%]="persona.percentage"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Recent Analysis History -->
+    <div class="glass-card-static p-6 animate-fade-in-up stagger-4">
+      <div class="flex items-center justify-between mb-5">
+        <h3 class="section-title text-sm flex items-center gap-2">
+          <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          Recent Analyses
+        </h3>
+        <span class="badge badge-neutral">Last 10</span>
+      </div>
+
+      @if (recentHistory.length === 0) {
+        <!-- Empty state -->
+        <div class="text-center py-12">
+          <div class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" [style.background]="'var(--bg-surface)'">
+            <svg class="w-8 h-8" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+          </div>
+          <p class="text-sm font-medium mb-1" [style.color]="'var(--text-secondary)'">No analyses yet</p>
+          <p class="text-xs" [style.color]="'var(--text-muted)'">Run an insurance analysis to see data here</p>
+        </div>
+      } @else {
+        <div class="overflow-x-auto custom-scrollbar" tabindex="0" role="region" aria-label="Recent analyses table">
+          <table class="w-full text-sm">
+            <thead>
+              <tr [style.border-color]="'var(--border-primary)'">
+                <th class="text-left py-3 px-3 text-xs font-medium border-b" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Text Preview</th>
+                <th class="text-left py-3 px-3 text-xs font-medium border-b" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Sentiment</th>
+                <th class="text-left py-3 px-3 text-xs font-medium border-b" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Intent</th>
+                <th class="text-left py-3 px-3 text-xs font-medium border-b hidden md:table-cell" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Persona</th>
+                <th class="text-left py-3 px-3 text-xs font-medium border-b hidden lg:table-cell" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Churn</th>
+                <th class="text-left py-3 px-3 text-xs font-medium border-b" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-primary)'">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of recentHistory; track item.id) {
+                <tr class="transition-colors hover:bg-[var(--bg-surface-hover)]" [style.border-color]="'var(--border-secondary)'">
+                  <td class="py-3 px-3 max-w-[200px] truncate text-xs border-b" [style.color]="'var(--text-secondary)'" [style.border-color]="'var(--border-secondary)'">{{ item.inputTextPreview }}</td>
+                  <td class="py-3 px-3 border-b" [style.border-color]="'var(--border-secondary)'">
+                    <span class="badge text-[10px]" [class]="getSentimentBadge(item.sentiment)">{{ item.sentiment }}</span>
+                  </td>
+                  <td class="py-3 px-3 text-xs font-medium border-b" [style.color]="'var(--text-primary)'" [style.border-color]="'var(--border-secondary)'">{{ item.purchaseIntentScore }}%</td>
+                  <td class="py-3 px-3 text-xs border-b hidden md:table-cell" [style.color]="'var(--text-secondary)'" [style.border-color]="'var(--border-secondary)'">{{ item.customerPersona }}</td>
+                  <td class="py-3 px-3 border-b hidden lg:table-cell" [style.border-color]="'var(--border-secondary)'">
+                    <span class="badge text-[10px]" [class]="getRiskBadge(item.churnRisk)">{{ item.churnRisk }}</span>
+                  </td>
+                  <td class="py-3 px-3 text-xs border-b" [style.color]="'var(--text-muted)'" [style.border-color]="'var(--border-secondary)'">{{ item.createdAt | date:'short' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</div>

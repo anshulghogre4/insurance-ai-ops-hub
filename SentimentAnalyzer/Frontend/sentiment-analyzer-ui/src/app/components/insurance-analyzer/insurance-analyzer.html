@@ -1,0 +1,458 @@
+<div class="flex">
+  <!-- Main Content -->
+  <div class="flex-1 min-w-0 max-w-6xl mx-auto px-4 sm:px-6 py-8" [class.lg:mr-0]="showHistory()">
+  <!-- Header -->
+  <div class="mb-8 animate-fade-in-up">
+    <div class="flex items-center gap-3 mb-2">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <div class="flex-1">
+        <h1 class="text-2xl font-bold" [style.color]="'var(--text-primary)'">Insurance Sentiment Analysis</h1>
+        <p class="text-sm" [style.color]="'var(--text-secondary)'">Multi-agent AI analysis for customer interactions</p>
+      </div>
+      <button #historyToggleBtn (click)="toggleHistory()" class="btn-ghost !px-3 !py-2 flex items-center gap-2 text-sm"
+              [attr.aria-expanded]="showHistory()" aria-controls="history-sidebar">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+        </svg>
+        <span class="hidden sm:inline">History</span>
+        @if (historyItems().length > 0) {
+          <span class="badge badge-neutral text-[10px] !px-1.5 !py-0">{{ historyItems().length }}</span>
+        }
+      </button>
+    </div>
+  </div>
+
+  <!-- Restored from cache banner -->
+  @if (isRestoredFromCache()) {
+    <div class="glass-card-static p-3 mb-4 flex items-center gap-3 border-l-4 border-l-amber-500 animate-fade-in-up" role="status">
+      <svg class="w-4 h-4 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+      </svg>
+      <span class="text-xs flex-1" [style.color]="'var(--text-secondary)'">Showing your last analysis result (restored from session)</span>
+      <button (click)="isRestoredFromCache.set(false)" class="btn-ghost !p-1 !rounded-lg" aria-label="Dismiss banner">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+      </button>
+    </div>
+  }
+
+  <!-- Input Card -->
+  <div class="glass-card-static p-6 mb-6 animate-fade-in-up" style="animation-delay: 0.1s">
+    <!-- Interaction Type + Sample Templates -->
+    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+      <div class="sm:w-48">
+        <label for="interaction-type" class="block text-sm font-medium mb-2" [style.color]="'var(--text-secondary)'">Interaction Type</label>
+        <select id="interaction-type" [(ngModel)]="interactionType" class="input-field !py-2.5">
+          @for (type of interactionTypes; track type) {
+            <option [value]="type" [style.background]="'var(--bg-secondary)'">{{ type }}</option>
+          }
+        </select>
+      </div>
+      <div class="flex-1">
+        <label class="block text-sm font-medium mb-2" [style.color]="'var(--text-secondary)'">Quick Templates</label>
+        <div class="flex flex-wrap gap-2">
+          <button (click)="useSample('claim')" class="btn-ghost !px-3 !py-1.5 text-xs" title="Pre-fill with a claims complaint scenario">Claim Complaint</button>
+          <button (click)="useSample('renewal')" class="btn-ghost !px-3 !py-1.5 text-xs" title="Pre-fill with a renewal inquiry scenario">Renewal Inquiry</button>
+          <button (click)="useSample('positive')" class="btn-ghost !px-3 !py-1.5 text-xs" title="Pre-fill with a positive review scenario">Positive Review</button>
+          <button (click)="useSample('billing')" class="btn-ghost !px-3 !py-1.5 text-xs" title="Pre-fill with a billing dispute scenario">Billing Dispute</button>
+        </div>
+      </div>
+    </div>
+
+    <label for="analysis-input" class="sr-only">Customer interaction text</label>
+    <textarea
+      #analysisInput
+      id="analysis-input"
+      [(ngModel)]="inputText"
+      (keydown.control.enter)="analyze()"
+      (keydown.meta.enter)="analyze()"
+      placeholder="Paste customer interaction text here... (email, call transcript, chat message, review, complaint)"
+      rows="6"
+      maxlength="10000"
+      aria-required="true"
+      class="input-field resize-none !rounded-xl">
+    </textarea>
+
+    <div class="flex justify-between items-center mt-3">
+      <div class="flex items-center gap-3">
+        <span class="text-xs" [style.color]="'var(--text-muted)'">{{ inputText.length | number }} / 10,000 characters</span>
+        <span class="text-xs" [style.color]="'var(--text-muted)'" title="Press Ctrl+Enter to analyze">Ctrl+Enter to analyze</span>
+      </div>
+      <div class="flex gap-3">
+        <button (click)="clearAll()" class="btn-ghost text-sm !px-4 !py-2">Clear</button>
+        <button (click)="analyze()"
+                [disabled]="isLoading() || !inputText.trim()"
+                class="btn-primary text-sm !px-5 !py-2 flex items-center gap-2"
+                [attr.aria-busy]="isLoading()">
+          @if (isLoading()) {
+            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            Analyzing...
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Analyze
+          }
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State with Progress Feedback -->
+  @if (isLoading()) {
+    <div class="space-y-4 animate-fade-in" role="status" aria-live="polite">
+      <div class="glass-card-static p-5 flex items-center gap-4">
+        <div class="relative">
+          <svg class="animate-spin h-8 w-8 text-indigo-500" viewBox="0 0 24 24" aria-hidden="true">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </div>
+        <div>
+          @if (loadingFromHistory()) {
+            <p class="text-sm font-medium" [style.color]="'var(--text-primary)'">Loading saved analysis...</p>
+            <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Retrieving from history</p>
+          } @else {
+            <p class="text-sm font-medium" [style.color]="'var(--text-primary)'">Analyzing with multi-agent AI system...</p>
+            <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">
+              {{ getAnalysisPhase() }} &mdash; This typically takes 15-60 seconds
+            </p>
+          }
+        </div>
+        @if (!loadingFromHistory()) {
+          <div class="ml-auto text-sm font-mono tabular-nums" [style.color]="'var(--text-muted)'">
+            {{ elapsedSeconds() }}s
+          </div>
+        }
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="glass-card-static p-6"><div class="skeleton h-6 w-32 mb-4"></div><div class="skeleton h-16 w-full"></div></div>
+        <div class="glass-card-static p-6"><div class="skeleton h-6 w-32 mb-4"></div><div class="skeleton h-16 w-full"></div></div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="glass-card-static p-6"><div class="skeleton h-6 w-24 mb-4"></div><div class="skeleton h-10 w-full"></div></div>
+        <div class="glass-card-static p-6"><div class="skeleton h-6 w-24 mb-4"></div><div class="skeleton h-10 w-full"></div></div>
+        <div class="glass-card-static p-6"><div class="skeleton h-6 w-24 mb-4"></div><div class="skeleton h-10 w-full"></div></div>
+      </div>
+    </div>
+  }
+
+  <!-- Error Display -->
+  @if (error()) {
+    <div class="glass-card-static p-4 mb-6 animate-fade-in-up border-l-4 border-l-rose-500" role="alert" aria-live="assertive">
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 flex-shrink-0" [style.color]="'var(--color-danger, #fb7185)'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+        <span class="text-sm flex-1" [style.color]="'var(--color-danger, #fb7185)'">{{ error() }}</span>
+        <button (click)="analyze()" [disabled]="!inputText.trim()" class="btn-ghost text-xs !px-3 !py-1.5" aria-label="Retry analysis">Retry</button>
+      </div>
+    </div>
+  }
+
+  <!-- Empty State (before first analysis) -->
+  @if (!result() && !isLoading() && !error()) {
+    <div class="glass-card-static p-10 text-center animate-fade-in-up" style="animation-delay: 0.15s">
+      <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500/15 to-purple-500/15 flex items-center justify-center">
+        <svg class="w-8 h-8" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+        </svg>
+      </div>
+      <h3 class="text-lg font-semibold mb-2" [style.color]="'var(--text-primary)'">Ready to Analyze</h3>
+      <p class="text-sm max-w-md mx-auto mb-4" [style.color]="'var(--text-muted)'">
+        Paste a customer interaction above and click <strong>Analyze</strong> to get AI-powered insurance insights across 7 dimensions:
+      </p>
+      <div class="flex flex-wrap justify-center gap-2 text-xs">
+        <span class="badge badge-info">Sentiment</span>
+        <span class="badge badge-info">Purchase Intent</span>
+        <span class="badge badge-info">Customer Persona</span>
+        <span class="badge badge-info">Journey Stage</span>
+        <span class="badge badge-info">Risk Indicators</span>
+        <span class="badge badge-info">Emotions</span>
+        <span class="badge badge-info">Recommendations</span>
+      </div>
+    </div>
+  }
+
+  <!-- Results -->
+  @if (result(); as r) {
+    <div class="space-y-5">
+
+      <!-- Top Row: Sentiment + Purchase Intent -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5 animate-fade-in-up">
+        <!-- Sentiment Card -->
+        <div class="glass-card-static p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium" [style.color]="'var(--text-secondary)'">Overall Sentiment</h3>
+            <span class="badge" [class]="getSentimentClass() === 'positive' ? 'badge-success' : getSentimentClass() === 'negative' ? 'badge-danger' : 'badge-info'"
+                  [attr.aria-label]="'Sentiment is ' + r.sentiment + ' with ' + (r.confidenceScore * 100).toFixed(0) + '% confidence'">
+              {{ r.sentiment }}
+            </span>
+          </div>
+          <div class="flex items-end gap-4">
+            <div class="text-4xl font-bold" [style.color]="'var(--text-primary)'">
+              {{ (r.confidenceScore * 100).toFixed(0) }}<span class="text-lg font-normal" [style.color]="'var(--text-muted)'">%</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs mb-1.5" [style.color]="'var(--text-muted)'">Confidence</div>
+              <div class="progress-track" role="progressbar" [attr.aria-valuenow]="(r.confidenceScore * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Confidence: ' + (r.confidenceScore * 100).toFixed(0) + '%'">
+                <div class="progress-fill"
+                     [class]="getSentimentClass() === 'positive' ? 'bg-emerald-500' : getSentimentClass() === 'negative' ? 'bg-rose-500' : 'bg-cyan-500'"
+                     [style.width.%]="r.confidenceScore * 100">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purchase Intent Card -->
+        <div class="glass-card-static p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-medium" [style.color]="'var(--text-secondary)'">Purchase Intent</h3>
+            <span class="badge" [class]="r.insuranceAnalysis.purchaseIntentScore >= 60 ? 'badge-success' : r.insuranceAnalysis.purchaseIntentScore >= 30 ? 'badge-warning' : 'badge-danger'">
+              @if (r.insuranceAnalysis.purchaseIntentScore >= 70) { High }
+              @else if (r.insuranceAnalysis.purchaseIntentScore >= 40) { Moderate }
+              @else { Low }
+            </span>
+          </div>
+          <div class="flex items-end gap-4">
+            <div class="text-4xl font-bold" [class]="getIntentColor()">
+              {{ r.insuranceAnalysis.purchaseIntentScore }}<span class="text-lg font-normal" [style.color]="'var(--text-muted)'">/100</span>
+            </div>
+            <div class="flex-1">
+              <div class="text-xs mb-1.5" [style.color]="'var(--text-muted)'">
+                @if (r.insuranceAnalysis.purchaseIntentScore >= 80) { Ready to Buy }
+                @else if (r.insuranceAnalysis.purchaseIntentScore >= 60) { Considering Options }
+                @else if (r.insuranceAnalysis.purchaseIntentScore >= 40) { Comparing }
+                @else if (r.insuranceAnalysis.purchaseIntentScore >= 20) { Info Gathering }
+                @else { Support Only }
+              </div>
+              <div class="progress-track !h-[6px]" role="progressbar" [attr.aria-valuenow]="r.insuranceAnalysis.purchaseIntentScore" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Purchase intent: ' + r.insuranceAnalysis.purchaseIntentScore + ' out of 100'">
+                <div class="progress-fill" [class]="getIntentBarColor()" [style.width.%]="r.insuranceAnalysis.purchaseIntentScore"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Middle Row: Persona + Journey Stage + Risk -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 animate-fade-in-up" style="animation-delay: 0.1s">
+        <!-- Customer Persona -->
+        <div class="glass-card-static p-5">
+          <h3 class="text-xs font-medium mb-3" [style.color]="'var(--text-muted)'">Customer Persona</h3>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center text-xl" aria-hidden="true">{{ getPersonaIcon() }}</div>
+            <span class="font-semibold text-sm" [style.color]="'var(--text-primary)'">{{ r.insuranceAnalysis.customerPersona }}</span>
+          </div>
+        </div>
+
+        <!-- Journey Stage -->
+        <div class="glass-card-static p-5">
+          <h3 class="text-xs font-medium mb-3" [style.color]="'var(--text-muted)'">Journey Stage</h3>
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center text-xl" aria-hidden="true">{{ getJourneyIcon() }}</div>
+            <span class="font-semibold text-sm" [style.color]="'var(--text-primary)'">{{ r.insuranceAnalysis.journeyStage }}</span>
+          </div>
+        </div>
+
+        <!-- Risk Indicators -->
+        <div class="glass-card-static p-5">
+          <h3 class="text-xs font-medium mb-3" [style.color]="'var(--text-muted)'">Risk Indicators</h3>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs" [style.color]="'var(--text-secondary)'">Churn</span>
+              <span class="badge text-[10px]" [class]="getRiskBadge(r.insuranceAnalysis.riskIndicators.churnRisk)" [attr.aria-label]="'Churn risk level is ' + r.insuranceAnalysis.riskIndicators.churnRisk">{{ r.insuranceAnalysis.riskIndicators.churnRisk }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs" [style.color]="'var(--text-secondary)'">Complaint</span>
+              <span class="badge text-[10px]" [class]="getRiskBadge(r.insuranceAnalysis.riskIndicators.complaintEscalationRisk)" [attr.aria-label]="'Complaint escalation risk is ' + r.insuranceAnalysis.riskIndicators.complaintEscalationRisk">{{ r.insuranceAnalysis.riskIndicators.complaintEscalationRisk }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-xs" [style.color]="'var(--text-secondary)'">Fraud</span>
+              <span class="badge text-[10px]" [class]="getRiskBadge(r.insuranceAnalysis.riskIndicators.fraudIndicators)" [attr.aria-label]="'Fraud indicators level is ' + r.insuranceAnalysis.riskIndicators.fraudIndicators">{{ r.insuranceAnalysis.riskIndicators.fraudIndicators }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explanation -->
+      <div class="glass-card-static p-6 animate-fade-in-up" style="animation-delay: 0.15s">
+        <h3 class="text-sm font-medium mb-3 flex items-center gap-2" [style.color]="'var(--text-secondary)'">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+          </svg>
+          Analysis Explanation
+        </h3>
+        <p class="text-sm leading-relaxed" [style.color]="'var(--text-primary)'">{{ r.explanation }}</p>
+      </div>
+
+      <!-- Emotion Breakdown + Key Topics side by side -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 animate-fade-in-up" style="animation-delay: 0.2s">
+        <!-- Emotion Breakdown -->
+        @if (getEmotionEntries().length > 0) {
+          <div class="glass-card-static p-6">
+            <h3 class="text-sm font-medium mb-4 flex items-center gap-2" [style.color]="'var(--text-secondary)'">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Emotion Breakdown
+            </h3>
+            <div class="space-y-3">
+              @for (entry of getEmotionEntries(); track entry[0]) {
+                <div class="flex items-center gap-3">
+                  <span class="text-xs w-24 capitalize" [style.color]="'var(--text-secondary)'">{{ entry[0] }}</span>
+                  <div class="flex-1 progress-track" role="progressbar" [attr.aria-valuenow]="(entry[1] * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="entry[0] + ': ' + (entry[1] * 100).toFixed(0) + '%'">
+                    <div class="progress-fill" [class]="getEmotionBarColor(entry[0])" [style.width.%]="entry[1] * 100"></div>
+                  </div>
+                  <span class="text-xs w-10 text-right font-medium" [style.color]="'var(--text-primary)'">{{ (entry[1] * 100).toFixed(0) }}%</span>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <!-- Key Topics + Interaction Info -->
+        <div class="space-y-5">
+          @if (r.insuranceAnalysis.keyTopics.length > 0) {
+            <div class="glass-card-static p-6">
+              <h3 class="text-sm font-medium mb-3 flex items-center gap-2" [style.color]="'var(--text-secondary)'">
+                <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                </svg>
+                Key Topics
+              </h3>
+              <div class="flex flex-wrap gap-2">
+                @for (topic of r.insuranceAnalysis.keyTopics; track topic) {
+                  <span class="badge badge-info">{{ topic }}</span>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- Interaction Type -->
+          <div class="glass-card-static p-5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                </svg>
+                <span class="text-xs" [style.color]="'var(--text-muted)'">Interaction</span>
+              </div>
+              <span class="badge badge-neutral">{{ r.insuranceAnalysis.interactionType }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Policy Recommendations -->
+      <div class="glass-card-static p-6 animate-fade-in-up" style="animation-delay: 0.25s">
+        <h3 class="text-sm font-medium mb-4 flex items-center gap-2" [style.color]="'var(--text-secondary)'">
+          <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+          Policy Recommendations
+        </h3>
+        @if (r.insuranceAnalysis.policyRecommendations.length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            @for (rec of r.insuranceAnalysis.policyRecommendations; track rec.product) {
+              <div class="p-4 rounded-xl" [style.background]="'var(--bg-surface)'" [style.border]="'1px solid var(--border-secondary)'">
+                <div class="font-medium text-sm mb-1" [style.color]="'var(--text-primary)'">{{ rec.product }}</div>
+                <div class="text-xs leading-relaxed" [style.color]="'var(--text-muted)'">{{ rec.reasoning }}</div>
+              </div>
+            }
+          </div>
+        } @else {
+          <p class="text-sm" [style.color]="'var(--text-muted)'">No product recommendations available for this interaction. Add more context about the customer's insurance needs for targeted suggestions.</p>
+        }
+      </div>
+
+      <!-- Quality Footer -->
+      <div class="flex flex-col gap-2 px-4 py-3 rounded-xl animate-fade-in-up" style="animation-delay: 0.3s"
+           [style.background]="'var(--bg-surface)'" [style.border]="'1px solid var(--border-secondary)'">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <div class="w-2 h-2 rounded-full" [class]="r.quality.qualityScore >= 80 ? 'bg-emerald-500' : r.quality.qualityScore >= 50 ? 'bg-amber-500' : 'bg-rose-500'"></div>
+              <span class="text-xs font-medium" [style.color]="'var(--text-secondary)'">Quality {{ r.quality.qualityScore }}/100</span>
+            </div>
+            @if (!r.quality.isValid) {
+              <span class="text-xs" [style.color]="'var(--color-danger, #fb7185)'">Validation issues detected</span>
+            }
+          </div>
+          <span class="text-xs" [style.color]="'var(--text-muted)'">Multi-Agent AI System</span>
+        </div>
+        @if (r.quality.issues && r.quality.issues.length > 0) {
+          <div class="space-y-1 pt-1">
+            @for (issue of r.quality.issues; track issue.message) {
+              <div class="flex items-start gap-2">
+                <span class="text-[10px] font-medium uppercase px-1 rounded"
+                      [class]="issue.severity === 'error' ? 'bg-rose-500/20 text-rose-400' : issue.severity === 'warning' ? 'bg-amber-500/20 text-amber-400' : 'bg-sky-500/20 text-sky-400'">
+                  {{ issue.severity }}
+                </span>
+                <span class="text-xs" [style.color]="'var(--text-muted)'">{{ issue.field ? issue.field + ': ' : '' }}{{ issue.message }}</span>
+              </div>
+            }
+          </div>
+        }
+        @if (r.quality.suggestions && r.quality.suggestions.length > 0) {
+          <div class="space-y-1 pt-1">
+            @for (suggestion of r.quality.suggestions; track suggestion) {
+              <div class="flex items-start gap-2">
+                <svg class="w-3 h-3 mt-0.5 flex-shrink-0 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span class="text-xs" [style.color]="'var(--text-muted)'">{{ suggestion }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Action Bar after Results -->
+      <div class="flex items-center justify-center gap-4 animate-fade-in-up" style="animation-delay: 0.35s">
+        <button (click)="clearAll(); scrollToInput()" class="btn-ghost text-sm !px-4 !py-2 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Analyze Another
+        </button>
+        <a routerLink="/dashboard" class="btn-ghost text-sm !px-4 !py-2 flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+          </svg>
+          View Dashboard
+        </a>
+      </div>
+    </div>
+  }
+  </div><!-- end main content -->
+
+  <!-- History Sidebar (Desktop: side panel, Mobile: slide-over drawer) -->
+  @if (showHistory()) {
+    <!-- Mobile backdrop -->
+    <div class="fixed inset-0 bg-black/40 z-40 lg:hidden" (click)="toggleHistory()" aria-hidden="true"></div>
+
+    <!-- Sidebar panel -->
+    <aside id="history-sidebar"
+           class="fixed right-0 top-0 h-full w-80 z-50 lg:relative lg:z-auto lg:top-auto lg:h-auto lg:min-h-screen lg:border-l animate-slide-in-right"
+           [style.background]="'var(--bg-primary)'"
+           [style.borderColor]="'var(--border-secondary)'"
+           role="complementary"
+           aria-label="Analysis history">
+      <app-history-panel
+        [items]="historyItems()"
+        [loading]="historyLoading()"
+        (selectItem)="onHistoryItemSelect($event)"
+        (close)="toggleHistory()">
+      </app-history-panel>
+    </aside>
+  }
+</div><!-- end outer flex -->

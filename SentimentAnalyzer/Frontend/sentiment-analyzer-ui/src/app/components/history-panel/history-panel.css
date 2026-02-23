@@ -1,0 +1,9 @@
+.history-item:hover {
+  border-color: var(--border-active) !important;
+  background: var(--bg-hover) !important;
+}
+
+.history-item:focus-visible {
+  outline: 2px solid var(--color-primary, #6366f1);
+  outline-offset: 2px;
+}

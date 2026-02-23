@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ng new:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "Bash(npx -y @angular/cli@latest new sentiment-analyzer-ui --routing --style=css --skip-git)",
+      "Bash(dotnet add package:*)",
+      "Bash(npx -y @angular/cli generate component:*)",
+      "Bash(dotnet build:*)",
+      "Bash(npm run build:*)",
+      "Bash(dotnet new:*)",
+      "Bash(dotnet add reference:*)",
+      "Bash(dotnet test:*)",
+      "Bash(npm test:*)",
+      "Bash(timeout 15 npm start:*)",
+      "Bash(timeout 20 npm start:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(npm start)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(npx ng build:*)",
+      "Bash(npx vitest:*)",
+      "Bash(npx ng test:*)",
+      "Bash(curl:*)",
+      "Bash(start chrome:*)",
+      "Bash(python -c:*)",
+      "Bash(node -e:*)",
+      "Bash(node -p:*)",
+      "Bash(node --input-type=commonjs -e:*)"
+    ]
+  }
+}

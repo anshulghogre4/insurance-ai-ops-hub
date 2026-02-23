@@ -1,0 +1,17 @@
+<app-nav></app-nav>
+<main class="min-h-screen">
+  @if (authService.authEnabled() && authService.loading()) {
+    <div class="flex items-center justify-center min-h-[calc(100vh-4rem)]"
+         role="status" aria-live="polite" aria-label="Loading application">
+      <div class="text-center">
+        <svg class="animate-spin h-8 w-8 mx-auto mb-4 text-indigo-500" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+        </svg>
+        <p class="text-sm" style="color: var(--text-muted)">Restoring your session...</p>
+      </div>
+    </div>
+  } @else {
+    <router-outlet></router-outlet>
+  }
+</main>
