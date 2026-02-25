@@ -12,8 +12,8 @@
         <p class="text-sm" [style.color]="'var(--text-secondary)'">Insurance sentiment trends and performance metrics</p>
       </div>
     </div>
-    <button (click)="refresh()" class="btn-ghost text-sm flex items-center gap-2">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <button (click)="refresh()" [disabled]="isLoading()" class="btn-ghost text-sm flex items-center gap-2" aria-label="Refresh dashboard data">
+      <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
       </svg>
       Refresh
@@ -22,7 +22,7 @@
 
   <!-- Loading Skeleton -->
   @if (isLoading()) {
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+    <div role="status" aria-live="polite" aria-label="Loading dashboard data" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
       @for (i of [1,2,3,4]; track i) {
         <div class="glass-card-static p-5"><div class="skeleton h-4 w-24 mb-3"></div><div class="skeleton h-8 w-16 mb-2"></div><div class="skeleton h-3 w-20"></div></div>
       }
@@ -30,7 +30,7 @@
   }
 
   @if (error()) {
-    <div class="glass-card-static p-4 mb-6 flex items-center gap-3 border-l-4 border-l-rose-500 animate-fade-in-up">
+    <div class="glass-card-static p-4 mb-6 flex items-center gap-3 border-l-4 border-l-rose-500 animate-fade-in-up" role="alert">
       <svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
       </svg>
@@ -51,7 +51,7 @@
             </svg>
           </div>
         </div>
-        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics.totalAnalyses }}</div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics().totalAnalyses }}</div>
         <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">All time</p>
       </div>
 
@@ -65,9 +65,9 @@
             </svg>
           </div>
         </div>
-        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics.avgPurchaseIntent }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
-        <div class="progress-track mt-2">
-          <div class="progress-fill bg-emerald-500" [style.width.%]="metrics.avgPurchaseIntent"></div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ metrics().avgPurchaseIntent }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
+        <div class="progress-track mt-2" role="progressbar" [attr.aria-valuenow]="metrics().avgPurchaseIntent" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Average purchase intent: ' + metrics().avgPurchaseIntent + '%'">
+          <div class="progress-fill bg-emerald-500" [style.width.%]="metrics().avgPurchaseIntent"></div>
         </div>
       </div>
 
@@ -81,9 +81,9 @@
             </svg>
           </div>
         </div>
-        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ (metrics.avgSentimentScore * 100).toFixed(0) }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
-        <div class="progress-track mt-2">
-          <div class="progress-fill bg-cyan-500" [style.width.%]="metrics.avgSentimentScore * 100"></div>
+        <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ (metrics().avgSentimentScore * 100).toFixed(0) }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">%</span></div>
+        <div class="progress-track mt-2" role="progressbar" [attr.aria-valuenow]="(metrics().avgSentimentScore * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Average sentiment score: ' + (metrics().avgSentimentScore * 100).toFixed(0) + '%'">
+          <div class="progress-fill bg-cyan-500" [style.width.%]="metrics().avgSentimentScore * 100"></div>
         </div>
       </div>
 
@@ -91,20 +91,74 @@
       <div class="metric-card animate-fade-in-up stagger-3">
         <div class="flex items-center justify-between mb-3">
           <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">High Risk Alerts</span>
-          <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="metrics.highRiskCount > 0 ? 'bg-rose-500/15' : 'bg-emerald-500/15'">
-            <svg class="w-4 h-4" [class]="metrics.highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="metrics().highRiskCount > 0 ? 'bg-rose-500/15' : 'bg-emerald-500/15'">
+            <svg class="w-4 h-4" [class]="metrics().highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
             </svg>
           </div>
         </div>
-        <div class="text-2xl font-bold" [class]="metrics.highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'">{{ metrics.highRiskCount }}</div>
+        <div class="text-2xl font-bold" [class]="metrics().highRiskCount > 0 ? 'text-rose-400' : 'text-emerald-400'">{{ metrics().highRiskCount }}</div>
         <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Churn + complaint risks</p>
       </div>
     </div>
 
+    <!-- Claims KPI error -->
+    @if (claimsError()) {
+      <div class="glass-card-static p-3 mb-6 flex items-center gap-2 border-l-4 border-l-amber-500 text-xs" role="alert">
+        <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+        <span class="text-amber-400">{{ claimsError() }}</span>
+      </div>
+    }
+
+    <!-- Claims KPIs -->
+    @if (claimsTotal() > 0) {
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8 animate-fade-in-up stagger-1">
+        <div class="metric-card">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Total Claims</span>
+            <div class="w-8 h-8 rounded-lg bg-purple-500/15 flex items-center justify-center">
+              <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ claimsTotal() }}</div>
+          <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Claims processed</p>
+        </div>
+        <div class="metric-card">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Critical Severity</span>
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="claimsCritical() > 0 ? 'bg-rose-500/15' : 'bg-emerald-500/15'">
+              <svg class="w-4 h-4" [class]="claimsCritical() > 0 ? 'text-rose-400' : 'text-emerald-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-2xl font-bold" [class]="claimsCritical() > 0 ? 'text-rose-400' : 'text-emerald-400'">{{ claimsCritical() }}</div>
+          <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Require immediate attention</p>
+        </div>
+        <div class="metric-card">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Avg Fraud Score</span>
+            <div class="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
+              <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="text-2xl font-bold" [style.color]="'var(--text-primary)'">{{ claimsAvgFraud() }}<span class="text-sm font-normal" [style.color]="'var(--text-muted)'">/100</span></div>
+          <div class="progress-track mt-2" role="progressbar" [attr.aria-valuenow]="claimsAvgFraud()" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Average fraud score: ' + claimsAvgFraud() + ' out of 100'">
+            <div class="progress-fill" [class]="claimsAvgFraud() >= 55 ? 'bg-orange-500' : 'bg-emerald-500'" [style.width.%]="claimsAvgFraud()"></div>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Charts Row -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-8">
-      <!-- Sentiment Distribution -->
+      <!-- Sentiment Distribution Doughnut Chart -->
       <div class="glass-card-static p-6 animate-fade-in-up stagger-2">
         <h3 class="section-title text-sm mb-5 flex items-center gap-2">
           <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,51 +166,18 @@
           </svg>
           Sentiment Distribution
         </h3>
-        <div class="space-y-4">
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                <span class="text-xs" [style.color]="'var(--text-secondary)'">Positive</span>
-              </div>
-              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.positive }}%</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill bg-emerald-500" [style.width.%]="sentimentDistribution.positive"></div></div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                <span class="text-xs" [style.color]="'var(--text-secondary)'">Negative</span>
-              </div>
-              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.negative }}%</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill bg-rose-500" [style.width.%]="sentimentDistribution.negative"></div></div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-cyan-500"></div>
-                <span class="text-xs" [style.color]="'var(--text-secondary)'">Neutral</span>
-              </div>
-              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.neutral }}%</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill bg-cyan-500" [style.width.%]="sentimentDistribution.neutral"></div></div>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1.5">
-              <div class="flex items-center gap-2">
-                <div class="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
-                <span class="text-xs" [style.color]="'var(--text-secondary)'">Mixed</span>
-              </div>
-              <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ sentimentDistribution.mixed }}%</span>
-            </div>
-            <div class="progress-track"><div class="progress-fill bg-amber-500" [style.width.%]="sentimentDistribution.mixed"></div></div>
-          </div>
+        <div class="h-64 flex items-center justify-center">
+          <canvas baseChart
+                  [datasets]="sentimentChartData.datasets"
+                  [labels]="sentimentChartData.labels"
+                  [options]="sentimentChartOptions"
+                  type="doughnut"
+                  aria-label="Sentiment distribution doughnut chart">
+          </canvas>
         </div>
       </div>
 
-      <!-- Customer Personas -->
+      <!-- Customer Personas Bar Chart -->
       <div class="glass-card-static p-6 animate-fade-in-up stagger-3">
         <h3 class="section-title text-sm mb-5 flex items-center gap-2">
           <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,25 +185,108 @@
           </svg>
           Customer Personas
         </h3>
-        @if (topPersonas.length === 0) {
-          <div class="text-center py-6">
+        @if (topPersonas().length === 0) {
+          <div class="h-64 flex items-center justify-center">
             <p class="text-sm" [style.color]="'var(--text-muted)'">No persona data yet</p>
           </div>
         } @else {
-          <div class="space-y-4">
-            @for (persona of topPersonas; track persona.name) {
-              <div>
-                <div class="flex items-center justify-between mb-1.5">
-                  <span class="text-xs" [style.color]="'var(--text-secondary)'">{{ persona.name }}</span>
-                  <span class="text-xs font-medium" [style.color]="'var(--text-primary)'">{{ persona.count }}</span>
-                </div>
-                <div class="progress-track">
-                  <div class="progress-fill bg-gradient-to-r from-indigo-500 to-purple-500" [style.width.%]="persona.percentage"></div>
-                </div>
-              </div>
-            }
+          <div class="h-64">
+            <canvas baseChart
+                    [datasets]="personaChartData.datasets"
+                    [labels]="personaChartData.labels"
+                    [options]="personaChartOptions"
+                    type="bar"
+                    aria-label="Customer personas horizontal bar chart">
+            </canvas>
           </div>
         }
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="mb-8 animate-fade-in-up stagger-3">
+      <h3 class="section-title text-sm mb-4 flex items-center gap-2">
+        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        </svg>
+        Quick Actions
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Claims Triage -->
+        <a routerLink="/claims/triage" class="glass-card group p-5 flex flex-col gap-3 hover:border-indigo-500/30 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-bold" [style.color]="'var(--text-primary)'">Claims Triage</p>
+            <p class="text-xs" [style.color]="'var(--text-muted)'">Submit a claim for AI assessment</p>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-indigo-400 font-medium mt-auto group-hover:translate-x-1 transition-transform">
+            Start
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Claims History -->
+        <a routerLink="/claims/history" class="glass-card group p-5 flex flex-col gap-3 hover:border-cyan-500/30 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group-hover:shadow-cyan-500/40 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-bold" [style.color]="'var(--text-primary)'">Claims History</p>
+            <p class="text-xs" [style.color]="'var(--text-muted)'">Browse and filter past claims</p>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-cyan-400 font-medium mt-auto group-hover:translate-x-1 transition-transform">
+            View
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Provider Health -->
+        <a routerLink="/dashboard/providers" class="glass-card group p-5 flex flex-col gap-3 hover:border-teal-500/30 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center shadow-lg shadow-teal-500/20 group-hover:shadow-teal-500/40 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-bold" [style.color]="'var(--text-primary)'">Provider Health</p>
+            <p class="text-xs" [style.color]="'var(--text-muted)'">Monitor AI provider status</p>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-teal-400 font-medium mt-auto group-hover:translate-x-1 transition-transform">
+            Monitor
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
+
+        <!-- Fraud Alerts -->
+        <a routerLink="/dashboard/fraud" class="glass-card group p-5 flex flex-col gap-3 hover:border-rose-500/30 transition-all">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-600 flex items-center justify-center shadow-lg shadow-rose-500/20 group-hover:shadow-rose-500/40 transition-shadow">
+            <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-bold" [style.color]="'var(--text-primary)'">Fraud Alerts</p>
+            <p class="text-xs" [style.color]="'var(--text-muted)'">Review high-risk fraud flags</p>
+          </div>
+          <div class="flex items-center gap-1 text-xs text-rose-400 font-medium mt-auto group-hover:translate-x-1 transition-transform">
+            Review
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+          </div>
+        </a>
       </div>
     </div>
 
@@ -198,7 +302,16 @@
         <span class="badge badge-neutral">Last 10</span>
       </div>
 
-      @if (recentHistory.length === 0) {
+      @if (historyError()) {
+        <div class="flex items-center gap-2 p-3 mb-4 rounded-lg text-xs" [style.background]="'var(--bg-surface)'" role="alert">
+          <svg class="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          <span class="text-amber-400">{{ historyError() }}</span>
+        </div>
+      }
+
+      @if (recentHistory().length === 0 && !historyError()) {
         <!-- Empty state -->
         <div class="text-center py-12">
           <div class="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center" [style.background]="'var(--bg-surface)'">
@@ -223,7 +336,7 @@
               </tr>
             </thead>
             <tbody>
-              @for (item of recentHistory; track item.id) {
+              @for (item of recentHistory(); track item.id) {
                 <tr class="transition-colors hover:bg-[var(--bg-surface-hover)]" [style.border-color]="'var(--border-secondary)'">
                   <td class="py-3 px-3 max-w-[200px] truncate text-xs border-b" [style.color]="'var(--text-secondary)'" [style.border-color]="'var(--border-secondary)'">{{ item.inputTextPreview }}</td>
                   <td class="py-3 px-3 border-b" [style.border-color]="'var(--border-secondary)'">

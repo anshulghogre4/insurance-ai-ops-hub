@@ -137,3 +137,85 @@ export const INSURANCE_TEST_TEXTS = {
     'I called three times and each representative gave me different information. ' +
     'Please correct the billing immediately or I will file a complaint with the state insurance department.',
 };
+
+export const MOCK_CLAIM_TRIAGE_RESPONSE = {
+  claimId: 101,
+  severity: 'High',
+  urgency: 'Immediate',
+  claimType: 'Water Damage',
+  fraudScore: 42,
+  fraudRiskLevel: 'Medium',
+  estimatedLossRange: '$5,000 - $15,000',
+  recommendedActions: [
+    { action: 'Assign field adjuster within 24 hours', priority: 'High', reasoning: 'Active water damage requires immediate assessment' },
+    { action: 'Contact policyholder for additional photos', priority: 'Medium', reasoning: 'Document extent of damage' },
+    { action: 'Schedule emergency mitigation', priority: 'High', reasoning: 'Prevent mold growth and further damage' }
+  ],
+  fraudFlags: ['Timing anomaly - claim filed within 30 days of policy inception', 'High claim amount relative to property value'],
+  evidence: [],
+  status: 'Triaged',
+  createdAt: '2026-02-24T10:00:00Z'
+};
+
+export const MOCK_CLAIMS_HISTORY_RESPONSE = {
+  items: [
+    { claimId: 101, severity: 'High', urgency: 'Immediate', claimType: 'Water Damage', fraudScore: 42, fraudRiskLevel: 'Medium', estimatedLossRange: '$5K-$15K', recommendedActions: [], fraudFlags: [], evidence: [], status: 'Triaged', createdAt: '2026-02-24T10:00:00Z' },
+    { claimId: 102, severity: 'Low', urgency: 'Standard', claimType: 'Auto Scratch', fraudScore: 12, fraudRiskLevel: 'Low', estimatedLossRange: '$500-$1,500', recommendedActions: [], fraudFlags: [], evidence: [], status: 'Resolved', createdAt: '2026-02-23T14:00:00Z' },
+    { claimId: 103, severity: 'Critical', urgency: 'Emergency', claimType: 'Structure Fire', fraudScore: 78, fraudRiskLevel: 'High', estimatedLossRange: '$50K-$200K', recommendedActions: [], fraudFlags: ['Timing anomaly', 'Financial motive'], evidence: [], status: 'UnderReview', createdAt: '2026-02-22T08:00:00Z' }
+  ],
+  totalCount: 3, page: 1, pageSize: 20, totalPages: 1
+};
+
+export const MOCK_FRAUD_ALERTS_RESPONSE = [
+  { claimId: 201, severity: 'Critical', urgency: 'Emergency', claimType: 'Structure Fire', fraudScore: 82, fraudRiskLevel: 'VeryHigh', estimatedLossRange: '$100K-$500K', recommendedActions: [{ action: 'Refer to SIU', priority: 'Critical', reasoning: 'Multiple fraud indicators' }], fraudFlags: ['Timing anomaly', 'Financial motive', 'Inconsistent documentation'], evidence: [], status: 'UnderReview', createdAt: '2026-02-24T08:00:00Z' },
+  { claimId: 202, severity: 'High', urgency: 'Priority', claimType: 'Theft', fraudScore: 65, fraudRiskLevel: 'High', estimatedLossRange: '$10K-$25K', recommendedActions: [], fraudFlags: ['Pattern match with known fraud ring'], evidence: [], status: 'UnderReview', createdAt: '2026-02-23T14:00:00Z' }
+];
+
+export const MOCK_PROVIDER_HEALTH_RESPONSE = {
+  llmProviders: [
+    { name: 'Groq', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Cerebras', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Mistral', status: 'Degraded', isAvailable: true, consecutiveFailures: 2, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Gemini', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'OpenRouter', status: 'Down', isAvailable: false, consecutiveFailures: 5, cooldownSeconds: 120, cooldownExpiresUtc: '2026-02-24T10:05:00Z' },
+    { name: 'OpenAI', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Ollama', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null }
+  ],
+  multimodalServices: [
+    { name: 'Deepgram STT', isConfigured: true, status: 'Available' },
+    { name: 'Azure Vision', isConfigured: true, status: 'Available' },
+    { name: 'Cloudflare Vision', isConfigured: true, status: 'Available' },
+    { name: 'OCR.space', isConfigured: true, status: 'Available' },
+    { name: 'HuggingFace NER', isConfigured: false, status: 'Not Configured' },
+    { name: 'Voyage AI Embeddings', isConfigured: false, status: 'Not Configured' }
+  ],
+  checkedAt: '2026-02-24T10:00:00Z'
+};
+
+export const MOCK_EVIDENCE_RESPONSE = {
+  evidenceType: 'image',
+  provider: 'Azure Vision',
+  processedText: 'Water damage visible on ceiling and walls. Mold growth detected in corners.',
+  damageIndicators: ['water staining', 'mold growth', 'structural damage'],
+  createdAt: '2026-02-24T10:05:00Z'
+};
+
+export const MOCK_FRAUD_ANALYSIS_RESPONSE = {
+  claimId: 101,
+  fraudScore: 72,
+  riskLevel: 'High',
+  indicators: [
+    { category: 'Timing', description: 'Claim filed within 30 days of policy inception', severity: 'High' },
+    { category: 'Financial', description: 'Claim amount exceeds typical range for property type', severity: 'Medium' }
+  ],
+  recommendedActions: [{ action: 'Refer to SIU', priority: 'Critical', reasoning: 'Multiple high-severity indicators' }],
+  referToSIU: true,
+  siuReferralReason: 'Multiple high-severity fraud indicators detected',
+  confidence: 0.85
+};
+
+export const CLAIMS_TEST_TEXTS = {
+  waterDamage: 'Water pipe burst in basement causing significant flooding. Damage to flooring, drywall, and personal property. Policy HO-2024-789456.',
+  autoAccident: 'Rear-end collision on Highway 101. Other driver ran red light. Police report filed. Vehicle has significant rear damage.',
+  theftReport: 'Home burglary while traveling. Electronics, jewelry, and cash stolen totaling approximately $25,000. Police report filed.'
+};

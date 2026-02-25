@@ -35,18 +35,16 @@ test.describe('Dashboard', () => {
 
   test('should show sentiment distribution chart', async ({ page }) => {
     await expect(page.getByText('Sentiment Distribution')).toBeVisible();
-    // Check that distribution labels are present
-    const chart = page.locator('text=Sentiment Distribution >> ..');
-    await expect(chart.getByText('Positive')).toBeVisible();
-    await expect(chart.getByText('Negative')).toBeVisible();
-    await expect(chart.getByText('Neutral')).toBeVisible();
-    await expect(chart.getByText('Mixed')).toBeVisible();
+    // Chart.js renders labels on canvas, not as DOM text. Verify the canvas element is present.
+    const chartCanvas = page.locator('canvas[aria-label="Sentiment distribution doughnut chart"]');
+    await expect(chartCanvas).toBeVisible({ timeout: 10_000 });
   });
 
   test('should show customer personas chart', async ({ page }) => {
     await expect(page.getByText('Customer Personas')).toBeVisible();
-    await expect(page.getByText('ClaimFrustrated').first()).toBeVisible();
-    await expect(page.getByText('RenewalRisk')).toBeVisible();
+    // Chart.js renders persona labels on canvas, not as DOM text. Verify the canvas element is present.
+    const chartCanvas = page.locator('canvas[aria-label="Customer personas horizontal bar chart"]');
+    await expect(chartCanvas).toBeVisible({ timeout: 10_000 });
   });
 
   test('should show recent analyses history table', async ({ page }) => {

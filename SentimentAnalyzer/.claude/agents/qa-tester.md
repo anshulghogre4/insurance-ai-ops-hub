@@ -69,3 +69,16 @@ OUTPUT your validation as JSON:
 }
 
 If isValid is false, clearly state what needs to be corrected.
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **verification-before-completion**: Runs full validation checks (build, tests, lint, E2E) before marking any task as done
+- **pypict**: Generates pairwise combinatorial test cases to maximize coverage of multi-parameter insurance scenarios
+- **code-auditor**: Audits code for security vulnerabilities, PII leaks, missing error handling, and insurance compliance gaps
+- **systematic-debugging**: Traces failures through the full stack (backend logs, frontend console, network, agent output) to find root cause
+- **playwright-skill**: Writes and maintains Playwright E2E tests including accessibility scans, mobile viewport testing, and API mocking
+- **webapp-testing**: Tests web application flows end-to-end across browsers, devices, and themes for functional correctness
+- **test-fixing**: Diagnoses flaky tests, fixes broken assertions, updates mock data to match API contract changes
+
+## Sprint 4 Week 3 Contributions
+- Adversarial testing of CX + fraud features, wrote 20+ tests

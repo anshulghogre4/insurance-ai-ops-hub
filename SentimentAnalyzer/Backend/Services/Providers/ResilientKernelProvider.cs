@@ -10,13 +10,14 @@ namespace SentimentAnalyzer.API.Services.Providers;
 /// automatic fallback when providers fail with 429/500/503 errors.
 /// Implements exponential backoff cooldown per provider.
 /// </summary>
-public class ResilientKernelProvider : IResilientKernelProvider
+public class ResilientKernelProvider : IResilientKernelProvider, IDisposable
 {
     private readonly Dictionary<string, Kernel> _kernels = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, ProviderHealthStatus> _healthStatus = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<string> _fallbackOrder;
     private readonly ILogger<ResilientKernelProvider> _logger;
     private readonly object _lock = new();
+    private readonly List<IDisposable> _disposables = [];
 
     private static readonly TimeSpan _baseCooldown = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan _maxCooldown = TimeSpan.FromSeconds(300);
@@ -220,11 +221,20 @@ public class ResilientKernelProvider : IResilientKernelProvider
                         InnerHandler = new HttpClientHandler()
                     };
                     var openRouterHttpClient = new HttpClient(openRouterHandler);
+                    _disposables.Add(openRouterHttpClient);
                     kernelBuilder.AddOpenAIChatCompletion(
                         modelId: settings.OpenRouter.Model,
                         apiKey: settings.OpenRouter.ApiKey,
                         endpoint: new Uri(settings.OpenRouter.Endpoint),
                         httpClient: openRouterHttpClient);
+                    break;
+
+                case "Cerebras":
+                    if (string.IsNullOrWhiteSpace(settings.Cerebras.ApiKey)) return null;
+                    kernelBuilder.AddOpenAIChatCompletion(
+                        modelId: settings.Cerebras.Model,
+                        apiKey: settings.Cerebras.ApiKey,
+                        endpoint: new Uri(settings.Cerebras.Endpoint));
                     break;
 
                 case "Ollama":
@@ -254,6 +264,15 @@ public class ResilientKernelProvider : IResilientKernelProvider
             _logger.LogError(ex, "Failed to build kernel for provider: {Provider}", providerName);
             return null;
         }
+    }
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        foreach (var disposable in _disposables)
+        {
+            disposable.Dispose();
+        }
+        _disposables.Clear();
     }
 }
 

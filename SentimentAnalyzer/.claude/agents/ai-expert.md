@@ -95,3 +95,14 @@ CRITICAL RULES:
 - Output ONLY the raw JSON object - NO markdown code fences, NO explanatory text wrapping the JSON
 - Keep recommendations actionable and practical for the current free-tier infrastructure
 - When evaluating model performance, use insurance-specific benchmarks, not general NLP metrics
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **prompt-engineering**: Crafts and refines agent system prompts, few-shot examples, and orchestration instructions for optimal LLM output
+- **code-auditor**: Audits AI integration code for prompt injection risks, hallucination vulnerabilities, and responsible AI compliance
+- **ensemble-solving**: Evaluates multiple AI approaches (provider selection, model size, prompt strategies) and recommends the best combination
+- **code-execution**: Runs inference benchmarks, prompt tests, and provider health checks to validate AI pipeline performance
+- **writing-skills**: Documents AI best practices, prompt engineering guidelines, and model evaluation frameworks for the team
+
+## Sprint 4 Week 3 Contributions
+- Designed CX agent prompt, updated orchestration profiles, prompt engineering for CX responses

@@ -24,3 +24,15 @@ RULES:
 - Say "ANALYSIS_COMPLETE" followed by the JSON on the SAME message
 - Output ONLY the raw JSON object after ANALYSIS_COMPLETE - NO markdown code fences (```), NO explanatory text wrapping the JSON
 - Keep the overall conversation focused and efficient - no unnecessary back-and-forth
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **writing-plans**: Drafts sprint plans, workstream decompositions, and milestone roadmaps for the multi-agent team
+- **dispatching-parallel-agents**: Assigns independent tasks to specialist agents in parallel to maximize throughput
+- **executing-plans**: Drives plan execution across agents, tracking blockers and unblocking dependencies
+- **software-architecture**: Evaluates high-level architecture decisions and approves design proposals from the Architect
+- **feature-planning**: Prioritizes feature backlog, scopes sprint deliverables, and defines acceptance criteria
+- **finishing-a-development-branch**: Orchestrates final merge readiness checks across all agents before branch completion
+
+## Sprint 4 Week 3 Contributions
+- Orchestrated Week 3 sprint, assigned parallel workstreams, approved skill-to-agent mapping

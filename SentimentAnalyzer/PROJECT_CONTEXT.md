@@ -6,7 +6,9 @@ An AI-powered insurance domain sentiment analysis platform that analyzes policyh
 
 ### Version History
 - **v1.0**: General-purpose sentiment analyzer. .NET 10 API + Angular 21 SPA + OpenAI GPT-4o-mini. Single endpoint: `POST /api/sentiment/analyze`.
-- **v2.0 (Current)**: Insurance-domain multi-agent system with free AI providers (Groq, Gemini, Ollama), Semantic Kernel orchestration, CQRS + Minimal API, SQLite/Supabase persistence, PII redaction, and analytics dashboard.
+- **v2.0**: Insurance-domain multi-agent system with free AI providers (Groq, Gemini, Ollama), Semantic Kernel orchestration, CQRS + Minimal API, SQLite/Supabase persistence, PII redaction, and analytics dashboard.
+- **v3.0 (Current)**: Insurance AI Operations Hub. 5-provider resilient fallback chain, 5 multimodal services, claims triage + fraud detection pipeline, interactive landing page, Chart.js dashboard, 13 Angular components across 10 routes, comprehensive E2E test suite (239 tests).
+- **v4.0 (Planned — Sprint 4)**: Document Intelligence RAG (Voyage AI `voyage-finance-2` embeddings + SQLite vector store), Customer Experience Copilot (SSE streaming), cross-claim fraud correlation, v1 PII fix, orchestrator test coverage, rate limiting. Target: 18 components, 14 routes, 26+ API endpoints, 892+ tests.
 
 ---
 
@@ -15,20 +17,45 @@ An AI-powered insurance domain sentiment analysis platform that analyzes policyh
 ```
 Angular 21 SPA (Port 4200)
     |
-    ├── /              → v1 Sentiment Analyzer (legacy)
-    ├── /insurance     → v2 Insurance Analyzer
-    └── /dashboard     → Analytics Dashboard
+    ├── /              → Landing Page (public, interactive platform showcase)
+    ├── /sentiment     → v1 Sentiment Analyzer (legacy, authGuard)
+    ├── /insurance     → v2 Insurance Analyzer (authGuard)
+    ├── /dashboard     → Analytics Dashboard (authGuard)
+    ├── /claims/triage → Claims Triage (authGuard)
+    ├── /claims/history→ Claims History (authGuard)
+    ├── /claims/:id    → Claim Detail (authGuard)
+    ├── /dashboard/providers → Provider Health Monitor (authGuard)
+    ├── /dashboard/fraud     → Fraud Alerts (authGuard)
+    ├── /documents/upload    → Document Upload + Library (authGuard) [Sprint 4 planned]
+    ├── /documents/query     → Document Q&A Chat (authGuard) [Sprint 4 planned]
+    ├── /cx-copilot          → Customer Experience Copilot (authGuard) [Sprint 4 planned]
+    └── /dashboard/correlations → Fraud Correlations (authGuard) [Sprint 4 planned]
          |
 .NET 10 Web API (Port 5143)
     |
     ├── v1 Controller API:  POST /api/sentiment/analyze (frozen)
     ├── v2 Minimal API + CQRS (MediatR):
-    │   ├── POST /api/insurance/analyze  → AnalyzeInsuranceCommand
-    │   ├── GET  /api/insurance/dashboard → GetDashboardQuery
-    │   ├── GET  /api/insurance/history   → GetHistoryQuery
-    │   └── GET  /api/insurance/health
+    │   ├── POST /api/insurance/analyze        → AnalyzeInsuranceCommand
+    │   ├── GET  /api/insurance/dashboard       → GetDashboardQuery
+    │   ├── GET  /api/insurance/history         → GetHistoryQuery
+    │   ├── GET  /api/insurance/health
+    │   ├── POST /api/insurance/claims/triage   → TriageClaimCommand
+    │   ├── POST /api/insurance/claims/upload   → UploadClaimEvidenceCommand
+    │   ├── GET  /api/insurance/claims/{id}     → GetClaimQuery
+    │   ├── GET  /api/insurance/claims/history  → GetClaimsHistoryQuery
+    │   ├── POST /api/insurance/fraud/analyze   → AnalyzeFraudCommand
+    │   ├── GET  /api/insurance/fraud/score/{id}→ GetFraudScoreQuery
+    │   ├── GET  /api/insurance/fraud/alerts    → GetFraudAlertsQuery
+    │   ├── GET  /api/insurance/health/providers→ GetProviderHealthQuery
+    │   │   --- Sprint 4 (Planned) ---
+    │   ├── POST /api/insurance/documents/upload → UploadDocumentCommand
+    │   ├── POST /api/insurance/documents/query  → QueryDocumentCommand
+    │   ├── GET  /api/insurance/documents/{id}   → GetDocumentQuery
+    │   ├── GET  /api/insurance/documents/history → GetDocumentHistoryQuery
+    │   ├── POST /api/insurance/cx/chat          → CX ChatCommand (SSE)
+    │   └── GET  /api/insurance/fraud/correlations → GetFraudCorrelationsQuery
     │
-    ├── PII Redaction Service (before external AI calls)
+    ├── PII Redaction Service (before external AI calls + DB storage)
     ├── Global Exception Handler (IExceptionHandler)
     │
     └── Agent Orchestration (Semantic Kernel AgentGroupChat)
@@ -36,16 +63,37 @@ Angular 21 SPA (Port 4200)
          ├── BA Agent (insurance domain analysis)
          ├── Developer Agent (JSON formatting)
          ├── QA Agent (validation, consistency)
+         ├── AI Expert Agent (model/cloud/training)
          ├── Architect Agent (storage, performance)
-         └── UX Designer Agent (screen design, accessibility)
+         ├── UX Designer Agent (screen design, accessibility)
+         ├── Claims Triage Agent (severity, urgency, actions)
+         ├── Fraud Detection Agent (fraud scoring, SIU referral)
+         └── Document Query Agent (RAG-based Q&A) [Sprint 4 planned]
               |
-         AI Provider Abstraction
+         IResilientKernelProvider (5-Provider Fallback)
          ├── Groq (primary - Llama 3.3 70B, 250 req/day free)
-         ├── Gemini (secondary - 60 req/min free)
-         ├── Ollama (local fallback - unlimited)
-         └── OpenAI (legacy v1)
+         ├── Mistral (secondary - 500K tokens/month free)
+         ├── Gemini (tertiary - 60 req/min free)
+         ├── OpenRouter ($1 free credit)
+         └── Ollama (local fallback - unlimited, PII-safe)
+              |
+         Multimodal Services
+         ├── Deepgram STT (speech-to-text)
+         ├── Azure Vision (image analysis, primary)
+         ├── Cloudflare Vision (image analysis, fallback)
+         ├── OCR.space (document OCR)
+         └── HuggingFace NER (entity extraction)
+              |
+         Embedding Services [Sprint 4 planned]
+         ├── Voyage AI (voyage-finance-2, 1024-dim, finance-optimized)
+         └── Ollama nomic-embed-text (local fallback)
               |
          SQLite (development) / Supabase PostgreSQL (production)
+              |
+         Document Intelligence (RAG) [Sprint 4 planned]
+         ├── DocumentRecord + DocumentChunkRecord (SQLite vector store)
+         ├── Cosine similarity via System.Numerics.Vector SIMD
+         └── Insurance-aware chunking (DECLARATIONS/COVERAGE/EXCLUSIONS/CONDITIONS/ENDORSEMENTS)
 ```
 
 ---
@@ -62,7 +110,7 @@ Angular 21 SPA (Port 4200)
 | **Database** | EF Core 10 + SQLite / Supabase PostgreSQL | Repository pattern, dual provider |
 | **Auth** | Supabase JWT (optional) | JwtBearer middleware |
 | **PII Security** | PIIRedactionService | SSN, policy#, claim#, phone, email |
-| **Testing** | xUnit + Moq (backend), Vitest (frontend) | 48 backend tests (4 files), 126 frontend tests (14 spec files) |
+| **Testing** | xUnit + Moq (backend), Vitest (frontend), Playwright (E2E) | 246 backend tests (24 files), 196 frontend unit tests (20 spec files), 239 E2E tests (12 spec files) |
 
 ---
 
@@ -72,20 +120,40 @@ Angular 21 SPA (Port 4200)
 SentimentAnalyzer/
 ├── Backend/
 │   ├── Controllers/SentimentController.cs     # v1 (FROZEN - never modify)
-│   ├── Endpoints/InsuranceEndpoints.cs        # v2 Minimal API
-│   ├── Features/Insurance/
-│   │   ├── Commands/AnalyzeInsuranceCommand.cs # CQRS command + handler
-│   │   └── Queries/
-│   │       ├── GetDashboardQuery.cs           # CQRS query + handler
-│   │       └── GetHistoryQuery.cs             # CQRS query + handler
+│   ├── Endpoints/
+│   │   ├── InsuranceEndpoints.cs              # v2 Minimal API + MediatR
+│   │   ├── ClaimsEndpoints.cs                 # Claims triage + evidence upload
+│   │   ├── FraudEndpoints.cs                  # Fraud analysis + alerts
+│   │   └── ProviderHealthEndpoints.cs         # Provider health monitoring
+│   ├── Features/
+│   │   ├── Insurance/
+│   │   │   ├── Commands/AnalyzeInsuranceCommand.cs
+│   │   │   └── Queries/ (GetDashboardQuery, GetHistoryQuery)
+│   │   ├── Claims/
+│   │   │   ├── Commands/ (TriageClaimCommand, UploadClaimEvidenceCommand)
+│   │   │   └── Queries/ (GetClaimQuery, GetClaimsHistoryQuery)
+│   │   ├── Fraud/
+│   │   │   ├── Commands/AnalyzeFraudCommand.cs
+│   │   │   └── Queries/ (GetFraudScoreQuery, GetFraudAlertsQuery)
+│   │   └── Health/Queries/GetProviderHealthQuery.cs
 │   ├── Data/
-│   │   ├── InsuranceAnalysisDbContext.cs       # EF Core DbContext
-│   │   ├── IAnalysisRepository.cs             # Repository interface
-│   │   ├── SqliteAnalysisRepository.cs        # Repository implementation
-│   │   └── Entities/AnalysisRecord.cs         # DB entity
+│   │   ├── InsuranceAnalysisDbContext.cs       # EF Core DbContext (6 DbSets)
+│   │   ├── IAnalysisRepository.cs             # Sentiment analysis repository
+│   │   ├── SqliteAnalysisRepository.cs        # SQLite implementation
+│   │   ├── IClaimsRepository.cs               # Claims domain repository
+│   │   ├── SqliteClaimsRepository.cs          # Claims SQLite implementation
+│   │   └── Entities/
+│   │       ├── AnalysisRecord.cs              # Sentiment analysis entity
+│   │       ├── ClaimRecord.cs                 # Claims triage entity
+│   │       ├── ClaimEvidenceRecord.cs         # Multimodal evidence entity
+│   │       └── ClaimActionRecord.cs           # Recommended actions entity
 │   ├── Models/                                 # Request/Response DTOs
 │   ├── Services/
 │   │   ├── PIIRedactionService.cs             # PII redaction (mandatory)
+│   │   ├── Claims/
+│   │   │   ├── ClaimsOrchestrationService.cs  # Claims triage facade
+│   │   │   └── MultimodalEvidenceProcessor.cs # MIME routing + NER
+│   │   ├── Fraud/FraudAnalysisService.cs      # Fraud scoring facade
 │   │   ├── ISentimentService.cs               # v1 (frozen)
 │   │   └── OpenAISentimentService.cs          # v1 (frozen)
 │   ├── Middleware/GlobalExceptionHandler.cs
@@ -93,13 +161,16 @@ SentimentAnalyzer/
 │
 ├── Agents/
 │   ├── Configuration/                          # Agent + LLM settings
-│   ├── Definitions/AgentDefinitions.cs         # System prompts (6 agents)
+│   ├── Definitions/AgentDefinitions.cs         # System prompts (9 agents)
 │   ├── Orchestration/
-│   │   ├── InsuranceAnalysisOrchestrator.cs    # AgentGroupChat pipeline
+│   │   ├── InsuranceAnalysisOrchestrator.cs    # Profile-aware AgentGroupChat pipeline
 │   │   ├── AgentSelectionStrategy.cs           # Turn-taking strategy
 │   │   └── AnalysisTerminationStrategy.cs      # ANALYSIS_COMPLETE signal
 │   ├── Plugins/                                # SK plugins
-│   └── Models/AgentAnalysisResult.cs           # Agent output model
+│   └── Models/
+│       ├── AgentAnalysisResult.cs              # Agent output (+ ClaimTriage, FraudAnalysis)
+│       ├── ClaimTriageDetail.cs                # Claims triage output model
+│       └── FraudAnalysisDetail.cs              # Fraud detection output model
 │
 ├── Domain/
 │   ├── Enums/                                  # SentimentType, CustomerPersona, etc.
@@ -107,35 +178,70 @@ SentimentAnalyzer/
 │
 ├── Frontend/sentiment-analyzer-ui/
 │   └── src/app/
-│       ├── components/
-│       │   ├── sentiment-analyzer/             # v1 (legacy)
-│       │   ├── insurance-analyzer/             # v2 analysis UI
-│       │   ├── dashboard/                      # Analytics dashboard
-│       │   ├── login/                          # Supabase auth login
-│       │   └── nav/                            # Navigation bar
-│       ├── services/
-│       │   ├── sentiment.service.ts            # v1 HTTP client
-│       │   ├── insurance.service.ts            # v2 API client (inject() pattern)
-│       │   ├── auth.service.ts                 # Supabase auth (signals)
-│       │   └── theme.service.ts                # Theme switching (dark/semi-dark/light)
-│       ├── models/
-│       │   ├── sentiment.model.ts              # v1 interfaces
-│       │   └── insurance.model.ts              # v2 interfaces (14 types)
-│       ├── guards/
-│       │   ├── auth.guard.ts                   # Route protection (CanActivateFn)
-│       │   └── guest.guard.ts                  # Guest-only routes
-│       └── interceptors/
-│           ├── auth.interceptor.ts             # JWT header injection
-│           └── error.interceptor.ts            # 401/403 redirect handling
+│       ├── components/ (13 total)
+│       │   ├── landing/                          # Public landing page (interactive platform showcase)
+│       │   ├── sentiment-analyzer/               # v1 general analyzer (legacy)
+│       │   ├── insurance-analyzer/               # v2 insurance analysis UI
+│       │   ├── dashboard/                        # Analytics dashboard (Chart.js charts)
+│       │   ├── claims-triage/                    # Claims triage form + result display
+│       │   ├── claim-result/                     # Claim detail view by ID
+│       │   ├── evidence-viewer/                  # Multimodal evidence child component
+│       │   ├── claims-history/                   # Filterable/paginated claims table
+│       │   ├── provider-health/                  # LLM + multimodal service health monitor
+│       │   ├── fraud-alerts/                     # High-risk fraud alert cards
+│       │   ├── history-panel/                    # Analysis history panel
+│       │   ├── login/                            # Supabase auth login
+│       │   └── nav/                              # Navigation bar (theme toggle, mobile menu)
+│       ├── services/ (sentiment, insurance, claims, auth, theme, analysis-state)
+│       ├── models/ (sentiment.model, insurance.model, claims.model)
+│       ├── guards/ (auth.guard, guest.guard)
+│       └── interceptors/ (auth.interceptor, error.interceptor)
+│   └── e2e/ (12 spec files, 239 tests)
+│       ├── fixtures/mock-data.ts                 # Realistic insurance mock API responses
+│       ├── helpers/api-mocks.ts                  # page.route() interceptors for all endpoints
+│       ├── navigation.spec.ts                    # Route navigation, mobile menu
+│       ├── sentiment-analyzer.spec.ts            # v1 sentiment analysis flow
+│       ├── insurance-analyzer.spec.ts            # v2 insurance analysis
+│       ├── dashboard.spec.ts                     # Dashboard metrics, charts
+│       ├── login.spec.ts                         # Login/register form UX
+│       ├── theme.spec.ts                         # Theme cycling, persistence
+│       ├── accessibility.spec.ts                 # axe-core WCAG AA + ARIA
+│       ├── claims-triage.spec.ts                 # Claims triage flow + errors
+│       ├── claims-detail.spec.ts                 # Claim detail view
+│       ├── claims-history.spec.ts                # History table + filters + pagination
+│       ├── provider-health.spec.ts               # Provider health cards
+│       └── fraud-alerts.spec.ts                  # Fraud alert cards
 │
-├── Tests/
+├── Tests/ (24 files, 246 tests)
 │   ├── SentimentControllerTests.cs             # v1 regression (9 tests - FROZEN)
-│   ├── InsuranceAnalysisControllerTests.cs     # CQRS handler tests (27 tests incl. 7 MapQuality)
+│   ├── InsuranceAnalysisControllerTests.cs     # CQRS handler tests (27 tests)
 │   ├── PIIRedactionTests.cs                    # PII redaction tests (11 tests)
-│   └── UnitTest1.cs                            # Placeholder (1 test)
+│   ├── UnitTest1.cs                            # Placeholder (1 test)
+│   ├── OrchestrationProfileFactoryTests.cs     # Profile → agent mapping
+│   ├── ProviderConfigurationTests.cs           # LLM provider config
+│   ├── ResilientKernelProviderTests.cs         # 5-provider fallback chain
+│   ├── HuggingFaceNerServiceTests.cs           # NER entity extraction
+│   ├── DeepgramServiceTests.cs                 # Speech-to-text
+│   ├── AzureVisionServiceTests.cs              # Azure Vision image analysis
+│   ├── CloudflareVisionServiceTests.cs         # Cloudflare Vision fallback
+│   ├── OcrSpaceServiceTests.cs                 # OCR document extraction
+│   ├── CriticalFixTests.cs                     # Sprint 1 critical fixes
+│   ├── FinBertSentimentServiceTests.cs         # FinBERT pre-screening (8 tests)
+│   ├── AnalyzeInsurancePreScreenTests.cs       # FinBERT handler integration (6 tests)
+│   ├── ClaimsOrchestrationServiceTests.cs      # Claims triage (10 tests)
+│   ├── MultimodalEvidenceProcessorTests.cs     # MIME routing + fallback (10 tests)
+│   ├── FraudAnalysisServiceTests.cs            # Fraud scoring (6 tests)
+│   ├── TriageClaimHandlerTests.cs              # Claims command handler (5 tests)
+│   ├── UploadClaimEvidenceHandlerTests.cs      # Evidence upload (5 tests)
+│   ├── ClaimsRepositoryTests.cs                # Claims DB persistence (6 tests)
+│   ├── GetClaimHandlerTests.cs                 # Claims query handler (4 tests)
+│   ├── FraudCommandsTests.cs                   # Fraud commands (4 tests)
+│   └── ProviderHealthTests.cs                  # Provider health (5 tests)
 │
 ├── PROJECT_CONTEXT.md (this file)
+├── SPRINT-ROADMAP.md
 ├── REVIEW.md
+├── QA_REPORT.md
 └── README.md
 ```
 
@@ -205,13 +311,35 @@ npm test
 | POST | `/api/sentiment/analyze` | Generic sentiment analysis |
 | GET | `/api/sentiment/health` | Health check |
 
-### v2 (Insurance)
+### v2 (Insurance — Sentiment Analysis)
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | POST | `/api/insurance/analyze` | Multi-agent insurance analysis |
 | GET | `/api/insurance/dashboard` | Aggregated metrics + distribution |
 | GET | `/api/insurance/history?count=20` | Recent analysis history |
 | GET | `/api/insurance/health` | Health check |
+
+### v2 (Claims & Fraud Pipeline — Sprint 2)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/claims/triage` | Submit claim for AI triage |
+| POST | `/api/insurance/claims/upload` | Upload multimodal evidence |
+| GET | `/api/insurance/claims/{id}` | Retrieve claim triage result |
+| GET | `/api/insurance/claims/history` | List claims with filters + pagination |
+| POST | `/api/insurance/fraud/analyze` | Deep fraud analysis on a claim |
+| GET | `/api/insurance/fraud/score/{claimId}` | Get fraud score for a claim |
+| GET | `/api/insurance/fraud/alerts` | List high-risk fraud alerts |
+| GET | `/api/insurance/health/providers` | Provider health monitoring |
+
+### v2 (Document Intelligence + CX + Fraud Correlation — Sprint 4 Planned)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/documents/upload` | Upload document for RAG indexing (OCR → chunk → embed → store) |
+| POST | `/api/insurance/documents/query` | Query documents with natural language (embed → vector search → LLM answer with citations) |
+| GET | `/api/insurance/documents/{id}` | Retrieve document metadata + chunks |
+| GET | `/api/insurance/documents/history` | List indexed documents with pagination |
+| POST | `/api/insurance/cx/chat` | Customer Experience Copilot chat (SSE streaming) |
+| GET | `/api/insurance/fraud/correlations` | Cross-claim fraud correlations (address, phone, date, narrative similarity) |
 
 ---
 
@@ -229,6 +357,156 @@ npm test
 # CHANGELOG
 
 All sessions, reviews, decisions, and changes are logged here in reverse chronological order.
+
+---
+
+## [2026-02-25] Sprint 4: Document Intelligence RAG + Technical Debt (PLANNED)
+
+### Sprint 4 Brainstorming (9-Agent, 3 Iterations — Unanimous APPROVE)
+
+All 9 agents brainstormed Sprint 4 scope across 3 iterations. Final consensus:
+
+**Week 1 — P0/P1 Technical Debt (MUST-HAVE):**
+- Orchestrator unit tests (0% → 60%+ coverage) — 15+ tests for `InsuranceAnalysisOrchestrator.cs`
+- V1 PII fix via decorator pattern (`PiiRedactingSentimentService` wrapping `ISentimentService`)
+- PII regression tests (5 tests querying DB for leaked patterns)
+- Per-endpoint rate limiting (analyze: 10/min, triage: 5/min, fraud: 5/min)
+- Accessibility fixes (color contrast, keyboard traps, `aria-live` regions)
+
+**Week 2 — Document Intelligence RAG Foundation (MUST-HAVE):**
+- Voyage AI embedding service (`voyage-finance-2`, 1024-dim) + Ollama fallback
+- RAG database schema: `DocumentRecord` + `DocumentChunkRecord` + `SqliteDocumentRepository`
+- Insurance-aware document chunking (section headers + sentence-boundary splitting)
+- Document Intelligence facade service (upload → OCR → chunk → embed → store; query → embed → search → LLM)
+- 4 new API endpoints + MediatR handlers
+- `DocumentQuery` agent prompt + orchestration profile
+
+**Week 3 — CX Copilot + Fraud Enhancement (SHOULD-HAVE):**
+- Customer Experience Copilot with SSE streaming and `CustomerExperience` orchestration profile
+- Cross-claim fraud correlation (address, phone, date overlap, narrative similarity >0.92)
+- Related claims context injection in triage pipeline
+
+**Week 4 — Frontend + E2E + Documentation (SHOULD-HAVE):**
+- 5 new Angular components (document-upload, document-query, document-result, cx-copilot, fraud-correlation)
+- 4 new E2E spec files (36+ tests)
+- All MD files updated
+
+**Test Targets:** 740 → 892+ (152+ new tests across 15+ files)
+
+### Files Planned
+- **~55 new files** (services, entities, repositories, models, handlers, endpoints, tests, components)
+- **~20 modified files** (Program.cs, DbContext, AgentDefinitions, orchestrator, routes, nav, etc.)
+
+---
+
+## [2026-02-24] Sprint 3: Frontend + Dashboard + E2E + Landing Page
+
+### What Was Done
+
+**Full frontend buildout wiring all Sprint 2 backend capabilities + interactive public landing page:**
+
+#### Landing Page (Public Platform Showcase)
+- New `LandingComponent` (1,726 lines) at root `/` — public, no auth required
+- 7 interactive sections: Hero, Agent Orchestration (9 agents), Provider Fallback Chain (5 LLM), Multimodal Pipeline (4 tabs), Interactive Demo, PII Security, Stats & Tech Grid
+- IntersectionObserver scroll-triggered animations, 3-theme compatibility, `prefers-reduced-motion` support
+- Sentiment Analyzer moved from `/` to `/sentiment` (authGuard)
+
+#### New Angular Components (7 new + landing)
+- `claims-triage`: Submit claims with text + file upload, inline triage result display
+- `claim-result`: Full claim detail view by ID (severity, fraud gauge, actions, evidence)
+- `evidence-viewer`: Child component for multimodal evidence (image/audio/PDF)
+- `claims-history`: Filterable/paginated claims table with severity/status/date filters
+- `provider-health`: LLM + multimodal service health monitor with auto-refresh
+- `fraud-alerts`: High-risk fraud alert cards with SIU referral indicators
+- `landing`: Interactive platform showcase (described above)
+
+#### Dashboard Expansion (Chart.js)
+- Severity distribution doughnut chart (ng2-charts)
+- Customer persona horizontal bar chart
+- Quick links cards row (Claims Triage, History, Provider Health, Fraud Alerts)
+
+#### Navigation + Routes
+- 6 new routes: `/sentiment`, `/claims/triage`, `/claims/history`, `/claims/:id`, `/dashboard/providers`, `/dashboard/fraud`
+- Desktop + mobile nav updated with Claims section and expanded Dashboard sub-links
+- 10 total routes (was 4)
+
+#### Claims Service + Models
+- `claims.model.ts`: Full TypeScript interfaces matching all Sprint 2 backend response models
+- `claims.service.ts`: 8 HTTP methods mapping to all Sprint 2 API endpoints
+
+#### E2E Test Suite Expansion (Playwright)
+- 5 new E2E spec files: claims-triage, claims-detail, claims-history, provider-health, fraud-alerts
+- Updated: accessibility.spec.ts (all 9 routes), navigation.spec.ts (landing + sentiment split), sentiment-analyzer.spec.ts (route change)
+- Extended mock data and API interceptors for all new endpoints
+
+#### BA Validation (3 Iterations)
+- Iteration 1 (B+): 12 issues found, all High/Medium fixed
+- Iteration 2 (A-): 6 remaining, all Low/Informational
+- Iteration 3 (A): SHIP approved, 0 blocking issues
+
+### Test Counts (Post-Sprint 3)
+- Backend: **246 tests** across 24 files — 0 regressions (0 backend changes)
+- Frontend unit: **196 tests** across 20 spec files (was 126 across 14)
+- E2E: **239 passed**, 9 skipped across 12 spec files (was ~138 across 7)
+- New npm packages: 2 (ng2-charts, chart.js)
+
+### Files Changed
+- **~50 new files** (8 components × 3 files + models + service + 6 unit specs + 5 e2e specs + mock data)
+- **8 modified files** (routes, nav, dashboard, api-mocks, mock-data, navigation/sentiment/accessibility specs)
+
+---
+
+## [2026-02-23] Sprint 2: Claims & Fraud Pipeline + API Endpoints
+
+### What Was Done
+
+**Full claims processing pipeline wired end-to-end:**
+
+#### Database Layer
+- 3 new EF Core entities: `ClaimRecord`, `ClaimEvidenceRecord`, `ClaimActionRecord`
+- `IClaimsRepository` + `SqliteClaimsRepository` with pagination support
+- `PaginatedResponse<T>` generic wrapper (Items, TotalCount, Page, PageSize, TotalPages)
+
+#### Profile-Aware Orchestration
+- Replaced stub in `InsuranceAnalysisOrchestrator.AnalyzeAsync(text, profile)` with real profile-aware agent selection
+- ClaimsTriage profile: 4 agents, 8 max turns | FraudScoring: 3 agents, 6 max turns
+- JSON schema examples in `BuildProfileUserMessage` for consistent agent output
+- New parsing for `claimTriage` and `fraudAnalysis` JSON blocks in agent result
+
+#### Service Facades
+- `ClaimsOrchestrationService`: text → PII redact → orchestrate → save → respond
+- `MultimodalEvidenceProcessor`: MIME routing (image/audio/pdf → Vision/STT/OCR) + NER + vision fallback (Azure → Cloudflare)
+- `FraudAnalysisService`: fraud scoring → SIU referral (score > 75) → alert flagging (score > 55)
+
+#### 8 New MediatR Handlers
+- Claims: TriageClaimCommand, UploadClaimEvidenceCommand, GetClaimQuery, GetClaimsHistoryQuery
+- Fraud: AnalyzeFraudCommand, GetFraudScoreQuery, GetFraudAlertsQuery
+- Health: GetProviderHealthQuery (LLM + multimodal service health)
+
+#### 8 New API Endpoints
+- Claims: POST triage, POST upload, GET by ID, GET history (with filters + pagination)
+- Fraud: POST analyze, GET score, GET alerts
+- Health: GET providers (LLM + multimodal)
+
+#### Security
+- PII redaction before DB storage in claims pipeline (not just before AI calls)
+- Text truncation to 5000 chars before redaction + persistence
+
+#### Agent Review (3 Iterations)
+- All 9 agents reviewed implementation across 3 iterations
+- Iteration 1: Vision fallback, pagination, PII before DB, fallback tests
+- Iteration 2: All agents 9-9.5/10 — no actionable gaps
+- Iteration 3: JSON schema in agent prompts for better compliance
+- Final: All agents 9.5-10/10 satisfied
+
+### Test Counts (Post-Update)
+- Backend: **230 tests** across 22 files (173 Sprint 1 + 57 Sprint 2) — 0 regressions
+- Frontend: **126 tests** across 14 spec files — all passing
+- New test files: 9 (ClaimsOrchestrationService, MultimodalEvidence, FraudAnalysis, TriageHandler, UploadHandler, ClaimsRepository, GetClaimHandler, FraudCommands, ProviderHealth)
+
+### Files Changed
+- **40 new files** (entities, repository, models, services, handlers, endpoints, tests)
+- **5 modified files** (DbContext, Program.cs, AgentSelectionStrategy, InsuranceAnalysisOrchestrator, AgentAnalysisResult)
 
 ---
 
@@ -359,20 +637,26 @@ Full reports from each review agent, preserved for reference.
 - CQRS Handlers: AnalyzeInsuranceCommand maps agent result to API response, persists to DB (non-blocking on failure)
 
 ### Agent System — Grade: A+
-**6-Agent Pipeline:**
+**9-Agent Pipeline:**
 1. **CTO Agent** — Coordinates pipeline, ensures ANALYSIS_COMPLETE signal, synthesizes output
 2. **BA Agent** — Sentiment + confidence, purchase intent (0-100), persona classification (6 types), journey stage (6 stages), risk indicators, emotion breakdown (8 types), policy recommendations
 3. **Developer Agent** — Formats to strict JSON schema, validates field ranges, backward compat
 4. **QA Agent** — Field completeness, range validation, logical consistency, domain rules, partial auth detection
-5. **Architect Agent** — Storage recommendations, workflow triggers, dashboard metric updates
-6. **UX Designer Agent** — Screen design, accessibility (WCAG 2.1 AA), design system governance, UX gap identification
+5. **AI Expert Agent** — Model evaluation, training recommendations, responsible AI governance
+6. **Architect Agent** — Storage recommendations, workflow triggers, dashboard metric updates
+7. **UX Designer Agent** — Screen design, accessibility (WCAG 2.1 AA), design system governance, UX gap identification
+8. **Claims Triage Agent** — Severity/urgency assessment, claim type classification, estimated loss range, recommended actions, preliminary fraud flags
+9. **Fraud Detection Agent** — Fraud probability scoring (0-100), 5 indicator categories, SIU referral recommendations
 
 **Orchestrator (InsuranceAnalysisOrchestrator):**
+- Profile-aware agent selection (ClaimsTriage=4 agents/8 turns, FraudScoring=3 agents/6 turns, SentimentAnalysis=7 agents/14 turns)
 - Automatic PII redaction before external calls
 - 60s timeout with cancellation token
 - Fallback to single-agent on multi-agent failure
 - JSON extraction with brace-counting + validation
-- Terminates on "ANALYSIS_COMPLETE" or max 15 turns
+- JSON schema examples injected into agent prompts for consistent output
+- Parses `claimTriage` and `fraudAnalysis` JSON blocks from agent output
+- Terminates on "ANALYSIS_COMPLETE" or max turns per profile
 - Deterministic speaking order via AgentSelectionStrategy
 
 ### Database Layer — Grade: B
@@ -451,8 +735,8 @@ OpenApi (dev) → ExceptionHandler → HTTPS (prod) → CORS → Auth (condition
 - Vitest 4.0.8 for testing
 - Production budgets: 550KB initial, 1MB max
 
-### Routing — GOOD
-- 5 routes: home, login, insurance (guarded), dashboard (guarded), wildcard redirect
+### Routing — EXCELLENT (Updated Sprint 3)
+- 10 routes: landing (public), login (guest), sentiment (guarded), insurance (guarded), dashboard (guarded), claims/triage, claims/history, claims/:id, dashboard/providers, dashboard/fraud (all guarded), wildcard redirect
 - Functional auth guard (CanActivateFn) — modern pattern
 - Functional HTTP interceptor — adds JWT conditionally
 
@@ -692,6 +976,6 @@ The BA agent system prompt correctly covers all required insurance domain dimens
 
 ---
 
-**Last Updated**: February 18, 2026
-**Current Version**: 2.0
-**Next Review**: After Phase 1-2 implementation
+**Last Updated**: February 24, 2026
+**Current Version**: 3.0 (Sprint 3 Complete — Insurance AI Operations Hub)
+**Next Review**: After Sprint 4 (TBD — brainstormed in separate session)

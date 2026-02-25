@@ -19,4 +19,8 @@
     <ProjectReference Include="..\Domain\SentimentAnalyzer.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="SentimentAnalyzer.Tests" />
+  </ItemGroup>
+
 </Project>

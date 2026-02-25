@@ -4,7 +4,7 @@ import { mockAllApis } from './helpers/api-mocks';
 test.describe('Theme Toggle', () => {
   test.beforeEach(async ({ page }) => {
     await mockAllApis(page);
-    await page.goto('/');
+    await page.goto('/sentiment');
   });
 
   test('should have theme toggle button in nav', async ({ page }) => {

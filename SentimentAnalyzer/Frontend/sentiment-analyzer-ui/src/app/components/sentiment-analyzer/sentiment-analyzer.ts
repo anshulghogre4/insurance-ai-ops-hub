@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,58 +17,58 @@ export class SentimentAnalyzer implements OnInit {
   private sentimentService = inject(SentimentService);
   private stateService = inject(AnalysisStateService);
 
-  inputText: string = '';
-  isLoading: boolean = false;
-  result: SentimentResponse | null = null;
-  error: string | null = null;
+  inputText = signal('');
+  isLoading = signal(false);
+  result = signal<SentimentResponse | null>(null);
+  error = signal<string | null>(null);
 
   ngOnInit(): void {
     const cachedResult = this.stateService.sentimentResult();
     if (cachedResult) {
-      this.result = cachedResult;
-      this.inputText = this.stateService.sentimentInputText();
+      this.result.set(cachedResult);
+      this.inputText.set(this.stateService.sentimentInputText());
     }
   }
 
   analyzeSentiment(): void {
-    if (!this.inputText.trim()) {
-      this.error = 'Please enter some text to analyze';
+    if (!this.inputText().trim()) {
+      this.error.set('Please enter some text to analyze');
       return;
     }
 
-    this.isLoading = true;
-    this.error = null;
-    this.result = null;
+    this.isLoading.set(true);
+    this.error.set(null);
+    this.result.set(null);
 
-    this.sentimentService.analyzeSentiment(this.inputText)
+    this.sentimentService.analyzeSentiment(this.inputText())
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
       next: (response) => {
-        this.result = response;
-        this.isLoading = false;
-        this.stateService.saveSentimentState(this.inputText, response);
+        this.result.set(response);
+        this.isLoading.set(false);
+        this.stateService.saveSentimentState(this.inputText(), response);
       },
       error: (err) => {
-        this.error = err.error?.error || 'Error analyzing sentiment. Please try again.';
-        this.isLoading = false;
+        this.error.set(err.error?.error || 'Error analyzing sentiment. Please try again.');
+        this.isLoading.set(false);
       }
     });
   }
 
   clearAll(): void {
-    this.inputText = '';
-    this.result = null;
-    this.error = null;
+    this.inputText.set('');
+    this.result.set(null);
+    this.error.set(null);
     this.stateService.clearSentimentState();
   }
 
   getEmotionEntries(): [string, number][] {
-    if (!this.result?.emotionBreakdown) return [];
-    return Object.entries(this.result.emotionBreakdown).sort((a, b) => b[1] - a[1]);
+    if (!this.result()?.emotionBreakdown) return [];
+    return Object.entries(this.result()!.emotionBreakdown).sort((a, b) => b[1] - a[1]);
   }
 
   getSentimentClass(): string {
-    if (!this.result) return '';
-    return this.result.sentiment.toLowerCase();
+    if (!this.result()) return '';
+    return this.result()!.sentiment.toLowerCase();
   }
 }

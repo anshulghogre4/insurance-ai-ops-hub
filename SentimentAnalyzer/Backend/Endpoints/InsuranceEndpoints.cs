@@ -1,3 +1,4 @@
+using System.Threading.RateLimiting;
 using MediatR;
 using SentimentAnalyzer.API.Features.Insurance.Commands;
 using SentimentAnalyzer.API.Features.Insurance.Queries;
@@ -17,7 +18,8 @@ public static class InsuranceEndpoints
 
         var analyzeEndpoint = group.MapPost("/analyze", AnalyzeAsync)
             .WithName("AnalyzeInsurance")
-            .WithDescription("Analyzes customer interaction text for insurance-specific insights using multi-agent system.");
+            .WithDescription("Analyzes customer interaction text for insurance-specific insights using multi-agent system.")
+            .RequireRateLimiting("analyze");
 
         var dashboardEndpoint = group.MapGet("/dashboard", GetDashboardAsync)
             .WithName("GetDashboard")

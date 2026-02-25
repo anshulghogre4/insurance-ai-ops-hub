@@ -6,11 +6,11 @@ namespace SentimentAnalyzer.Agents.Configuration;
 /// </summary>
 public class AgentSystemSettings
 {
-    /// <summary>Primary provider: "Groq", "Gemini", "Ollama", "Mistral", "OpenRouter", or "OpenAI".</summary>
+    /// <summary>Primary provider: "Groq", "Gemini", "Ollama", "Mistral", "OpenRouter", "OpenAI", or "Cerebras".</summary>
     public string Provider { get; set; } = "Groq";
 
     /// <summary>Ordered fallback chain for text LLM providers. First healthy provider is used.</summary>
-    public List<string> FallbackChain { get; set; } = ["Groq", "Mistral", "Gemini", "OpenRouter", "Ollama"];
+    public List<string> FallbackChain { get; set; } = ["Groq", "Cerebras", "Mistral", "Gemini", "OpenRouter", "OpenAI", "Ollama"];
 
     /// <summary>Groq API configuration.</summary>
     public GroqSettings Groq { get; set; } = new();
@@ -23,6 +23,9 @@ public class AgentSystemSettings
 
     /// <summary>Mistral API configuration (1B tokens/month free).</summary>
     public MistralSettings Mistral { get; set; } = new();
+
+    /// <summary>Cerebras API configuration (1M tokens/day free, 2,600 tok/s).</summary>
+    public CerebrasSettings Cerebras { get; set; } = new();
 
     /// <summary>OpenRouter API configuration (24+ free models).</summary>
     public OpenRouterSettings OpenRouter { get; set; } = new();
@@ -41,6 +44,9 @@ public class AgentSystemSettings
 
     /// <summary>HuggingFace Inference API configuration (NER, classification).</summary>
     public HuggingFaceSettings HuggingFace { get; set; } = new();
+
+    /// <summary>Voyage AI embeddings configuration (finance-domain RAG, 50M tokens free).</summary>
+    public VoyageSettings Voyage { get; set; } = new();
 }
 
 /// <summary>
@@ -110,11 +116,27 @@ public class OpenRouterSettings
     /// <summary>OpenRouter API endpoint (OpenAI-compatible).</summary>
     public string Endpoint { get; set; } = "https://openrouter.ai/api/v1";
 
-    /// <summary>Model to use (e.g., "deepseek/deepseek-r1:free").</summary>
-    public string Model { get; set; } = "deepseek/deepseek-r1:free";
+    /// <summary>Model to use (e.g., "google/gemma-3-27b-it:free").</summary>
+    public string Model { get; set; } = "google/gemma-3-27b-it:free";
 
     /// <summary>Required by OpenRouter: HTTP-Referer header for identification.</summary>
     public string SiteUrl { get; set; } = "http://localhost:5143";
+}
+
+/// <summary>
+/// Cerebras API settings (OpenAI-compatible endpoint).
+/// Free tier: 1M tokens/day, 30 RPM, 60K TPM. Fastest inference (~2,600 tok/s).
+/// </summary>
+public class CerebrasSettings
+{
+    /// <summary>Cerebras API key.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Cerebras API endpoint (OpenAI-compatible).</summary>
+    public string Endpoint { get; set; } = "https://api.cerebras.ai/v1";
+
+    /// <summary>Model to use (e.g., "gpt-oss-120b").</summary>
+    public string Model { get; set; } = "gpt-oss-120b";
 }
 
 /// <summary>
@@ -186,4 +208,30 @@ public class HuggingFaceSettings
 
     /// <summary>NER model for entity extraction.</summary>
     public string NerModel { get; set; } = "dslim/bert-base-NER";
+
+    /// <summary>Sentiment model for financial text pre-screening (FinBERT).</summary>
+    public string SentimentModel { get; set; } = "ProsusAI/finbert";
+
+    /// <summary>
+    /// Confidence threshold for FinBERT pre-screening. When the top sentiment score
+    /// exceeds this threshold, the full multi-agent pipeline is skipped.
+    /// Range: 0.0 to 1.0. Default: 0.85.
+    /// </summary>
+    public double PreScreenConfidenceThreshold { get; set; } = 0.85;
+}
+
+/// <summary>
+/// Voyage AI embeddings settings (finance-domain RAG).
+/// Free tier: 50M tokens for voyage-finance-2, 200M for general models. No credit card required.
+/// </summary>
+public class VoyageSettings
+{
+    /// <summary>Voyage AI API key.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Voyage AI API endpoint.</summary>
+    public string Endpoint { get; set; } = "https://api.voyageai.com/v1";
+
+    /// <summary>Embedding model to use (e.g., "voyage-finance-2" for insurance/finance domain).</summary>
+    public string Model { get; set; } = "voyage-finance-2";
 }

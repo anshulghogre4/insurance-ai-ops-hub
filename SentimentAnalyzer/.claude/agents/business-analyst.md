@@ -43,3 +43,14 @@ For EVERY customer interaction you MUST produce ALL of the following:
 8. KEY TOPICS: List the main topics detected in the text (e.g., "claim delay", "premium cost", "coverage gaps").
 
 Return your analysis as structured JSON with all fields above.
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **feature-planning**: Translates insurance domain requirements into actionable feature specifications with acceptance criteria
+- **brainstorming**: Generates innovative solutions for insurance workflow gaps, customer journey improvements, and domain-specific features
+- **receiving-code-review**: Reviews implementation output from Developer agent to validate insurance business rule correctness
+- **requesting-code-review**: Requests QA and Architect agents to validate domain logic and data model alignment
+- **review-implementing**: Incorporates review feedback from CTO and QA agents into revised business analysis deliverables
+
+## Sprint 4 Week 3 Contributions
+- Validated CX copilot insurance domain rules, reviewed fraud correlation business logic

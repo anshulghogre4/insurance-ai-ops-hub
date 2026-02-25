@@ -4,6 +4,169 @@ This file tracks all review sessions and quality assessments. For full project c
 
 ---
 
+## Review Session #6 — 2026-02-25 (Sprint 4 Brainstorming: 9-Agent, 3 Iterations)
+
+### Reviewers
+All 9 agents participated across 3 brainstorming iterations:
+- CTO Agent, BA Agent, Developer Agent, QA Agent, AI Expert Agent, Architect Agent, UX Designer Agent, Claims Triage Agent, Fraud Detection Agent
+
+### Overall Result: UNANIMOUS APPROVE
+Sprint 4 scope brainstormed, debated, and voted on across 3 iterations. All 9 agents contributed and voted APPROVE on the final plan.
+
+### Iteration 1: Initial Proposals
+
+| Agent | Contribution | Priority Vote |
+|-------|-------------|---------------|
+| **CTO** | Proposed 4-week structure: debt → RAG → CX → frontend. Scope-locked Week 3-4 as SHOULD-HAVE. | Week 1 debt = #1 |
+| **BA** | Identified Document Intelligence as P1 opportunity — adjusters spend 60% of underwriting time reading documents. Proposed insurance-aware chunking (DECLARATIONS/COVERAGE/EXCLUSIONS sections). | RAG = #1 business value |
+| **Developer** | Proposed decorator pattern for v1 PII fix (frozen files). Identified Voyage AI config already pre-wired in `LlmProviderConfiguration.cs`. | Orchestrator tests = #1 tech debt |
+| **QA** | Flagged 0% orchestrator coverage as critical risk. Proposed PII regression tests querying DB for leaked patterns. | Orchestrator tests = P0 |
+| **AI Expert** | Recommended `voyage-finance-2` embeddings (1024-dim, finance-optimized). Proposed Ollama `nomic-embed-text` as local fallback. SSE streaming for CX Copilot. | RAG embeddings = Week 2 |
+| **Architect** | Designed SQLite vector storage with `System.Numerics.Vector` SIMD cosine similarity (0 NuGet). Proposed `DocumentRecord` + `DocumentChunkRecord` schema. | DB schema + rate limiting |
+| **UX Designer** | Identified Sprint 3 deferred a11y items: color contrast fixes, keyboard trap prevention, `aria-live` regions. Proposed document upload drag-drop UI + chat-style Q&A for RAG queries. | A11y fixes = P1 |
+| **Claims Triage** | Proposed related claims context injection — query similar claims before triage for better severity assessment. Cross-reference with RAG documents. | Claims context = Week 3 |
+| **Fraud Detection** | Proposed cross-claim fraud correlation: same address/phone, date overlap within 90 days, narrative similarity >0.92 via embeddings. Require 2+ indicators to flag. | Fraud correlation = Week 3 |
+
+### Iteration 2: Refinement & Debate
+
+- **CTO + Architect** agreed: Week 1 debt is non-negotiable before new features
+- **BA + AI Expert** debated embedding model: Voyage AI finance-specific wins over generic models for insurance domain
+- **Developer + QA** aligned on mock strategy: Mock `IResilientKernelProvider`, `IOrchestrationProfileFactory`, `IPIIRedactor`, may need `[InternalsVisibleTo]`
+- **UX + BA** designed document upload flow: drag-drop → type selector (Policy/Claim/Endorsement/Report) → library grid
+- **Fraud Detection + Claims Triage** proposed shared embedding index: both agents benefit from narrative similarity scores
+- **All agents** voted on test targets: 740 → 892+ (152+ new tests)
+
+### Iteration 3: Final Vote
+
+| Agent | Vote | Score | Comment |
+|-------|------|-------|---------|
+| CTO | APPROVE | 10/10 | Well-scoped 4-week plan, debt-first approach correct |
+| BA | APPROVE | 9.5/10 | RAG addresses #1 business pain point |
+| Developer | APPROVE | 9.5/10 | Decorator pattern solves v1 PII without breaking frozen files |
+| QA | APPROVE | 9/10 | 152+ new tests, PII regression suite critical |
+| AI Expert | APPROVE | 9.5/10 | Voyage AI finance embeddings optimal for domain |
+| Architect | APPROVE | 10/10 | Zero new NuGet packages, SIMD vector search elegant |
+| UX Designer | APPROVE | 9/10 | A11y debt resolved, document UI well-designed |
+| Claims Triage | APPROVE | 9.5/10 | Related claims context improves triage accuracy |
+| Fraud Detection | APPROVE | 10/10 | Cross-claim correlation fills critical gap |
+
+### Consensus Priorities
+1. **Week 1 (MUST-HAVE):** P0/P1 technical debt — orchestrator tests, v1 PII fix, PII regression, rate limiting, accessibility
+2. **Week 2 (MUST-HAVE):** Document Intelligence RAG — Voyage AI embeddings, document schema, chunking, RAG facade, 4 API endpoints
+3. **Week 3 (SHOULD-HAVE):** CX Copilot (SSE streaming) + Cross-claim fraud correlation
+4. **Week 4 (SHOULD-HAVE):** 5 frontend components, 4 E2E spec files, documentation updates
+
+### Risk Items Identified
+- SQLite vector search performance cap at ~500 chunks (Architect)
+- Voyage AI 50M token free tier could exhaust with bulk indexing (AI Expert)
+- SSE streaming requires `EventSource` API compatibility (Developer)
+- Fraud correlation false positives without 2+ indicator threshold (Fraud Detection)
+- Scope creep risk if Week 1 debt takes longer than expected (CTO)
+
+---
+
+## Review Session #5 — 2026-02-24 (Sprint 3: Frontend + Dashboard + E2E + Landing Page)
+
+### Reviewers
+BA Agent (3-iteration validation), QA Agent (final validation), Developer Agent (implementation + verification), AI Expert Agent (landing page design + implementation)
+
+### Overall Grade: A (SHIP)
+Sprint 3 frontend buildout completed. All Sprint 2 backend capabilities wired to UI. Interactive landing page designed collaboratively by BA, QA, and AI Expert agents. 3 BA validation iterations reaching A grade.
+
+### What Was Built (Sprint 3)
+1. **Landing Page** (1,726 lines): Interactive public showcase with 7 sections — agent orchestration visualization, provider failover simulation, multimodal pipeline tabs, interactive demo, PII redaction demo
+2. **Claims Triage Component**: Form with text + file upload + inline triage result display (severity, fraud gauge, actions)
+3. **Claim Result Component**: Full detail view by ID with evidence viewer child components
+4. **Claims History Component**: Filterable/paginated table with severity/status/date filters
+5. **Provider Health Monitor**: LLM + multimodal service cards with auto-refresh (30s interval)
+6. **Fraud Alerts Component**: High-risk alert cards with SIU referral indicators
+7. **Dashboard Charts**: ng2-charts (Chart.js) doughnut + bar charts + quick links row
+8. **Navigation**: 6 new routes, expanded desktop + mobile nav, sentiment moved to /sentiment
+9. **Claims Service**: 8 HTTP methods + TypeScript models matching all Sprint 2 backend responses
+10. **E2E Tests**: 5 new spec files + updated accessibility/navigation/sentiment specs
+
+### BA Validation (3 Iterations)
+
+| Iteration | Grade | Issues Found | Fixed |
+|-----------|-------|-------------|-------|
+| 1 | B+ | 12 (High/Medium) | All 12 |
+| 2 | A- | 6 (Low/Informational) | Deferred |
+| 3 | A | 0 blocking | SHIP approved |
+
+### Deferred Items (Sprint 4)
+- Color contrast CSS fixes (--text-muted on dark backgrounds)
+- Chart.js canvas pixel ratio on HiDPI displays
+- Keyboard trap prevention in modals
+- Aria-live region announcements for dynamic content
+- File upload progress indicator enhancement
+- Touch gesture support for chart interactions
+
+### Test Evidence
+- Backend: **246 tests**, 0 failures, 0 regressions (0 backend changes)
+- Frontend unit: **196 tests**, 0 failures (20 spec files)
+- E2E: **239 passed**, 9 skipped, 0 failed (12 spec files)
+- Build: PASS (only pre-existing optional chain warnings)
+
+---
+
+## Review Session #4 — 2026-02-23 (Sprint 2: Claims & Fraud Pipeline — 9-Agent 3-Iteration Review)
+
+### Reviewers
+All 9 agents participated across 3 review iterations:
+- CTO Agent, BA Agent, Developer Agent, QA Agent, AI Expert Agent, Architect Agent, UX Designer Agent, Claims Triage Agent, Fraud Detection Agent
+
+### Overall Grade: A+
+Sprint 2 implementation reviewed across 3 iterations. All agents reached 9.5-10/10 satisfaction with zero outstanding blockers within Sprint 2 scope.
+
+### Final Agent Scores (Iteration 3)
+
+| Agent | Score | Verdict |
+|-------|-------|---------|
+| CTO | 10/10 | All pipelines wired, architecture sound |
+| BA | 9.5/10 | Claims domain correctly modeled, PII handled |
+| Developer | 9.5/10 | Clean CQRS, proper DI, good error handling |
+| QA | 9.5/10 | 57 new tests, all edge cases covered |
+| AI Expert | 9.5/10 | Profile-aware orchestration, JSON schema prompts |
+| Architect | 10/10 | Database design, pagination, vision fallback |
+| UX Designer | 9.5/10 | API contracts well-structured for frontend consumption |
+| Claims Triage | 10/10 | Severity/urgency/type pipeline complete |
+| Fraud Detection | 10/10 | Fraud scoring + SIU referral threshold working |
+
+### What Was Built (Sprint 2 — 40 new files, 5 modified)
+1. **Database Layer**: 3 new entities (ClaimRecord, ClaimEvidenceRecord, ClaimActionRecord) + IClaimsRepository + SqliteClaimsRepository + PaginatedResponse<T>
+2. **Profile-Aware Orchestration**: Real agent selection per profile (replaced stub), JSON schema in agent prompts
+3. **Service Facades**: ClaimsOrchestrationService, MultimodalEvidenceProcessor (with Azure→Cloudflare vision fallback), FraudAnalysisService
+4. **8 MediatR Handlers**: TriageClaim, UploadEvidence, GetClaim, GetClaimsHistory, AnalyzeFraud, GetFraudScore, GetFraudAlerts, GetProviderHealth
+5. **8 API Endpoints**: Claims triage/upload/get/history, Fraud analyze/score/alerts, Provider health
+6. **PII Redaction**: Claims pipeline redacts before DB storage
+7. **57 New Tests** across 9 new test files (230 total backend)
+
+### Iteration 1 Fixes (Priority-Based)
+| Priority | Fix | Status |
+|----------|-----|--------|
+| P0 | Vision fallback (Azure → Cloudflare) via keyed DI in MultimodalEvidenceProcessor | Done |
+| P0 | Multimodal service health in GetProviderHealthQuery (IConfiguration key check) | Done |
+| P1 | PaginatedResponse<T> wrapper — propagated to GetClaimsHistoryQuery, repository, tests | Done |
+| P1 | PII redaction before DB storage (IPIIRedactor in ClaimsOrchestrationService) | Done |
+| P1 | ClaimUploadRequest model for multipart evidence upload | Done |
+| P2 | 3 new vision fallback tests (primary fail, both fail, exception graceful degradation) | Done |
+| P2 | 2 new provider health tests (multimodal services, unconfigured service) | Done |
+
+### Iteration 2 Results
+- All agents rated 9-9.5/10 — no actionable gaps identified within Sprint 2 scope
+- Remaining items noted as future work (Sprint 3 frontend, rate limiting)
+
+### Iteration 3 Fixes
+- JSON schema examples added to `BuildProfileUserMessage` in InsuranceAnalysisOrchestrator
+- Exact output schemas for ClaimsTriage and FraudScoring profiles injected into agent prompts
+- Final: All agents 9.5-10/10 satisfied
+
+### Test Evidence
+- Backend: **230 tests**, 0 failures, 0 regressions on v1
+- Frontend: **126 tests**, all passing (unchanged — Sprint 2 is backend-only)
+
+---
+
 ## Review Session #3 — 2026-02-18 (Full 6-Agent Collaboration Cycle)
 
 ### Reviewers

@@ -48,3 +48,16 @@ RESPONSIBILITIES:
 CRITICAL: Output ONLY the raw JSON object. Do NOT wrap it in ```json``` code fences. Do NOT add any text before or after the JSON.
 
 Ensure the JSON is valid and all values are within specified ranges.
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **code-refactor**: Restructures existing code for clarity, performance, and maintainability without changing behavior
+- **code-transfer**: Migrates patterns, utilities, or logic between backend (.NET) and frontend (Angular) codebases
+- **test-driven-development**: Writes failing tests first, then implements production code to pass them (red-green-refactor)
+- **subagent-driven-development**: Decomposes complex features into smaller tasks delegated to focused sub-agents for parallel implementation
+- **systematic-debugging**: Follows structured root-cause analysis when builds fail, tests break, or runtime errors occur
+- **test-fixing**: Diagnoses and repairs broken unit tests, integration tests, and E2E tests after code changes
+- **code-execution**: Runs backend/frontend builds, test suites, and scripts to verify implementation correctness
+
+## Sprint 4 Week 3 Contributions
+- Built CX Copilot service (SSE streaming), fraud correlation service, endpoint wiring

@@ -129,24 +129,27 @@ public class OrchestrationProfileFactoryTests
     // ──────────────────────────────────────────
 
     [Fact]
-    public void CustomerExperience_ReturnsThreeAgents()
+    public void CustomerExperience_ReturnsFiveAgents()
     {
         var agents = _factory.GetAgentNamesForProfile(OrchestrationProfile.CustomerExperience);
-        Assert.Equal(3, agents.Count);
+        Assert.Equal(5, agents.Count);
     }
 
     [Fact]
-    public void CustomerExperience_IncludesCTOAndBA()
+    public void CustomerExperience_IncludesCXSpecialistAndBA()
     {
         var agents = _factory.GetAgentNamesForProfile(OrchestrationProfile.CustomerExperience);
-        Assert.Contains(AgentDefinitions.CTOAgentName, agents);
+        Assert.Contains(AgentDefinitions.CustomerExperienceAgentName, agents);
         Assert.Contains(AgentDefinitions.BAAgentName, agents);
+        Assert.Contains(AgentDefinitions.DeveloperAgentName, agents);
+        Assert.Contains(AgentDefinitions.UXDesignerAgentName, agents);
+        Assert.Contains(AgentDefinitions.QAAgentName, agents);
     }
 
     [Fact]
-    public void CustomerExperience_MaxTurns10_MinTurns3()
+    public void CustomerExperience_MaxTurns8_MinTurns3()
     {
-        Assert.Equal(10, _factory.GetMaxTurnsForProfile(OrchestrationProfile.CustomerExperience));
+        Assert.Equal(8, _factory.GetMaxTurnsForProfile(OrchestrationProfile.CustomerExperience));
         Assert.Equal(3, _factory.GetMinTurnsForProfile(OrchestrationProfile.CustomerExperience));
     }
 

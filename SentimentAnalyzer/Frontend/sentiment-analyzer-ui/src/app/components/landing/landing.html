@@ -1,0 +1,1430 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     INSURANCE AI OPERATIONS HUB - TECHNICAL SHOWCASE LANDING PAGE
+     7 Sections: Hero, Agent Orchestration, Provider Chain,
+                 Multimodal Pipeline, Interactive Demo,
+                 Security/PII, Stats & Tech Grid
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div class="landing-page">
+
+  <!-- ══════════════════════════════════════════════
+       FLOATING SECTION NAVIGATION
+       ══════════════════════════════════════════════ -->
+  <nav class="section-nav" aria-label="Page sections">
+    @for (nav of sectionNav; track nav.id) {
+      <button class="section-nav-dot"
+              [class.active]="activeSection() === nav.id"
+              (click)="scrollToSection(nav.id)"
+              [attr.aria-label]="'Navigate to ' + nav.label + ' section'">
+        <span class="nav-tooltip">{{ nav.label }}</span>
+      </button>
+    }
+  </nav>
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 0: HERO
+       ══════════════════════════════════════════════ -->
+  <section id="hero" class="relative overflow-hidden py-20 sm:py-28 lg:py-36">
+    <!-- Background gradient orbs -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div class="hero-orb hero-orb-1"></div>
+      <div class="hero-orb hero-orb-2"></div>
+      <div class="hero-orb hero-orb-3"></div>
+      <div class="hero-grid"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <!-- Version badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 animate-fade-in-up"
+           style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs font-semibold" style="color: var(--text-secondary);">v3.0 - Insurance AI Operations Hub</span>
+      </div>
+
+      <!-- Main headline -->
+      <h1 class="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up stagger-1">
+        <span style="color: var(--text-primary);">9 AI Agents.</span><br>
+        <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+          5 LLM Providers.
+        </span><br>
+        <span style="color: var(--text-primary);">1 Intelligent Platform.</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-lg sm:text-xl max-w-3xl mx-auto mb-10 animate-fade-in-up stagger-2"
+         style="color: var(--text-secondary);">
+        Multi-agent AI orchestration for insurance claims triage, fraud detection,
+        and sentiment analysis -- powered by a resilient 5-provider fallback chain
+        with full PII protection.
+      </p>
+
+      <!-- CTA Buttons -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up stagger-3">
+        <a routerLink="/claims/triage" class="btn-primary text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          Try Claims Triage
+        </a>
+        <button (click)="scrollToSection('agents')" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+          </svg>
+          Explore the Architecture
+        </button>
+      </div>
+
+      <!-- Quick stat pills -->
+      <div class="flex flex-wrap justify-center gap-3 mt-12 animate-fade-in-up stagger-4">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+             style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> 9 Specialized Agents
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+             style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> 5 LLM Fallback Providers
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+             style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> 5 Multimodal Services
+        </div>
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+             style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span> 100% PII Protected
+        </div>
+      </div>
+
+      <!-- How It Works - Mini Flow -->
+      <div class="mt-14 animate-fade-in-up stagger-5">
+        <p class="text-xs font-semibold uppercase tracking-wider text-center mb-5" style="color: var(--text-muted);">How It Works</p>
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-0">
+          <!-- Step 1 -->
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <div class="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">Submit</p>
+              <p class="text-[9px]" style="color: var(--text-muted);">Claim text or evidence</p>
+            </div>
+          </div>
+          <!-- Arrow -->
+          <div class="hidden sm:block px-2">
+            <svg class="w-5 h-5 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="block sm:hidden py-1">
+            <svg class="w-4 h-4 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          </div>
+          <!-- Step 2 -->
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <div class="w-7 h-7 rounded-lg bg-rose-500/15 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">Redact PII</p>
+              <p class="text-[9px]" style="color: var(--text-muted);">5 patterns stripped</p>
+            </div>
+          </div>
+          <!-- Arrow -->
+          <div class="hidden sm:block px-2">
+            <svg class="w-5 h-5 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="block sm:hidden py-1">
+            <svg class="w-4 h-4 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          </div>
+          <!-- Step 3 -->
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <div class="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">9 Agents</p>
+              <p class="text-[9px]" style="color: var(--text-muted);">Analyze in concert</p>
+            </div>
+          </div>
+          <!-- Arrow -->
+          <div class="hidden sm:block px-2">
+            <svg class="w-5 h-5 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </div>
+          <div class="block sm:hidden py-1">
+            <svg class="w-4 h-4 text-indigo-400/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+          </div>
+          <!-- Step 4 -->
+          <div class="flex items-center gap-2 px-4 py-2.5 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <div class="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">Results</p>
+              <p class="text-[9px]" style="color: var(--text-muted);">Triage + fraud score</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 1: AGENT ORCHESTRATION VISUALIZATION
+       ══════════════════════════════════════════════ -->
+  <section id="agents" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('agents')">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Multi-Agent System</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          9 AI Agents Working in Concert
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          Each agent is a specialist. The CTO orchestrates the conversation, agents collaborate
+          through Semantic Kernel's AgentGroupChat, and the system terminates on ANALYSIS_COMPLETE.
+        </p>
+      </div>
+
+      <!-- Agent Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        @for (agent of agents; track agent.id; let i = $index) {
+          <div class="relative p-5 rounded-xl transition-all duration-500 border"
+               [class]="agent.bgColor + ' ' + agent.borderColor"
+               [class.agent-active]="isAgentActive(i)"
+               [class.agent-completed]="isAgentCompleted(i)"
+               [class.ring-2]="isAgentActive(i)"
+               [class.ring-offset-2]="isAgentActive(i)"
+               style="--ring-color: var(--accent-primary); --ring-offset-color: var(--bg-primary);">
+            <!-- Active indicator -->
+            @if (isAgentActive(i)) {
+              <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-400 animate-ping"></div>
+              <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-indigo-400"></div>
+            }
+            @if (isAgentCompleted(i)) {
+              <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+            }
+
+            <div class="flex items-start gap-3">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                   [class]="agent.bgColor">
+                @switch (agent.icon) {
+                  @case ('crown') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+                    </svg>
+                  }
+                  @case ('briefcase') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zM16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/>
+                    </svg>
+                  }
+                  @case ('code') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                    </svg>
+                  }
+                  @case ('check-circle') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  }
+                  @case ('cpu') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/>
+                    </svg>
+                  }
+                  @case ('layers') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  }
+                  @case ('palette') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                    </svg>
+                  }
+                  @case ('clipboard') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                    </svg>
+                  }
+                  @case ('shield-alert') {
+                    <svg class="w-5 h-5" [class]="agent.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01"/>
+                    </svg>
+                  }
+                }
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-sm font-bold" style="color: var(--text-primary);">{{ agent.name }}</span>
+                  <span class="text-[10px] px-1.5 py-0.5 rounded font-medium" [class]="agent.bgColor" [class.text-opacity-80]="true" [style.color]="'var(--text-muted)'">{{ agent.role }}</span>
+                </div>
+                <p class="text-xs leading-relaxed" style="color: var(--text-muted);">{{ agent.description }}</p>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Orchestration Controls -->
+      <div class="glass-card-static p-5 flex flex-col sm:flex-row items-center gap-4">
+        <div class="flex items-center gap-3 flex-1 min-w-0">
+          <div class="w-2 h-2 rounded-full flex-shrink-0"
+               [class]="agentAnimationPhase() === 'complete' ? 'bg-emerald-400' : agentAnimationPhase() === 'running' ? 'bg-indigo-400 animate-pulse' : 'bg-slate-400'">
+          </div>
+          <p class="text-sm truncate font-mono" style="color: var(--text-secondary);">
+            {{ orchestrationStepLabel() }}
+          </p>
+        </div>
+        <div class="flex gap-2 flex-shrink-0">
+          <button (click)="startOrchestration()"
+                  [disabled]="agentAnimationPhase() === 'running'"
+                  class="btn-primary text-sm !px-4 !py-2 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Run Orchestration
+          </button>
+          <button (click)="resetOrchestration()" class="btn-ghost text-sm !px-3 !py-2" aria-label="Reset orchestration">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 2: PROVIDER FALLBACK CHAIN
+       ══════════════════════════════════════════════ -->
+  <section id="providers" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('providers')"
+           style="background: var(--bg-secondary);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Resilient Infrastructure</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          5-Provider Fallback Chain
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          If one provider hits a rate limit or goes down, the system automatically falls through to the next
+          with exponential backoff cooldown. Ollama is always available as the local, unlimited fallback.
+        </p>
+      </div>
+
+      <!-- Provider Chain Visualization -->
+      <div class="flex flex-col lg:flex-row items-stretch gap-4 mb-8">
+        @for (provider of providers; track provider.name; let i = $index; let last = $last) {
+          <div class="flex-1 flex flex-col">
+            <!-- Provider Card -->
+            <div class="glass-card-static p-5 flex-1 transition-all duration-500 relative overflow-hidden"
+                 [class.ring-2]="getProviderStatus(i) === 'trying'"
+                 [class.ring-indigo-400]="getProviderStatus(i) === 'trying'"
+                 [class.ring-emerald-400]="getProviderStatus(i) === 'success'"
+                 [class.opacity-40]="getProviderStatus(i) === 'failed'">
+
+              <!-- Status indicator overlay -->
+              @if (getProviderStatus(i) === 'trying') {
+                <div class="absolute inset-0 bg-indigo-500/5 animate-pulse pointer-events-none"></div>
+              }
+              @if (getProviderStatus(i) === 'success') {
+                <div class="absolute inset-0 bg-emerald-500/5 pointer-events-none"></div>
+              }
+              @if (getProviderStatus(i) === 'failed') {
+                <div class="absolute top-2 right-2">
+                  <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </div>
+              }
+              @if (getProviderStatus(i) === 'success') {
+                <div class="absolute top-2 right-2">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+              }
+
+              <div class="relative">
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">{{ i + 1 }}.</span>
+                  <span class="text-base font-bold" [class]="provider.color">{{ provider.name }}</span>
+                </div>
+                <p class="text-xs mb-1" style="color: var(--text-secondary);">{{ provider.model }}</p>
+                <div class="flex items-center justify-between mt-3">
+                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                        style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-secondary);">
+                    {{ provider.freeLimit }}
+                  </span>
+                  <span class="text-xs font-mono" style="color: var(--text-muted);">{{ provider.latency }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Arrow between providers -->
+            @if (!last) {
+              <div class="hidden lg:flex items-center justify-center py-2">
+                <svg class="w-5 h-5 rotate-90 lg:rotate-0" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Failover Demo Button -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <button (click)="startFailover()"
+                [disabled]="failoverActive()"
+                class="btn-primary text-sm !px-6 !py-2.5 flex items-center gap-2">
+          @if (failoverActive()) {
+            <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
+            Failing over...
+          } @else {
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+            </svg>
+            Simulate Failover
+          }
+        </button>
+        <div class="flex items-center gap-4 text-xs" style="color: var(--text-muted);">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Active
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Cooldown
+          </div>
+          <div class="flex items-center gap-1.5">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-400"></span> Down
+          </div>
+        </div>
+      </div>
+
+      <!-- Backoff Info -->
+      <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+          <p class="text-lg font-bold text-amber-400">30s</p>
+          <p class="text-[10px] font-medium" style="color: var(--text-muted);">1st retry cooldown</p>
+        </div>
+        <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+          <p class="text-lg font-bold text-amber-400">60s</p>
+          <p class="text-[10px] font-medium" style="color: var(--text-muted);">2nd retry cooldown</p>
+        </div>
+        <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+          <p class="text-lg font-bold text-amber-400">120s</p>
+          <p class="text-[10px] font-medium" style="color: var(--text-muted);">3rd retry cooldown</p>
+        </div>
+        <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+          <p class="text-lg font-bold text-rose-400">300s</p>
+          <p class="text-[10px] font-medium" style="color: var(--text-muted);">Max cooldown cap</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 3: MULTIMODAL PIPELINE SHOWCASE
+       ══════════════════════════════════════════════ -->
+  <section id="multimodal" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('multimodal')">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Multimodal Processing</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          5 Modalities, 1 Unified Pipeline
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          Voice recordings, damage photos, scanned documents, and raw text all feed through
+          specialized processors into a single claims assessment. Zero new NuGet packages -- all via REST.
+        </p>
+      </div>
+
+      <!-- Modality Tabs -->
+      <div class="flex flex-wrap justify-center gap-2 mb-8">
+        @for (modality of modalities; track modality.id; let i = $index) {
+          <button (click)="selectModality(i)"
+                  class="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 flex items-center gap-2"
+                  [class]="activeModalityIndex() === i
+                    ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 border border-indigo-500/40 text-indigo-300'
+                    : ''"
+                  [style.background]="activeModalityIndex() !== i ? 'var(--bg-surface)' : ''"
+                  [style.border]="activeModalityIndex() !== i ? '1px solid var(--border-primary)' : ''"
+                  [style.color]="activeModalityIndex() !== i ? 'var(--text-secondary)' : ''">
+            @switch (modality.icon) {
+              @case ('microphone') {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                </svg>
+              }
+              @case ('eye') {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                </svg>
+              }
+              @case ('document') {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+              }
+              @case ('tag') {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                </svg>
+              }
+            }
+            {{ modality.name }}
+          </button>
+        }
+      </div>
+
+      <!-- Active Modality Display -->
+      @if (modalities[activeModalityIndex()]; as m) {
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-500"
+             [class.animate-fade-in]="modalityAnimating()">
+          <!-- Input Side -->
+          <div class="glass-card-static p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">Input</span>
+              <span class="badge badge-neutral text-[10px]">{{ m.inputLabel }}</span>
+            </div>
+            <div class="p-4 rounded-xl font-mono text-sm" style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
+              {{ m.example.input }}
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <span class="text-xs font-medium" [class]="m.color">{{ m.provider }}</span>
+            </div>
+          </div>
+
+          <!-- Arrow / Processing indicator -->
+          <div class="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          </div>
+
+          <!-- Output Side -->
+          <div class="glass-card-static p-6">
+            <div class="flex items-center gap-2 mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">Output</span>
+              <span class="badge badge-success text-[10px]">{{ m.outputLabel }}</span>
+            </div>
+            <div class="p-4 rounded-xl font-mono text-sm leading-relaxed" style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-primary);">
+              {{ m.example.output }}
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+              </svg>
+              <span class="text-xs text-emerald-400 font-medium">PII redacted on output</span>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Pipeline convergence -->
+      <div class="mt-10 text-center">
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-xl"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+          </svg>
+          <span class="text-xs font-medium" style="color: var(--text-secondary);">
+            All modalities converge into the Claims Triage + Fraud Detection pipeline
+          </span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 4: INTERACTIVE DEMO
+       ══════════════════════════════════════════════ -->
+  <section id="demo" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('demo')"
+           style="background: var(--bg-secondary);">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Interactive Demo</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          See It In Action
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          Paste a sample claim text and watch as each agent processes the claim in real time.
+          This is a simulated walkthrough of the actual orchestration pipeline.
+        </p>
+      </div>
+
+      <!-- Demo Input -->
+      <div class="glass-card-static p-6 mb-6">
+        <div class="flex items-center justify-between mb-3">
+          <label for="demo-input" class="text-sm font-semibold" style="color: var(--text-secondary);">
+            Claim Text
+          </label>
+          <button (click)="loadSampleText()" class="btn-ghost text-xs !px-3 !py-1.5"
+                  [disabled]="demoRunning()">
+            Load Sample
+          </button>
+        </div>
+        <textarea
+          id="demo-input"
+          [ngModel]="demoText()"
+          (ngModelChange)="demoText.set($event)"
+          class="input-field resize-none !rounded-xl min-h-[100px]"
+          placeholder="Paste a claim description here or click Load Sample..."
+          [disabled]="demoRunning()"
+          maxlength="5000"
+          aria-label="Demo claim text input"
+        ></textarea>
+        <div class="flex items-center gap-3 mt-3">
+          <button (click)="runDemo()"
+                  [disabled]="!demoText().trim() || demoRunning()"
+                  class="btn-primary text-sm !px-5 !py-2 flex items-center gap-2">
+            @if (demoRunning()) {
+              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Processing...
+            } @else {
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              Run Demo
+            }
+          </button>
+          @if (demoComplete()) {
+            <button (click)="resetDemo()" class="btn-ghost text-sm !px-3 !py-2">Reset</button>
+          }
+        </div>
+      </div>
+
+      <!-- Demo Agent Activity Feed -->
+      @if (demoRunning() || demoComplete()) {
+        <div class="space-y-4">
+          <!-- Active Agent Indicator -->
+          @if (demoActiveAgent()) {
+            <div class="glass-card-static p-4 flex items-center gap-4 animate-fade-in" role="status" aria-live="polite">
+              @if (demoRunning()) {
+                <div class="relative flex-shrink-0">
+                  <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                    <svg class="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                  </div>
+                  <div class="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-indigo-400 rounded-full animate-ping"></div>
+                </div>
+              } @else {
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+              }
+              <div>
+                <p class="text-sm font-bold" style="color: var(--text-primary);">{{ demoActiveAgent() }}</p>
+                <p class="text-xs font-mono" style="color: var(--text-muted);">{{ demoPhase() }}</p>
+              </div>
+            </div>
+          }
+
+          <!-- Demo Results -->
+          @if (demoSeverity() || demoFraudScore() > 0) {
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fade-in-up">
+              <!-- Severity Card -->
+              @if (demoSeverity()) {
+                <div class="glass-card-static p-5">
+                  <p class="text-[10px] uppercase tracking-wider font-semibold mb-2" style="color: var(--text-muted);">Severity Assessment</p>
+                  <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white bg-gradient-to-r from-rose-500 to-orange-500 animate-pulse">
+                    {{ demoSeverity() }}
+                  </span>
+                </div>
+              }
+
+              <!-- Fraud Score Gauge -->
+              @if (demoFraudScore() > 0) {
+                <div class="glass-card-static p-5">
+                  <p class="text-[10px] uppercase tracking-wider font-semibold mb-2" style="color: var(--text-muted);">Fraud Risk Score</p>
+                  <div class="flex items-center gap-3">
+                    <span class="text-2xl font-bold text-emerald-400">{{ demoFraudScore() }}</span>
+                    <span class="text-sm" style="color: var(--text-muted);">/100</span>
+                    <span class="badge badge-success text-[10px] ml-auto">Low Risk</span>
+                  </div>
+                  <div class="h-2 rounded-full mt-2 overflow-hidden" style="background: var(--bg-surface-hover);">
+                    <div class="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                         [style.width.%]="demoFraudScore()"></div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Recommended Actions -->
+          @if (demoActions().length > 0) {
+            <div class="glass-card-static p-5 animate-fade-in-up">
+              <p class="text-[10px] uppercase tracking-wider font-semibold mb-3" style="color: var(--text-muted);">
+                Recommended Actions
+              </p>
+              <div class="space-y-2">
+                @for (action of demoActions(); track action; let i = $index) {
+                  <div class="flex items-start gap-3 p-3 rounded-lg animate-fade-in-up"
+                       [style.animation-delay.ms]="i * 150"
+                       style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+                    <div class="w-6 h-6 rounded-full bg-indigo-500/20 flex items-center justify-center flex-shrink-0 text-xs font-bold text-indigo-400">
+                      {{ i + 1 }}
+                    </div>
+                    <span class="text-sm" style="color: var(--text-primary);">{{ action }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- CTA after demo -->
+          @if (demoComplete()) {
+            <div class="text-center pt-4 animate-fade-in-up">
+              <p class="text-sm mb-4" style="color: var(--text-muted);">
+                This was a simulated walkthrough. Try the real thing:
+              </p>
+              <a routerLink="/claims/triage" class="btn-primary text-sm !px-6 !py-2.5 inline-flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Try Real Claims Triage
+              </a>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 5: SECURITY & PII PROTECTION
+       ══════════════════════════════════════════════ -->
+  <section id="security" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('security')">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Security & Compliance</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          PII Protection at Every Layer
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          Before ANY text reaches an external AI provider, 5 regex patterns strip
+          personally identifiable information. With Ollama, sensitive data never leaves your machine.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <!-- Before/After Redaction -->
+        <div class="glass-card-static p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-sm font-bold" style="color: var(--text-secondary);">
+              {{ piiShowRedacted() ? 'After Redaction' : 'Before Redaction' }}
+            </h3>
+            <button (click)="togglePiiView()" class="btn-ghost text-xs !px-3 !py-1.5 flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+              </svg>
+              Toggle
+            </button>
+          </div>
+
+          <div class="space-y-3">
+            @for (item of piiExamples; track item.label) {
+              <div class="flex items-center gap-3 p-3 rounded-xl transition-all duration-500"
+                   style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+                <span class="badge text-[10px] w-16 text-center flex-shrink-0"
+                      [class]="piiShowRedacted() ? 'badge-success' : 'badge-danger'">
+                  {{ item.label }}
+                </span>
+                <code class="text-sm font-mono flex-1 transition-all duration-500"
+                      [style.color]="piiShowRedacted() ? 'var(--accent-secondary)' : 'var(--text-primary)'">
+                  {{ piiShowRedacted() ? item.redacted : item.original }}
+                </code>
+              </div>
+            }
+          </div>
+        </div>
+
+        <!-- Trust Indicators -->
+        <div class="space-y-4">
+          <!-- Data Flow Diagram -->
+          <div class="glass-card-static p-6">
+            <h3 class="text-sm font-bold mb-4" style="color: var(--text-secondary);">Data Flow Architecture</h3>
+            <div class="space-y-3">
+              <div class="flex items-center gap-3 p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+                <div class="w-8 h-8 rounded-lg bg-indigo-500/15 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold" style="color: var(--text-primary);">1. Input Text Received</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">User submits claim or communication</p>
+                </div>
+              </div>
+              <div class="flex justify-center">
+                <svg class="w-4 h-4" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl border-2 border-rose-500/30" style="background: rgba(244, 63, 94, 0.05);">
+                <div class="w-8 h-8 rounded-lg bg-rose-500/15 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold text-rose-400">2. PII Redaction Pipeline</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">SSN, Policy#, Claim#, Phone, Email stripped</p>
+                </div>
+              </div>
+              <div class="flex justify-center">
+                <svg class="w-4 h-4" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+              </div>
+              <div class="flex items-center gap-3 p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+                <div class="w-8 h-8 rounded-lg bg-emerald-500/15 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                  </svg>
+                </div>
+                <div class="flex-1">
+                  <p class="text-xs font-semibold" style="color: var(--text-primary);">3. Clean text sent to AI providers</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Or stays local with Ollama (PII never leaves)</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Compliance Badges -->
+          <div class="grid grid-cols-2 gap-3">
+            <div class="glass-card-static p-4 text-center">
+              <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">WCAG AA</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">Accessibility</p>
+            </div>
+            <div class="glass-card-static p-4 text-center">
+              <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">PII Redaction</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">5 patterns</p>
+            </div>
+            <div class="glass-card-static p-4 text-center">
+              <div class="w-10 h-10 rounded-xl bg-amber-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">Audit Trail</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">SHA-256 hashed</p>
+            </div>
+            <div class="glass-card-static p-4 text-center">
+              <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold" style="color: var(--text-primary);">No Training</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">API-only mode</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 6: STATS & METRICS
+       ══════════════════════════════════════════════ -->
+  <section id="stats" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('stats')"
+           style="background: var(--bg-secondary);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Platform Metrics</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          By the Numbers
+        </h2>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        @for (stat of stats; track stat.label; let i = $index) {
+          <div class="glass-card-static p-5 text-center hover:scale-[1.02] transition-transform duration-300">
+            <div class="mb-3 flex justify-center">
+              <div class="w-10 h-10 rounded-xl flex items-center justify-center"
+                   style="background: var(--bg-surface);">
+                @switch (stat.icon) {
+                  @case ('users') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                  }
+                  @case ('server') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
+                    </svg>
+                  }
+                  @case ('layers') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                    </svg>
+                  }
+                  @case ('shield') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                  }
+                  @case ('clock') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                  }
+                  @case ('lock') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                  }
+                  @case ('sliders') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/>
+                    </svg>
+                  }
+                  @case ('check-list') {
+                    <svg class="w-5 h-5" [class]="stat.color" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>
+                    </svg>
+                  }
+                }
+              </div>
+            </div>
+            <p class="text-2xl sm:text-3xl font-extrabold" [class]="stat.color">{{ stat.value }}</p>
+            <p class="text-sm font-semibold mt-1" style="color: var(--text-primary);">{{ stat.label }}</p>
+            <p class="text-[10px] mt-0.5" style="color: var(--text-muted);">{{ stat.subtext }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Orchestration Profiles -->
+      <div class="mt-10 glass-card-static p-6">
+        <h3 class="text-sm font-bold uppercase tracking-wider mb-4" style="color: var(--text-muted);">
+          Orchestration Profiles -- Selective Agent Activation
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-sm font-bold text-indigo-400 mb-1">SentimentAnalysis</p>
+            <p class="text-[10px]" style="color: var(--text-muted);">7 agents, 14 max turns</p>
+            <p class="text-xs mt-2" style="color: var(--text-secondary);">Full multi-agent pipeline for comprehensive analysis</p>
+          </div>
+          <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-sm font-bold text-orange-400 mb-1">ClaimsTriage</p>
+            <p class="text-[10px]" style="color: var(--text-muted);">4 agents, 8 max turns</p>
+            <p class="text-xs mt-2" style="color: var(--text-secondary);">Triage + Fraud + BA + QA for claims assessment</p>
+          </div>
+          <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-sm font-bold text-rose-400 mb-1">FraudScoring</p>
+            <p class="text-[10px]" style="color: var(--text-muted);">4 agents, 8 max turns</p>
+            <p class="text-xs mt-2" style="color: var(--text-secondary);">Fraud + Triage + BA + QA for risk analysis</p>
+          </div>
+          <div class="p-4 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-sm font-bold text-cyan-400 mb-1">DocumentQuery</p>
+            <p class="text-[10px]" style="color: var(--text-muted);">3 agents, 6 max turns</p>
+            <p class="text-xs mt-2" style="color: var(--text-secondary);">BA + Developer + QA for document-focused queries</p>
+          </div>
+        </div>
+        <p class="text-xs mt-3 text-center" style="color: var(--text-muted);">
+          Selective activation reduces token usage 50-60% for specialized workflows
+        </p>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 7: TECHNOLOGY BADGE GRID
+       ══════════════════════════════════════════════ -->
+  <section id="tech" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('tech')">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          <span class="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
+          <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Technology Stack</span>
+        </div>
+        <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+          Built With the Best
+        </h2>
+        <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
+          Modern stack, free-tier AI providers, enterprise-grade patterns -- all open source.
+        </p>
+      </div>
+
+      <!-- Tech Categories -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        @for (category of techCategories; track category.label) {
+          <div class="glass-card-static p-6">
+            <h3 class="text-sm font-bold mb-4 flex items-center gap-2" [class]="category.color">
+              {{ category.label }}
+            </h3>
+            <div class="flex flex-wrap gap-2">
+              @for (badge of category.badges; track badge.name) {
+                <span class="px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 hover:scale-105"
+                      [class]="badge.color">
+                  {{ badge.name }}
+                </span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           VISUAL ARCHITECTURE FLOW DIAGRAM
+           Full system architecture with data flow arrows
+           ══════════════════════════════════════════════ -->
+      <div class="mt-10 glass-card-static p-6 lg:p-8">
+        <h3 class="text-sm font-bold uppercase tracking-wider mb-8 text-center" style="color: var(--text-muted);">
+          System Architecture -- Data Flow
+        </h3>
+
+        <div class="relative space-y-3 max-w-4xl mx-auto">
+
+          <!-- Layer 1: Frontend SPA -->
+          <div class="arch-layer p-4 rounded-2xl border"
+               style="background: linear-gradient(135deg, rgba(244, 63, 94, 0.08), rgba(251, 113, 133, 0.04)); border-color: rgba(244, 63, 94, 0.2);">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-rose-400">Angular 21 SPA</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Port 4200 -- 13 Components, 10 Routes, Signals + RxJS</p>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <span class="badge badge-neutral text-[9px]">Standalone</span>
+                <span class="badge badge-neutral text-[9px]">Tailwind</span>
+                <span class="badge badge-neutral text-[9px]">TypeScript 5.9</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connection Arrow: Frontend -> Backend -->
+          <div class="flex justify-center">
+            <div class="w-px h-6 bg-gradient-to-b from-rose-500/40 to-purple-500/40 relative arch-flow-active">
+              <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                <svg class="w-3 h-3 text-purple-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layer 2: Backend API -->
+          <div class="arch-layer p-4 rounded-2xl border"
+               style="background: linear-gradient(135deg, rgba(168, 85, 247, 0.08), rgba(192, 132, 252, 0.04)); border-color: rgba(168, 85, 247, 0.2);">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-purple-500/15 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-purple-400">.NET 10 Web API</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Port 5143 -- MediatR CQRS, EF Core, PII Middleware</p>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <span class="badge badge-neutral text-[9px]">v1 Legacy</span>
+                <span class="badge badge-neutral text-[9px]">v2 Insurance</span>
+                <span class="badge badge-neutral text-[9px]">Health</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Triple Branch Connection: API -> 3 subsystems -->
+          <div class="flex justify-center">
+            <div class="relative w-full max-w-lg h-10">
+              <!-- Center line down -->
+              <div class="absolute left-1/2 top-0 w-px h-3 bg-gradient-to-b from-purple-500/40 to-indigo-500/40"></div>
+              <!-- Horizontal line -->
+              <div class="absolute top-3 left-[15%] right-[15%] h-px bg-indigo-500/30"></div>
+              <!-- Left branch down + arrow -->
+              <div class="absolute left-[15%] top-3 w-px h-7 bg-indigo-500/30 arch-flow-active">
+                <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                  <svg class="w-3 h-3 text-indigo-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+                </div>
+              </div>
+              <!-- Center branch down + arrow -->
+              <div class="absolute left-1/2 top-3 w-px h-7 bg-indigo-500/30 arch-flow-active">
+                <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                  <svg class="w-3 h-3 text-indigo-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+                </div>
+              </div>
+              <!-- Right branch down + arrow -->
+              <div class="absolute right-[15%] top-3 w-px h-7 bg-indigo-500/30 arch-flow-active">
+                <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                  <svg class="w-3 h-3 text-indigo-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layer 3: Three subsystem pillars -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <!-- MediatR CQRS -->
+            <div class="arch-layer p-4 rounded-2xl border text-center"
+                 style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(129, 140, 248, 0.04)); border-color: rgba(99, 102, 241, 0.2);">
+              <div class="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold text-indigo-400">MediatR CQRS</p>
+              <p class="text-[10px] mt-1" style="color: var(--text-muted);">Commands & Queries</p>
+              <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Handlers per endpoint</p>
+            </div>
+
+            <!-- Agent Orchestration (highlighted as core) -->
+            <div class="arch-layer p-4 rounded-2xl border text-center ring-1 ring-indigo-500/20"
+                 style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(168, 85, 247, 0.06)); border-color: rgba(99, 102, 241, 0.3);">
+              <div class="w-9 h-9 rounded-lg bg-indigo-500/20 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold text-indigo-400">Agent Orchestration</p>
+              <p class="text-[10px] mt-1" style="color: var(--text-muted);">9 Agents in GroupChat</p>
+              <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Semantic Kernel</p>
+            </div>
+
+            <!-- Multimodal Pipeline -->
+            <div class="arch-layer p-4 rounded-2xl border text-center"
+                 style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(129, 140, 248, 0.04)); border-color: rgba(99, 102, 241, 0.2);">
+              <div class="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center mx-auto mb-2">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+              </div>
+              <p class="text-xs font-bold text-indigo-400">Multimodal Pipeline</p>
+              <p class="text-[10px] mt-1" style="color: var(--text-muted);">STT, Vision, OCR, NER</p>
+              <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">5 Services, 0 NuGet</p>
+            </div>
+          </div>
+
+          <!-- Connection Arrow: Subsystems -> Provider Chain -->
+          <div class="flex justify-center">
+            <div class="w-px h-6 bg-gradient-to-b from-indigo-500/40 to-cyan-500/40 relative arch-flow-active">
+              <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                <svg class="w-3 h-3 text-cyan-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layer 4: Resilient Provider Chain -->
+          <div class="arch-layer p-4 rounded-2xl border"
+               style="background: linear-gradient(135deg, rgba(34, 211, 238, 0.08), rgba(103, 232, 249, 0.04)); border-color: rgba(34, 211, 238, 0.2);">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-cyan-500/15 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-cyan-400">IResilientKernelProvider</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Fallback: Groq → Mistral → Gemini → OpenRouter → Ollama</p>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <span class="badge badge-neutral text-[9px]">Exp. Backoff</span>
+                <span class="badge badge-neutral text-[9px]">30s → 300s max</span>
+              </div>
+            </div>
+            <!-- Mini provider chain visualization -->
+            <div class="mt-3 flex items-center gap-1 flex-wrap">
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">Groq</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Mistral</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Gemini</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">OpenRouter</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ollama</span>
+            </div>
+          </div>
+
+          <!-- Connection Arrow: Provider -> Database -->
+          <div class="flex justify-center">
+            <div class="w-px h-6 bg-gradient-to-b from-cyan-500/40 to-emerald-500/40 relative arch-flow-active">
+              <div class="absolute -bottom-1.5 left-1/2 -translate-x-1/2">
+                <svg class="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 24 24"><path d="M12 16l-6-6h12z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Layer 5: Database -->
+          <div class="arch-layer p-4 rounded-2xl border"
+               style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(52, 211, 153, 0.04)); border-color: rgba(16, 185, 129, 0.2);">
+            <div class="flex items-center justify-between flex-wrap gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center">
+                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"/>
+                  </svg>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-emerald-400">SQLite / Supabase PostgreSQL</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Repository Pattern -- EF Core, Audit Trail, SHA-256</p>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap">
+                <span class="badge badge-neutral text-[9px]">Local Dev</span>
+                <span class="badge badge-neutral text-[9px]">Cloud Prod</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PII Redaction Shield - right side indicator -->
+          <div class="hidden lg:block absolute -right-3 top-[20%] bottom-[20%] w-1 rounded-full bg-gradient-to-b from-rose-500/20 via-rose-500/50 to-rose-500/20"></div>
+          <div class="hidden lg:flex absolute -right-10 top-1/2 -translate-y-1/2 items-center -rotate-90 origin-center">
+            <span class="text-[8px] font-bold text-rose-400 uppercase tracking-[0.15em] whitespace-nowrap flex items-center gap-1">
+              <svg class="w-2.5 h-2.5 rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+              </svg>
+              PII Redaction Layer
+            </span>
+          </div>
+        </div>
+
+        <!-- Design Pattern Summary -->
+        <div class="mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-xs font-bold text-indigo-400">Strategy</p>
+            <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Provider swap at runtime</p>
+          </div>
+          <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-xs font-bold text-purple-400">CQRS</p>
+            <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Reads vs writes separated</p>
+          </div>
+          <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-xs font-bold text-cyan-400">Chain of Resp.</p>
+            <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Provider fallback chain</p>
+          </div>
+          <div class="text-center p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
+            <p class="text-xs font-bold text-emerald-400">Repository</p>
+            <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">Swappable data access</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       USE CASES - INSURANCE SCENARIOS
+       ══════════════════════════════════════════════ -->
+  <section class="py-16 lg:py-20" style="background: var(--bg-secondary);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center mb-10">
+        <h2 class="text-2xl sm:text-3xl font-bold mb-3" style="color: var(--text-primary);">
+          Built For Insurance
+        </h2>
+        <p class="text-sm max-w-xl mx-auto" style="color: var(--text-secondary);">
+          Real-world insurance workflows powered by multi-agent AI
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Use Case 1: Claims Processing -->
+        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center">
+              <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold" style="color: var(--text-primary);">Claims Triage</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">Auto-assess severity & urgency</p>
+            </div>
+          </div>
+          <p class="text-xs leading-relaxed" style="color: var(--text-secondary);">
+            Submit water damage, auto accident, or theft claims. AI agents assess severity, assign urgency,
+            and recommend immediate actions -- all in under 60 seconds.
+          </p>
+          <a routerLink="/claims/triage" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+            Try it
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Use Case 2: Fraud Detection -->
+        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center">
+              <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold" style="color: var(--text-primary);">Fraud Detection</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">Score risk 0-100, flag SIU</p>
+            </div>
+          </div>
+          <p class="text-xs leading-relaxed" style="color: var(--text-secondary);">
+            Multi-dimensional fraud scoring analyzes timing, behavioral, financial, and document indicators.
+            High-risk claims auto-flagged for Special Investigations Unit referral.
+          </p>
+          <a routerLink="/dashboard/fraud" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+            View alerts
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+
+        <!-- Use Case 3: Sentiment Analysis -->
+        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center">
+              <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+              </svg>
+            </div>
+            <div>
+              <p class="text-sm font-bold" style="color: var(--text-primary);">Policyholder Sentiment</p>
+              <p class="text-[10px]" style="color: var(--text-muted);">Churn risk & escalation signals</p>
+            </div>
+          </div>
+          <p class="text-xs leading-relaxed" style="color: var(--text-secondary);">
+            Analyze policyholder communications for sentiment, emotion breakdown, purchase intent,
+            and complaint escalation signals. Identify churn risk before it's too late.
+          </p>
+          <a routerLink="/insurance" class="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">
+            Analyze
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       FOOTER CTA
+       ══════════════════════════════════════════════ -->
+  <section class="relative py-20 text-center overflow-hidden">
+    <!-- Background gradient -->
+    <div class="absolute inset-0 bg-gradient-to-t from-indigo-500/5 via-transparent to-transparent pointer-events-none"></div>
+
+    <div class="relative max-w-3xl mx-auto px-4 sm:px-6">
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6"
+           style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="text-xs font-semibold" style="color: var(--text-muted);">Open Source & Free Tier Powered</span>
+      </div>
+      <h2 class="text-2xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
+        Ready to Transform Insurance Operations?
+      </h2>
+      <p class="text-base mb-10" style="color: var(--text-secondary);">
+        Start with claims triage, explore the dashboard, or analyze customer sentiment
+        with multi-agent AI -- all powered by free-tier providers.
+      </p>
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a routerLink="/claims/triage" class="btn-primary text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+          </svg>
+          Claims Triage
+        </a>
+        <a routerLink="/insurance" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+          </svg>
+          Sentiment Analysis
+        </a>
+        <a routerLink="/dashboard" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          Dashboard
+        </a>
+      </div>
+
+      <!-- Footer credits -->
+      <div class="mt-12 pt-8" style="border-top: 1px solid var(--border-secondary);">
+        <p class="text-xs" style="color: var(--text-muted);">
+          Insurance AI Operations Hub v3.0 -- .NET 10 + Angular 21 + Semantic Kernel -- 9 Agents, 5 Providers, 5 Modalities
+        </p>
+      </div>
+    </div>
+  </section>
+
+</div>

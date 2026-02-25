@@ -46,9 +46,11 @@ public class OrchestrationProfileFactory : IOrchestrationProfileFactory
             ],
             OrchestrationProfile.CustomerExperience =>
             [
+                AgentDefinitions.CustomerExperienceAgentName,
                 AgentDefinitions.BAAgentName,
-                AgentDefinitions.QAAgentName,
-                AgentDefinitions.CTOAgentName
+                AgentDefinitions.DeveloperAgentName,
+                AgentDefinitions.UXDesignerAgentName,
+                AgentDefinitions.QAAgentName
             ],
             _ =>
             [
@@ -68,7 +70,7 @@ public class OrchestrationProfileFactory : IOrchestrationProfileFactory
             OrchestrationProfile.ClaimsTriage => 8,
             OrchestrationProfile.FraudScoring => 8,
             OrchestrationProfile.DocumentQuery => 6,
-            OrchestrationProfile.CustomerExperience => 10,
+            OrchestrationProfile.CustomerExperience => 8,
             _ => 10
         };
     }

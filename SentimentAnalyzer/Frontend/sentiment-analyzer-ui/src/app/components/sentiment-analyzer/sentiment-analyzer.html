@@ -19,26 +19,29 @@
 
   <!-- Input Card -->
   <div class="glass-card-static p-6 mb-6 animate-fade-in-up" style="animation-delay: 0.1s">
-    <label class="block text-sm font-medium mb-2" [style.color]="'var(--text-secondary)'">
+    <label for="sentiment-input" class="block text-sm font-medium mb-2" [style.color]="'var(--text-secondary)'">
       Enter your text below
     </label>
     <textarea
-      [(ngModel)]="inputText"
+      id="sentiment-input"
+      [ngModel]="inputText()"
+      (ngModelChange)="inputText.set($event)"
       placeholder="Type or paste your text here... Try 'I absolutely love this amazing product!' or 'This service was disappointing and frustrating'"
       rows="6"
       maxlength="5000"
-      [disabled]="isLoading"
+      [disabled]="isLoading()"
       class="input-field resize-none !rounded-xl"
     ></textarea>
 
     <div class="flex items-center justify-between mt-4 flex-wrap gap-3">
-      <span class="text-xs" [style.color]="'var(--text-muted)'">{{ inputText.length }} / 5,000 characters</span>
+      <span class="text-xs" [style.color]="'var(--text-muted)'">{{ inputText().length }} / 5,000 characters</span>
       <div class="flex gap-3">
-        <button (click)="clearAll()" [disabled]="isLoading" class="btn-ghost text-sm !px-4 !py-2">Clear</button>
+        <button (click)="clearAll()" [disabled]="isLoading()" class="btn-ghost text-sm !px-4 !py-2">Clear</button>
         <button (click)="analyzeSentiment()"
-                [disabled]="isLoading || !inputText.trim()"
+                [disabled]="isLoading() || !inputText().trim()"
+                [attr.aria-busy]="isLoading()"
                 class="btn-primary text-sm !px-5 !py-2 flex items-center gap-2">
-          @if (isLoading) {
+          @if (isLoading()) {
             <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
@@ -56,36 +59,36 @@
   </div>
 
   <!-- Error Message -->
-  @if (error) {
-    <div class="glass-card-static p-4 mb-6 flex items-center gap-3 border-l-4 border-l-rose-500 animate-fade-in-up">
-      <svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  @if (error()) {
+    <div role="alert" aria-live="assertive" class="glass-card-static p-4 mb-6 flex items-center gap-3 border-l-4 border-l-rose-500 animate-fade-in-up">
+      <svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
       </svg>
-      <span class="text-sm text-rose-400">{{ error }}</span>
+      <span class="text-sm text-rose-400">{{ error() }}</span>
     </div>
   }
 
   <!-- Results Section -->
-  @if (result) {
-    <div class="space-y-5 animate-fade-in-up">
+  @if (result()) {
+    <div role="status" aria-live="polite" class="space-y-5 animate-fade-in-up">
       <!-- Sentiment Result Card -->
       <div class="glass-card-static p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-medium" [style.color]="'var(--text-secondary)'">Sentiment Result</h3>
           <span class="badge" [class]="getSentimentClass() === 'positive' ? 'badge-success' : getSentimentClass() === 'negative' ? 'badge-danger' : 'badge-info'">
-            {{ result.sentiment }}
+            {{ result()!.sentiment }}
           </span>
         </div>
         <div class="flex items-end gap-6">
           <div class="text-5xl font-bold" [style.color]="'var(--text-primary)'">
-            {{ (result.confidenceScore * 100).toFixed(0) }}<span class="text-xl font-normal" [style.color]="'var(--text-muted)'">%</span>
+            {{ (result()!.confidenceScore * 100).toFixed(0) }}<span class="text-xl font-normal" [style.color]="'var(--text-muted)'">%</span>
           </div>
           <div class="flex-1">
             <div class="text-xs mb-2" [style.color]="'var(--text-muted)'">Confidence Score</div>
-            <div class="progress-track !h-3">
+            <div class="progress-track !h-3" role="progressbar" [attr.aria-valuenow]="(result()!.confidenceScore * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Confidence score: ' + (result()!.confidenceScore * 100).toFixed(0) + '%'">
               <div class="progress-fill !h-3"
                    [class]="getSentimentClass() === 'positive' ? 'bg-emerald-500' : getSentimentClass() === 'negative' ? 'bg-rose-500' : 'bg-cyan-500'"
-                   [style.width.%]="result.confidenceScore * 100">
+                   [style.width.%]="result()!.confidenceScore * 100">
               </div>
             </div>
           </div>
@@ -100,7 +103,7 @@
           </svg>
           Analysis
         </h3>
-        <p class="text-sm leading-relaxed" [style.color]="'var(--text-primary)'">{{ result.explanation }}</p>
+        <p class="text-sm leading-relaxed" [style.color]="'var(--text-primary)'">{{ result()!.explanation }}</p>
       </div>
 
       <!-- Emotion Breakdown -->
@@ -116,7 +119,7 @@
             @for (emotion of getEmotionEntries(); track emotion[0]) {
               <div class="flex items-center gap-3">
                 <span class="text-xs w-24 capitalize" [style.color]="'var(--text-secondary)'">{{ emotion[0] }}</span>
-                <div class="flex-1 progress-track">
+                <div class="flex-1 progress-track" role="progressbar" [attr.aria-valuenow]="(emotion[1] * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="emotion[0] + ': ' + (emotion[1] * 100).toFixed(0) + '%'">
                   <div class="progress-fill bg-gradient-to-r from-indigo-500 to-purple-500" [style.width.%]="emotion[1] * 100"></div>
                 </div>
                 <span class="text-xs w-10 text-right font-medium" [style.color]="'var(--text-primary)'">{{ (emotion[1] * 100).toFixed(0) }}%</span>

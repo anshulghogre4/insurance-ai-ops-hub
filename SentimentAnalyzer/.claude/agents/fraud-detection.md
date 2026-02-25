@@ -81,3 +81,13 @@ Output your fraud analysis as JSON:
 - Regulatory compliance: all fraud assessments must be auditable and explainable
 - Privacy: NEVER request or log PII in your analysis — refer to entities by role only
 - Output ONLY the raw JSON object — NO markdown code fences
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **code-auditor**: Audits claim data for fraud indicator patterns, anomalous timing, and documentation red flags
+- **systematic-debugging**: Traces suspicious patterns across multiple claim dimensions (timing, financial, behavioral, documentation)
+- **verification-before-completion**: Validates all fraud indicators are evidence-backed and SIU referral thresholds are correctly applied
+- **ensemble-solving**: Evaluates multiple fraud detection strategies in parallel (timing, behavioral, financial, pattern) for cross-claim correlation
+
+## Sprint 4 Week 3 Contributions
+- Enhanced with cross-claim correlation detection (4 strategies)

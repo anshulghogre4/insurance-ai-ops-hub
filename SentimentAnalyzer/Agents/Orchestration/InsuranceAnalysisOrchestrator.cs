@@ -21,17 +21,20 @@ namespace SentimentAnalyzer.Agents.Orchestration;
 public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
 {
     private readonly IResilientKernelProvider _kernelProvider;
+    private readonly IOrchestrationProfileFactory _profileFactory;
     private readonly AgentConfiguration _agentConfig;
     private readonly ILogger<InsuranceAnalysisOrchestrator> _logger;
     private readonly IPIIRedactor? _piiRedactor;
 
     public InsuranceAnalysisOrchestrator(
         IResilientKernelProvider kernelProvider,
+        IOrchestrationProfileFactory profileFactory,
         IOptions<AgentConfiguration> agentConfig,
         ILogger<InsuranceAnalysisOrchestrator> logger,
         IPIIRedactor? piiRedactor = null)
     {
         _kernelProvider = kernelProvider ?? throw new ArgumentNullException(nameof(kernelProvider));
+        _profileFactory = profileFactory ?? throw new ArgumentNullException(nameof(profileFactory));
         _agentConfig = agentConfig?.Value ?? throw new ArgumentNullException(nameof(agentConfig));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _piiRedactor = piiRedactor;
@@ -43,12 +46,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         _logger.LogInformation("Starting multi-agent insurance analysis for interaction type: {InteractionType}, Provider: {Provider}",
             interactionType, _kernelProvider.ActiveProviderName);
 
-        // Redact PII before sending to external AI providers
-        if (_piiRedactor == null)
-        {
-            _logger.LogWarning("PII redactor not configured. Sending unredacted text to AI providers.");
-        }
-        var sanitizedText = _piiRedactor?.Redact(text) ?? text;
+        var sanitizedText = SanitizeText(text);
 
         try
         {
@@ -105,12 +103,339 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     }
 
     /// <inheritdoc />
-    public Task<AgentAnalysisResult> AnalyzeAsync(string text, OrchestrationProfile profile, InteractionType interactionType = InteractionType.General)
+    public async Task<AgentAnalysisResult> AnalyzeAsync(string text, OrchestrationProfile profile, InteractionType interactionType = InteractionType.General)
     {
-        _logger.LogInformation("Analysis requested with profile: {Profile}. Delegating to default analysis pipeline.", profile);
-        // Profile-aware agent selection will be implemented in Week 2 when claims/fraud agent prompts are ready.
-        // For now, delegate to the standard analysis to maintain backward compatibility.
-        return AnalyzeAsync(text, interactionType);
+        // For SentimentAnalysis profile, use the standard multi-agent pipeline
+        if (profile == OrchestrationProfile.SentimentAnalysis)
+        {
+            return await AnalyzeAsync(text, interactionType);
+        }
+
+        _logger.LogInformation("Starting profile-aware analysis. Profile: {Profile}, Provider: {Provider}",
+            profile, _kernelProvider.ActiveProviderName);
+
+        var sanitizedText = SanitizeText(text);
+
+        try
+        {
+            return await RunProfileAgentAnalysis(sanitizedText, profile, interactionType);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("Profile {Profile} analysis timed out after {Timeout}s", profile, _agentConfig.TimeoutSeconds);
+
+            if (_agentConfig.FallbackToSimpleAnalysis)
+            {
+                _logger.LogInformation("Falling back to single-agent analysis for profile {Profile}", profile);
+                return await RunSingleAgentFallback(sanitizedText, interactionType);
+            }
+
+            return CreateDefaultResult(sanitizedText, interactionType, $"Profile {profile} analysis timed out");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Profile-aware analysis failed for profile {Profile} with provider {Provider}",
+                profile, _kernelProvider.ActiveProviderName);
+
+            // Report failure and retry with fallback provider
+            _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, ex);
+
+            try
+            {
+                _logger.LogInformation("Retrying profile analysis with fallback provider: {Provider}", _kernelProvider.ActiveProviderName);
+                return await RunProfileAgentAnalysis(sanitizedText, profile, interactionType);
+            }
+            catch (Exception retryEx)
+            {
+                _logger.LogWarning(retryEx, "Retry with fallback provider also failed for profile {Profile}", profile);
+                _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, retryEx);
+            }
+
+            if (_agentConfig.FallbackToSimpleAnalysis)
+            {
+                _logger.LogInformation("Falling back to single-agent analysis for profile {Profile} after provider failures", profile);
+                try
+                {
+                    return await RunSingleAgentFallback(sanitizedText, interactionType);
+                }
+                catch (Exception fallbackEx)
+                {
+                    _logger.LogError(fallbackEx, "Single-agent fallback also failed for profile {Profile}", profile);
+                }
+            }
+
+            return CreateDefaultResult(sanitizedText, interactionType,
+                $"Profile-aware analysis failed for {profile}: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Runs the multi-agent analysis using a specific orchestration profile.
+    /// Only creates agents relevant to the profile, reducing token usage.
+    /// </summary>
+    private async Task<AgentAnalysisResult> RunProfileAgentAnalysis(
+        string text, OrchestrationProfile profile, InteractionType interactionType)
+    {
+        var agentNames = _profileFactory.GetAgentNamesForProfile(profile);
+        var maxTurns = _profileFactory.GetMaxTurnsForProfile(profile);
+        var minTurns = _profileFactory.GetMinTurnsForProfile(profile);
+
+        _logger.LogInformation("Profile {Profile}: {Count} agents ({Agents}), max {Max} turns, min {Min} turns",
+            profile, agentNames.Count, string.Join(", ", agentNames), maxTurns, minTurns);
+
+        // Create only the agents needed for this profile
+        var agents = new List<ChatCompletionAgent>();
+        foreach (var agentName in agentNames)
+        {
+            var (name, prompt) = ResolveAgentDefinition(agentName);
+            if (prompt != null)
+            {
+                agents.Add(CreateAgent(name, prompt));
+            }
+            else
+            {
+                _logger.LogWarning("No prompt found for agent: {Agent}. Skipping.", agentName);
+            }
+        }
+
+        if (agents.Count == 0)
+        {
+            _logger.LogError("No agents could be created for profile {Profile}", profile);
+            return CreateDefaultResult(text, interactionType, $"No agents available for profile {profile}");
+        }
+
+        var terminationStrategy = new AnalysisTerminationStrategy(maxTurns, minTurns);
+        var selectionStrategy = new AgentSelectionStrategy();
+
+        var chat = new AgentGroupChat(agents.ToArray())
+        {
+            ExecutionSettings = new()
+            {
+                SelectionStrategy = selectionStrategy,
+                TerminationStrategy = terminationStrategy
+            }
+        };
+
+        var userMessage = BuildProfileUserMessage(text, profile, interactionType);
+        chat.AddChatMessage(new ChatMessageContent(AuthorRole.User, userMessage));
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(_agentConfig.TimeoutSeconds));
+        var messages = new StringBuilder();
+        string? finalJson = null;
+        var agentTurnCount = 0;
+
+        try
+        {
+            await foreach (var response in chat.InvokeAsync(cts.Token))
+            {
+                agentTurnCount++;
+                _logger.LogInformation("[{Profile}] Agent [{Agent}] (turn {Turn}): {Content}",
+                    profile, response.AuthorName ?? "Unknown", agentTurnCount,
+                    response.Content?.Length > 200 ? response.Content[..200] + "..." : response.Content);
+
+                messages.AppendLine($"[{response.AuthorName}]: {response.Content}");
+
+                // Try to extract JSON from each agent's output
+                var json = ExtractJson(response.Content ?? "");
+                if (json != null)
+                {
+                    finalJson = json;
+                }
+            }
+        }
+        catch (Exception ex) when (finalJson != null)
+        {
+            _logger.LogWarning(ex, "Profile agent conversation error at turn {Turn}, but JSON was already extracted.", agentTurnCount);
+        }
+
+        _logger.LogInformation("Profile {Profile} conversation completed after {Turns} turns", profile, agentTurnCount);
+
+        if (finalJson != null)
+        {
+            return ParseAnalysisResult(finalJson, messages.ToString());
+        }
+
+        // Try extracting from the full conversation
+        finalJson = ExtractLastJsonForProfile(messages.ToString(), profile);
+        if (finalJson != null)
+        {
+            return ParseAnalysisResult(finalJson, messages.ToString());
+        }
+
+        _logger.LogWarning("Profile {Profile} did not produce valid JSON after {Turns} turns", profile, agentTurnCount);
+        return CreateDefaultResult(text, interactionType, $"Profile {profile} analysis did not produce JSON output");
+    }
+
+    /// <summary>
+    /// Resolves an agent name to its (name, prompt) pair.
+    /// </summary>
+    internal static (string Name, string? Prompt) ResolveAgentDefinition(string agentName)
+    {
+        return agentName switch
+        {
+            AgentDefinitions.CTOAgentName => (agentName, AgentDefinitions.CTOAgentPrompt),
+            AgentDefinitions.BAAgentName => (agentName, AgentDefinitions.BAAgentPrompt),
+            AgentDefinitions.DeveloperAgentName => (agentName, AgentDefinitions.DeveloperAgentPrompt),
+            AgentDefinitions.QAAgentName => (agentName, AgentDefinitions.QAAgentPrompt),
+            AgentDefinitions.AIExpertAgentName => (agentName, AgentDefinitions.AIExpertAgentPrompt),
+            AgentDefinitions.UXDesignerAgentName => (agentName, AgentDefinitions.UXDesignerAgentPrompt),
+            AgentDefinitions.ArchitectAgentName => (agentName, AgentDefinitions.ArchitectAgentPrompt),
+            AgentDefinitions.ClaimsTriageAgentName => (agentName, AgentDefinitions.ClaimsTriageAgentPrompt),
+            AgentDefinitions.FraudDetectionAgentName => (agentName, AgentDefinitions.FraudDetectionAgentPrompt),
+            AgentDefinitions.CustomerExperienceAgentName => (agentName, AgentDefinitions.CustomerExperienceAgentPrompt),
+            _ => (agentName, null)
+        };
+    }
+
+    /// <summary>
+    /// Builds a profile-specific user message with appropriate instructions.
+    /// </summary>
+    internal static string BuildProfileUserMessage(string text, OrchestrationProfile profile, InteractionType interactionType)
+    {
+        return profile switch
+        {
+            OrchestrationProfile.ClaimsTriage => $$"""
+                Triage the following insurance claim. Assess severity, urgency, claim type, and preliminary fraud risk.
+                Interaction Type: {{interactionType}}
+
+                Claim Description:
+                ---
+                {{text}}
+                ---
+
+                Provide a complete triage assessment. Output ONLY raw JSON matching this schema (NO markdown code fences):
+                {
+                  "claimTriage": {
+                    "severity": "Critical|High|Medium|Low",
+                    "urgency": "Immediate|Urgent|Standard|Low",
+                    "claimType": "string",
+                    "claimSubType": "string",
+                    "estimatedLossRange": "string",
+                    "preliminaryFraudRisk": "VeryLow|Low|Medium|High|VeryHigh",
+                    "fraudFlags": ["string"],
+                    "recommendedActions": [{ "action": "string", "priority": "High|Standard|Low", "reasoning": "string" }]
+                  }
+                }
+                """,
+            OrchestrationProfile.FraudScoring => $$"""
+                Perform a detailed fraud analysis on the following insurance claim.
+                Interaction Type: {{interactionType}}
+
+                Claim Description:
+                ---
+                {{text}}
+                ---
+
+                Analyze for fraud indicators and provide a risk assessment. Output ONLY raw JSON matching this schema (NO markdown code fences):
+                {
+                  "fraudAnalysis": {
+                    "fraudProbabilityScore": 0-100,
+                    "riskLevel": "VeryLow|Low|Medium|High|VeryHigh",
+                    "indicators": [{ "category": "Timing|Behavioral|Financial|Pattern|Documentation", "description": "string", "severity": "Low|Medium|High" }],
+                    "recommendedActions": [{ "action": "string", "priority": "High|Standard|Low", "reasoning": "string" }],
+                    "referToSIU": true|false,
+                    "siuReferralReason": "string",
+                    "confidenceInAssessment": "Low|Medium|High"
+                  }
+                }
+                """,
+            OrchestrationProfile.CustomerExperience => $$"""
+                You are part of an insurance customer experience team. Analyze the following customer message and provide a helpful, empathetic response.
+
+                Customer Message:
+                ---
+                {{text}}
+                ---
+
+                Interaction Context: {{interactionType}}
+
+                Respond with ONLY a JSON object (no markdown fences):
+                {
+                  "response": "Your empathetic, helpful response to the customer",
+                  "tone": "Professional|Empathetic|Urgent|Informational",
+                  "escalationRecommended": true/false,
+                  "escalationReason": "reason or null",
+                  "customerIntent": "Information|ComplaintResolution|ClaimStatus|PolicyChange|Escalation",
+                  "sentiment": "Positive|Neutral|Negative|Mixed",
+                  "confidenceScore": 0.0-1.0,
+                  "explanation": "Brief analysis of the customer's concern",
+                  "suggestedFollowUp": ["Follow-up actions for the support team"],
+                  "quality": {
+                    "isValid": true,
+                    "qualityScore": 0-100,
+                    "issues": [],
+                    "suggestions": ["Improvement suggestions"]
+                  }
+                }
+                """,
+            _ => $"""
+                Analyze the following customer interaction for insurance domain insights.
+                Interaction Type: {interactionType}
+
+                Customer Text:
+                ---
+                {text}
+                ---
+
+                Provide a complete analysis. Output ONLY raw JSON, NO markdown code fences.
+                """
+        };
+    }
+
+    /// <summary>
+    /// Extracts the last valid JSON from profile agent conversations.
+    /// For claims/fraud profiles, looks for claimTriage or fraudAnalysis keys.
+    /// </summary>
+    internal static string? ExtractLastJsonForProfile(string allMessages, OrchestrationProfile profile)
+    {
+        string? lastJson = null;
+        var normalized = NormalizeForJsonExtraction(allMessages);
+        var searchFrom = 0;
+
+        // Determine which JSON keys to look for based on profile
+        var expectedKeys = profile switch
+        {
+            OrchestrationProfile.ClaimsTriage => new[] { "claimTriage", "severity", "urgency" },
+            OrchestrationProfile.FraudScoring => new[] { "fraudAnalysis", "fraudProbabilityScore", "riskLevel" },
+            OrchestrationProfile.CustomerExperience => new[] { "response", "tone", "customerIntent", "escalationRecommended" },
+            _ => new[] { "sentiment", "confidenceScore" }
+        };
+
+        while (searchFrom < normalized.Length)
+        {
+            var startIndex = normalized.IndexOf('{', searchFrom);
+            if (startIndex < 0) break;
+
+            var depth = 0;
+            var inString = false;
+            var escape = false;
+
+            for (var i = startIndex; i < normalized.Length; i++)
+            {
+                var c = normalized[i];
+                if (escape) { escape = false; continue; }
+                if (c == '\\' && inString) { escape = true; continue; }
+                if (c == '"') { inString = !inString; continue; }
+                if (inString) continue;
+                if (c == '{') depth++;
+                else if (c == '}') depth--;
+
+                if (depth == 0)
+                {
+                    var candidate = normalized[startIndex..(i + 1)];
+                    if (expectedKeys.Any(k => candidate.Contains(k)) && IsValidJson(candidate))
+                    {
+                        lastJson = candidate;
+                    }
+                    searchFrom = i + 1;
+                    break;
+                }
+            }
+
+            if (depth != 0) break;
+        }
+
+        return lastJson;
     }
 
     private async Task<AgentAnalysisResult> RunMultiAgentAnalysis(string text, InteractionType interactionType)
@@ -260,6 +585,19 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         return CreateDefaultResult(text, interactionType, "Single-agent fallback did not produce valid JSON");
     }
 
+    /// <summary>
+    /// Redacts PII from text before sending to external AI providers.
+    /// </summary>
+    private string SanitizeText(string text)
+    {
+        if (_piiRedactor == null)
+        {
+            _logger.LogWarning("PII redactor not configured. Sending unredacted text to AI providers.");
+            return text;
+        }
+        return _piiRedactor.Redact(text);
+    }
+
     private ChatCompletionAgent CreateAgent(string name, string instructions)
     {
         return new ChatCompletionAgent
@@ -270,7 +608,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         };
     }
 
-    private static readonly Regex MarkdownFenceRegex = new(
+    internal static readonly Regex MarkdownFenceRegex = new(
         @"```(?:json|JSON)?\s*\n?",
         RegexOptions.Compiled);
 
@@ -278,7 +616,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// Strips markdown code fences and normalizes LLM output before JSON extraction.
     /// Handles ```json ... ```, ```JSON ... ```, and plain ``` ... ``` wrappers.
     /// </summary>
-    private static string NormalizeForJsonExtraction(string text)
+    internal static string NormalizeForJsonExtraction(string text)
     {
         return MarkdownFenceRegex.Replace(text, "").Trim();
     }
@@ -288,7 +626,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// Strips markdown fences, then uses brace-counting to find candidates,
     /// then validates with JsonDocument.Parse.
     /// </summary>
-    private static string? ExtractJson(string text)
+    internal static string? ExtractJson(string text)
     {
         var normalized = NormalizeForJsonExtraction(text);
         return ExtractJsonFromNormalized(normalized);
@@ -297,7 +635,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// <summary>
     /// Brace-counting JSON extraction from normalized (fence-stripped) text.
     /// </summary>
-    private static string? ExtractJsonFromNormalized(string text)
+    internal static string? ExtractJsonFromNormalized(string text)
     {
         var startIndex = text.IndexOf('{');
         if (startIndex < 0) return null;
@@ -355,7 +693,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// Extracts the last valid JSON object containing analysis fields from all agent messages.
     /// Searches each agent message block individually for better extraction accuracy.
     /// </summary>
-    private static string? ExtractLastJson(string allMessages)
+    internal static string? ExtractLastJson(string allMessages)
     {
         string? lastJson = null;
         var normalized = NormalizeForJsonExtraction(allMessages);
@@ -405,7 +743,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// <summary>
     /// Validates whether a string is well-formed JSON.
     /// </summary>
-    private static bool IsValidJson(string text)
+    internal static bool IsValidJson(string text)
     {
         try
         {
@@ -478,11 +816,13 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
                 Explanation = GetStringProp(root, "explanation", "Analysis completed via manual extraction."),
                 EmotionBreakdown = ExtractEmotionBreakdown(root),
                 InsuranceAnalysis = ExtractInsuranceAnalysis(root),
-                Quality = ExtractQuality(root)
+                Quality = ExtractQuality(root),
+                ClaimTriage = ExtractClaimTriage(root),
+                FraudAnalysis = ExtractFraudAnalysis(root)
             };
 
-            _logger.LogInformation("Agent analysis JSON parsed via manual field extraction. Sentiment={Sentiment}, Confidence={Confidence}, HasInsuranceAnalysis={HasIA}",
-                result.Sentiment, result.ConfidenceScore, result.InsuranceAnalysis != null);
+            _logger.LogInformation("Agent analysis JSON parsed via manual field extraction. Sentiment={Sentiment}, Confidence={Confidence}, HasInsuranceAnalysis={HasIA}, HasClaimTriage={HasCT}, HasFraudAnalysis={HasFA}",
+                result.Sentiment, result.ConfidenceScore, result.InsuranceAnalysis != null, result.ClaimTriage != null, result.FraudAnalysis != null);
             return result;
         }
         catch (Exception ex)
@@ -539,7 +879,9 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
     /// </summary>
     private static int NormalizeToInt100(double value)
     {
-        if (value > 0.0 && value < 1.0)
+        // LLMs may output 0-1 scale (e.g., 0.85) or 0-100 scale (e.g., 85).
+        // Treat values > 0 and <= 1.0 as normalized 0-1 range (1.0 = 100%).
+        if (value > 0.0 && value <= 1.0)
             return (int)Math.Round(value * 100);
         return (int)Math.Round(Math.Clamp(value, 0, 100));
     }
@@ -743,6 +1085,136 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         return issues;
     }
 
+    /// <summary>
+    /// Extracts ClaimTriageDetail from the root JSON element.
+    /// Handles both nested "claimTriage" wrapper and flat top-level fields.
+    /// </summary>
+    private static ClaimTriageDetail? ExtractClaimTriage(JsonElement root)
+    {
+        JsonElement ct;
+        if (!root.TryGetProperty("claimTriage", out ct) &&
+            !root.TryGetProperty("ClaimTriage", out ct))
+        {
+            // Check if claim triage fields are at the top level — require claimType
+            // in addition to severity+urgency to avoid false positives from sentiment results
+            if (!root.TryGetProperty("severity", out _) ||
+                !root.TryGetProperty("urgency", out _) ||
+                !root.TryGetProperty("claimType", out _))
+                return null;
+            ct = root;
+        }
+
+        if (ct.ValueKind != JsonValueKind.Object) return null;
+
+        return new ClaimTriageDetail
+        {
+            Severity = GetStringProp(ct, "severity", "Medium"),
+            Urgency = GetStringProp(ct, "urgency", "Standard"),
+            ClaimType = GetStringProp(ct, "claimType", ""),
+            ClaimSubType = GetStringProp(ct, "claimSubType", ""),
+            EstimatedLossRange = GetStringProp(ct, "estimatedLossRange", ""),
+            PreliminaryFraudRisk = GetStringProp(ct, "preliminaryFraudRisk", "None"),
+            FraudFlags = ExtractStringList(ct, "fraudFlags"),
+            AdditionalNotes = GetStringProp(ct, "additionalNotes", ""),
+            RecommendedActions = ExtractRecommendedActions(ct)
+        };
+    }
+
+    /// <summary>
+    /// Extracts FraudAnalysisDetail from the root JSON element.
+    /// Handles both nested "fraudAnalysis" wrapper and flat top-level fields.
+    /// </summary>
+    private static FraudAnalysisDetail? ExtractFraudAnalysis(JsonElement root)
+    {
+        JsonElement fa;
+        if (!root.TryGetProperty("fraudAnalysis", out fa) &&
+            !root.TryGetProperty("FraudAnalysis", out fa))
+        {
+            // Check if fraud fields are at top level
+            if (!root.TryGetProperty("fraudProbabilityScore", out _))
+                return null;
+            fa = root;
+        }
+
+        if (fa.ValueKind != JsonValueKind.Object) return null;
+
+        return new FraudAnalysisDetail
+        {
+            FraudProbabilityScore = GetIntProp(fa, "fraudProbabilityScore", 0),
+            RiskLevel = GetStringProp(fa, "riskLevel", "VeryLow"),
+            ReferToSIU = GetBoolProp(fa, "referToSIU", false),
+            SiuReferralReason = GetStringProp(fa, "siuReferralReason", ""),
+            ConfidenceInAssessment = GetDoubleProp(fa, "confidenceInAssessment", 0.5),
+            AdditionalNotes = GetStringProp(fa, "additionalNotes", ""),
+            Indicators = ExtractFraudIndicators(fa),
+            RecommendedActions = ExtractRecommendedActions(fa)
+        };
+    }
+
+    /// <summary>
+    /// Extracts a list of RecommendedAction from a JSON element.
+    /// </summary>
+    private static List<RecommendedAction> ExtractRecommendedActions(JsonElement element)
+    {
+        var actions = new List<RecommendedAction>();
+        JsonElement arr;
+        if (!element.TryGetProperty("recommendedActions", out arr) &&
+            !element.TryGetProperty("RecommendedActions", out arr))
+            return actions;
+
+        if (arr.ValueKind != JsonValueKind.Array) return actions;
+
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.Object)
+            {
+                actions.Add(new RecommendedAction
+                {
+                    Action = GetStringProp(item, "action", ""),
+                    Priority = GetStringProp(item, "priority", "Standard"),
+                    Reasoning = GetStringProp(item, "reasoning", "")
+                });
+            }
+            else if (item.ValueKind == JsonValueKind.String)
+            {
+                var text = item.GetString() ?? "";
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    actions.Add(new RecommendedAction { Action = text, Priority = "Standard" });
+                }
+            }
+        }
+        return actions;
+    }
+
+    /// <summary>
+    /// Extracts a list of FraudIndicator from a JSON element.
+    /// </summary>
+    private static List<FraudIndicator> ExtractFraudIndicators(JsonElement element)
+    {
+        var indicators = new List<FraudIndicator>();
+        JsonElement arr;
+        if (!element.TryGetProperty("indicators", out arr) &&
+            !element.TryGetProperty("Indicators", out arr))
+            return indicators;
+
+        if (arr.ValueKind != JsonValueKind.Array) return indicators;
+
+        foreach (var item in arr.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.Object)
+            {
+                indicators.Add(new FraudIndicator
+                {
+                    Category = GetStringProp(item, "category", ""),
+                    Description = GetStringProp(item, "description", ""),
+                    Severity = GetStringProp(item, "severity", "Low")
+                });
+            }
+        }
+        return indicators;
+    }
+
     private static string ComputeSha256(string input)
     {
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(input));
@@ -751,7 +1223,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
 
     #endregion
 
-    private static AgentAnalysisResult CreateDefaultResult(string text, InteractionType interactionType, string notes)
+    internal static AgentAnalysisResult CreateDefaultResult(string text, InteractionType interactionType, string notes)
     {
         return new AgentAnalysisResult
         {

@@ -22,10 +22,10 @@ public class ProviderConfigurationTests
     }
 
     [Fact]
-    public void AgentSystemSettings_DefaultFallbackChain_HasFiveProviders()
+    public void AgentSystemSettings_DefaultFallbackChain_HasSevenProviders()
     {
         var settings = new AgentSystemSettings();
-        Assert.Equal(5, settings.FallbackChain.Count);
+        Assert.Equal(7, settings.FallbackChain.Count);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class ProviderConfigurationTests
     public void AgentSystemSettings_DefaultFallbackChain_CorrectOrder()
     {
         var settings = new AgentSystemSettings();
-        var expected = new[] { "Groq", "Mistral", "Gemini", "OpenRouter", "Ollama" };
+        var expected = new[] { "Groq", "Cerebras", "Mistral", "Gemini", "OpenRouter", "OpenAI", "Ollama" };
         Assert.Equal(expected, settings.FallbackChain);
     }
 
@@ -53,6 +53,7 @@ public class ProviderConfigurationTests
     {
         var settings = new AgentSystemSettings();
         Assert.NotNull(settings.Groq);
+        Assert.NotNull(settings.Cerebras);
         Assert.NotNull(settings.Ollama);
         Assert.NotNull(settings.Gemini);
         Assert.NotNull(settings.Mistral);
@@ -62,6 +63,7 @@ public class ProviderConfigurationTests
         Assert.NotNull(settings.AzureVision);
         Assert.NotNull(settings.OcrSpace);
         Assert.NotNull(settings.HuggingFace);
+        Assert.NotNull(settings.Voyage);
     }
 
     // ──────────────────────────────────────────
@@ -75,6 +77,15 @@ public class ProviderConfigurationTests
         Assert.Equal(string.Empty, settings.ApiKey);
         Assert.Equal("https://api.groq.com/openai/v1", settings.Endpoint);
         Assert.Equal("llama-3.3-70b-versatile", settings.Model);
+    }
+
+    [Fact]
+    public void CerebrasSettings_Defaults_AreCorrect()
+    {
+        var settings = new CerebrasSettings();
+        Assert.Equal(string.Empty, settings.ApiKey);
+        Assert.Equal("https://api.cerebras.ai/v1", settings.Endpoint);
+        Assert.Equal("gpt-oss-120b", settings.Model);
     }
 
     [Fact]
@@ -108,7 +119,7 @@ public class ProviderConfigurationTests
         var settings = new OpenRouterSettings();
         Assert.Equal(string.Empty, settings.ApiKey);
         Assert.Equal("https://openrouter.ai/api/v1", settings.Endpoint);
-        Assert.Equal("deepseek/deepseek-r1:free", settings.Model);
+        Assert.Equal("google/gemma-3-27b-it:free", settings.Model);
         Assert.Equal("http://localhost:5143", settings.SiteUrl);
     }
 
@@ -152,6 +163,15 @@ public class ProviderConfigurationTests
         var settings = new HuggingFaceSettings();
         Assert.Equal(string.Empty, settings.ApiKey);
         Assert.Equal("dslim/bert-base-NER", settings.NerModel);
+    }
+
+    [Fact]
+    public void VoyageSettings_Defaults_AreCorrect()
+    {
+        var settings = new VoyageSettings();
+        Assert.Equal(string.Empty, settings.ApiKey);
+        Assert.Equal("https://api.voyageai.com/v1", settings.Endpoint);
+        Assert.Equal("voyage-finance-2", settings.Model);
     }
 
     // ──────────────────────────────────────────

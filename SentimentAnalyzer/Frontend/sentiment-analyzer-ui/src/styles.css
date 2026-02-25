@@ -18,8 +18,8 @@
     --border-primary: rgba(255, 255, 255, 0.1);
     --border-secondary: rgba(255, 255, 255, 0.06);
     --text-primary: #f1f5f9;
-    --text-secondary: #94a3b8;
-    --text-muted: #64748b;
+    --text-secondary: #b4c4d8;
+    --text-muted: #9fb0ca;
     --accent-primary: #6366f1;
     --accent-secondary: #22d3ee;
     --accent-glow: rgba(99, 102, 241, 0.15);
@@ -37,8 +37,8 @@
     --border-primary: rgba(255, 255, 255, 0.15);
     --border-secondary: rgba(255, 255, 255, 0.08);
     --text-primary: #f1f5f9;
-    --text-secondary: #cbd5e1;
-    --text-muted: #94a3b8;
+    --text-secondary: #d1dae6;
+    --text-muted: #b4c3d5;
     --accent-primary: #818cf8;
     --accent-secondary: #67e8f9;
     --accent-glow: rgba(129, 140, 248, 0.2);
@@ -56,8 +56,8 @@
     --border-primary: rgba(0, 0, 0, 0.1);
     --border-secondary: rgba(0, 0, 0, 0.05);
     --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #94a3b8;
+    --text-secondary: #3e4c5e;
+    --text-muted: #546375;
     --accent-primary: #4f46e5;
     --accent-secondary: #0891b2;
     --accent-glow: rgba(79, 70, 229, 0.1);
@@ -231,3 +231,11 @@ body {
 /* Accessibility */
 *:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 ::selection { background: var(--accent-primary); color: white; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

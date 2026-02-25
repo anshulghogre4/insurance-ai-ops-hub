@@ -194,3 +194,15 @@ When providing screen designs or reviews, always include:
 9. **Priority** (must-have for MVP vs. enhancement)
 
 Keep specifications actionable - the Developer agent should be able to implement directly from your spec without ambiguity.
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **ui-ux-pro-max**: Applies advanced UI/UX design principles including insurance-specific patterns, accessibility, and emotional design
+- **webapp-testing**: Validates web application visual consistency, responsive behavior, and interaction patterns across viewports
+- **dashboard-creator**: Designs data-rich dashboards with chart selection, layout grids, and metric card hierarchies for insurance analytics
+- **d3-visualization**: Specifies D3-based and Chart.js visualizations for sentiment trends, risk distributions, and fraud heatmaps
+- **theme-factory**: Designs and maintains the multi-theme system (light/dark/semi-dark) with CSS custom properties and Tailwind utilities
+- **requesting-code-review**: Requests Developer and QA agents to validate screen implementations against design specifications
+
+## Sprint 4 Week 3 Contributions
+- Reviewed CX response tone/empathy, validated escalation detection UX

@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { of, throwError } from 'rxjs';
@@ -31,25 +31,25 @@ describe('SentimentAnalyzer', () => {
   });
 
   it('should initialize with empty values', () => {
-    expect(component.inputText).toBe('');
-    expect(component.isLoading).toBe(false);
-    expect(component.result).toBeNull();
-    expect(component.error).toBeNull();
+    expect(component.inputText()).toBe('');
+    expect(component.isLoading()).toBe(false);
+    expect(component.result()).toBeNull();
+    expect(component.error()).toBeNull();
   });
 
   it('should show error when analyzing empty text', () => {
-    component.inputText = '';
+    component.inputText.set('');
     component.analyzeSentiment();
 
-    expect(component.error).toBe('Please enter some text to analyze');
+    expect(component.error()).toBe('Please enter some text to analyze');
     expect(mockSentimentService.analyzeSentiment).not.toHaveBeenCalled();
   });
 
   it('should show error when analyzing whitespace text', () => {
-    component.inputText = '   ';
+    component.inputText.set('   ');
     component.analyzeSentiment();
 
-    expect(component.error).toBe('Please enter some text to analyze');
+    expect(component.error()).toBe('Please enter some text to analyze');
     expect(mockSentimentService.analyzeSentiment).not.toHaveBeenCalled();
   });
 
@@ -62,13 +62,13 @@ describe('SentimentAnalyzer', () => {
     };
 
     mockSentimentService.analyzeSentiment.mockReturnValue(of(mockResponse));
-    component.inputText = 'I love this!';
+    component.inputText.set('I love this!');
     component.analyzeSentiment();
 
     expect(mockSentimentService.analyzeSentiment).toHaveBeenCalledWith('I love this!');
-    expect(component.result).toEqual(mockResponse);
-    expect(component.error).toBeNull();
-    expect(component.isLoading).toBe(false);
+    expect(component.result()).toEqual(mockResponse);
+    expect(component.error()).toBeNull();
+    expect(component.isLoading()).toBe(false);
   });
 
   it('should handle service error', () => {
@@ -76,33 +76,33 @@ describe('SentimentAnalyzer', () => {
       throwError(() => new Error('Service error'))
     );
 
-    component.inputText = 'Test text';
+    component.inputText.set('Test text');
     component.analyzeSentiment();
 
-    expect(component.error).toBe('Error analyzing sentiment. Please try again.');
-    expect(component.result).toBeNull();
-    expect(component.isLoading).toBe(false);
+    expect(component.error()).toBe('Error analyzing sentiment. Please try again.');
+    expect(component.result()).toBeNull();
+    expect(component.isLoading()).toBe(false);
   });
 
   it('should clear all data', () => {
-    component.inputText = 'Test';
-    component.result = {
+    component.inputText.set('Test');
+    component.result.set({
       sentiment: 'Positive',
       confidenceScore: 0.9,
       explanation: 'Test',
       emotionBreakdown: {}
-    };
-    component.error = 'Error';
+    });
+    component.error.set('Error');
 
     component.clearAll();
 
-    expect(component.inputText).toBe('');
-    expect(component.result).toBeNull();
-    expect(component.error).toBeNull();
+    expect(component.inputText()).toBe('');
+    expect(component.result()).toBeNull();
+    expect(component.error()).toBeNull();
   });
 
   it('should return sorted emotion entries', () => {
-    component.result = {
+    component.result.set({
       sentiment: 'Positive',
       confidenceScore: 0.9,
       explanation: 'Test',
@@ -111,7 +111,7 @@ describe('SentimentAnalyzer', () => {
         excitement: 0.9,
         satisfaction: 0.7
       }
-    };
+    });
 
     const entries = component.getEmotionEntries();
 
@@ -123,18 +123,18 @@ describe('SentimentAnalyzer', () => {
   });
 
   it('should return empty array when no emotions', () => {
-    component.result = null;
+    component.result.set(null);
     expect(component.getEmotionEntries()).toEqual([]);
   });
 
   it('should return correct sentiment class', () => {
-    component.result = { sentiment: 'Positive', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} };
+    component.result.set({ sentiment: 'Positive', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
     expect(component.getSentimentClass()).toBe('positive');
 
-    component.result = { sentiment: 'Negative', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} };
+    component.result.set({ sentiment: 'Negative', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
     expect(component.getSentimentClass()).toBe('negative');
 
-    component.result = { sentiment: 'Neutral', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} };
+    component.result.set({ sentiment: 'Neutral', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
     expect(component.getSentimentClass()).toBe('neutral');
   });
 });

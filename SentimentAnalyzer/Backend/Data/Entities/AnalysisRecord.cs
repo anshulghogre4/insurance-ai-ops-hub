@@ -10,8 +10,8 @@ public class AnalysisRecord
     [Key]
     public int Id { get; set; }
 
-    /// <summary>Original customer text (truncated to 2000 chars for storage).</summary>
-    [MaxLength(2000)]
+    /// <summary>Original customer text (PII-redacted, truncated to 10000 chars for storage).</summary>
+    [MaxLength(10000)]
     public string InputText { get; set; } = string.Empty;
 
     [MaxLength(20)]
@@ -26,7 +26,7 @@ public class AnalysisRecord
 
     public double ConfidenceScore { get; set; }
 
-    [MaxLength(1000)]
+    [MaxLength(5000)]
     public string Explanation { get; set; } = string.Empty;
 
     // Insurance-specific fields
@@ -52,7 +52,7 @@ public class AnalysisRecord
     public string KeyTopics { get; set; } = string.Empty;
 
     /// <summary>JSON-serialized policy recommendations.</summary>
-    [MaxLength(2000)]
+    [MaxLength(5000)]
     public string PolicyRecommendationsJson { get; set; } = "[]";
 
     /// <summary>JSON-serialized emotion breakdown.</summary>

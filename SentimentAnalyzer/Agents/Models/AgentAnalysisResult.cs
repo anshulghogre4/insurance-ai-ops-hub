@@ -43,6 +43,16 @@ public class AgentAnalysisResult
     /// <summary>Quality validation metadata from QA agent.</summary>
     [JsonPropertyName("quality")]
     public QualityMetadata? Quality { get; set; }
+
+    // --- Claims/Fraud v3 fields ---
+
+    /// <summary>Claims triage output from the ClaimsTriage agent (populated for ClaimsTriage profile).</summary>
+    [JsonPropertyName("claimTriage")]
+    public ClaimTriageDetail? ClaimTriage { get; set; }
+
+    /// <summary>Fraud analysis output from the FraudDetection agent (populated for FraudScoring profile).</summary>
+    [JsonPropertyName("fraudAnalysis")]
+    public FraudAnalysisDetail? FraudAnalysis { get; set; }
 }
 
 /// <summary>
@@ -167,7 +177,9 @@ public class FlexibleIntJsonConverter : JsonConverter<int>
 
     private static int NormalizeToInt100(double value)
     {
-        if (value > 0.0 && value < 1.0)
+        // LLMs may output 0-1 scale (e.g., 0.85) or 0-100 scale (e.g., 85).
+        // Treat values > 0 and <= 1.0 as normalized 0-1 range (1.0 = 100%).
+        if (value > 0.0 && value <= 1.0)
             return (int)Math.Round(value * 100);
         return (int)Math.Round(Math.Clamp(value, 0, 100));
     }

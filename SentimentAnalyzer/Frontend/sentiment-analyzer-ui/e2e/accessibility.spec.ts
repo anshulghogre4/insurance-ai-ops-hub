@@ -52,6 +52,52 @@ test.describe('Accessibility (WCAG AA)', () => {
     expect(results.violations).toEqual([]);
   });
 
+  test('claims triage page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/claims/triage');
+    await page.waitForLoadState('networkidle');
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('claims history page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/claims/history');
+    await page.waitForLoadState('networkidle');
+    // Wait for the table or empty state to render after API response
+    await expect(page.locator('h1').filter({ hasText: 'Claims History' })).toBeVisible({ timeout: 10_000 });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('fraud alerts page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/dashboard/fraud');
+    await page.waitForLoadState('networkidle');
+    // Wait for fraud alerts content to render after API response
+    await expect(page.locator('h1').filter({ hasText: 'Fraud Alerts' })).toBeVisible({ timeout: 10_000 });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('provider health page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/dashboard/providers');
+    await page.waitForLoadState('networkidle');
+    // Wait for provider health content to render after API response
+    await expect(page.locator('h1').filter({ hasText: 'AI Provider Health' })).toBeVisible({ timeout: 10_000 });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
   test('insurance results should have no accessibility violations', async ({ page }) => {
     await page.goto('/insurance');
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
@@ -66,9 +112,10 @@ test.describe('Accessibility (WCAG AA)', () => {
   });
 
   test('all pages should have proper heading hierarchy', async ({ page }) => {
-    const pages = ['/', '/insurance', '/dashboard', '/login'];
+    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers'];
     for (const path of pages) {
       await page.goto(path);
+      await page.waitForLoadState('networkidle');
       const h1 = page.locator('h1');
       await expect(h1).toBeVisible();
     }
@@ -121,7 +168,7 @@ test.describe('Accessibility Audit - Color Contrast (informational)', () => {
   });
 
   test('audit color contrast issues across all pages', async ({ page }) => {
-    const pages = ['/', '/insurance', '/dashboard', '/login'];
+    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers'];
     const allViolations: string[] = [];
 
     for (const path of pages) {

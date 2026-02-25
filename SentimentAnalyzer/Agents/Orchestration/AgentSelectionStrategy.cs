@@ -16,6 +16,9 @@ public class AgentSelectionStrategy : SelectionStrategy
     [
         AgentDefinitions.CTOAgentName,
         AgentDefinitions.BAAgentName,
+        AgentDefinitions.ClaimsTriageAgentName,
+        AgentDefinitions.FraudDetectionAgentName,
+        AgentDefinitions.CustomerExperienceAgentName,
         AgentDefinitions.DeveloperAgentName,
         AgentDefinitions.QAAgentName,
         AgentDefinitions.AIExpertAgentName,

@@ -61,3 +61,12 @@ Output your triage assessment as JSON:
 - Recommend field adjuster for ALL claims over $10K estimated loss
 - Include specific documentation requests based on claim type
 - Output ONLY the raw JSON object — NO markdown code fences
+
+## Skills
+This agent adopts the following skills from `.claude/skills/`:
+- **systematic-debugging**: Traces claim inconsistencies through damage descriptions, timelines, and documentation to identify assessment gaps
+- **verification-before-completion**: Validates all triage fields (severity, urgency, actions) are complete and internally consistent before output
+- **feature-planning**: Contributes claim workflow requirements and triage automation features to sprint planning
+
+## Sprint 4 Week 3 Contributions
+- Contributed context injection for related claims in triage pipeline

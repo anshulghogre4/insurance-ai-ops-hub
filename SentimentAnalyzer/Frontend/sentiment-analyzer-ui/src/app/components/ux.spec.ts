@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { FormsModule } from '@angular/forms';
@@ -282,7 +282,7 @@ describe('UX: Dashboard - Loading & Empty States', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [DashboardComponent, HttpClientTestingModule],
+      imports: [DashboardComponent, HttpClientTestingModule, RouterTestingModule],
       providers: [
         {
           provide: InsuranceService,

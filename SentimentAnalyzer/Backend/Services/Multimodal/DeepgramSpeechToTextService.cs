@@ -49,7 +49,8 @@ public class DeepgramSpeechToTextService : ISpeechToTextService
 
         try
         {
-            var requestUrl = $"{_settings.Endpoint}/listen?model={_settings.Model}&smart_format=true&punctuate=true";
+            // mip_opt_out=true prevents Deepgram from using audio data for model training
+            var requestUrl = $"{_settings.Endpoint}/listen?model={_settings.Model}&smart_format=true&punctuate=true&mip_opt_out=true";
 
             using var request = new HttpRequestMessage(HttpMethod.Post, requestUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Token", _settings.ApiKey);

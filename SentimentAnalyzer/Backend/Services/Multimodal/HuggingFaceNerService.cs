@@ -20,7 +20,7 @@ public class HuggingFaceNerService : IEntityExtractionService
     private readonly HttpClient _httpClient;
     private readonly HuggingFaceSettings _settings;
     private readonly ILogger<HuggingFaceNerService> _logger;
-    private static readonly string _baseUrl = "https://api-inference.huggingface.co/models";
+    private static readonly string _baseUrl = "https://router.huggingface.co/hf-inference/models";
 
     public HuggingFaceNerService(
         HttpClient httpClient,
