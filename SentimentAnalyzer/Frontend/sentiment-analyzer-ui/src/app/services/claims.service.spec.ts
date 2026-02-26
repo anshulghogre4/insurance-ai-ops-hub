@@ -112,7 +112,7 @@ describe('ClaimsService', () => {
       expect(res.damageIndicators.length).toBe(3);
     });
 
-    const req = httpMock.expectOne('http://localhost:5143/api/insurance/claims/upload');
+    const req = httpMock.expectOne('http://localhost:5143/api/insurance/claims/upload?claimId=42');
     expect(req.request.method).toBe('POST');
     expect(req.request.body instanceof FormData).toBe(true);
     req.flush(mockEvidenceResponse);

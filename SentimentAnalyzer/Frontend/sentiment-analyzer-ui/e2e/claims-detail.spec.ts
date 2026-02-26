@@ -30,7 +30,7 @@ test.describe('Claim Detail Page', () => {
     await expect(page.getByText('Triage Assessment')).toBeVisible({ timeout: 10_000 });
 
     await expect(page.getByText('Fraud Risk Score')).toBeVisible();
-    await expect(page.getByText('42').first()).toBeVisible();
+    await expect(page.getByText('48').first()).toBeVisible();
     await expect(page.getByText('/100')).toBeVisible();
     await expect(page.getByText('Low Risk')).toBeVisible();
     await expect(page.getByText('High Risk')).toBeVisible();

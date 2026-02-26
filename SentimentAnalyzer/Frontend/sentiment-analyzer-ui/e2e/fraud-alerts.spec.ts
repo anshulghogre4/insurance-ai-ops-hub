@@ -18,12 +18,12 @@ test.describe('Fraud Alerts', () => {
     await expect(page.getByText('Claim #202')).toBeVisible();
 
     // Fraud scores should be visible
-    await expect(page.getByText('82').first()).toBeVisible();
-    await expect(page.getByText('65').first()).toBeVisible();
+    await expect(page.getByText('92').first()).toBeVisible();
+    await expect(page.getByText('72').first()).toBeVisible();
   });
 
   test('should show SIU Referral indicator for high fraud score', async ({ page }) => {
-    // Claim 201 has fraudScore 82 (>= 75), so SIU Referral should be visible
+    // Claim 201 has fraudScore 92 (>= 75), so SIU Referral should be visible
     await expect(page.getByText('Claim #201')).toBeVisible({ timeout: 10_000 });
     // Use exact match to avoid also matching "SIU Referrals" in summary stats
     await expect(page.getByText('SIU Referral', { exact: true })).toBeVisible();
@@ -38,15 +38,15 @@ test.describe('Fraud Alerts', () => {
     await expect(page.getByText('Avg Score')).toBeVisible();
     await expect(page.getByText('SIU Referrals')).toBeVisible();
 
-    // Count values: 0 critical (none >= 85), 1 high (65 >= 55 && < 75), avg 74
+    // Count values: 1 critical (92 >= 85), 1 high (72 >= 55 && < 75), avg 82
     const criticalStat = page.locator('.glass-card-static').filter({ hasText: 'Critical Risk' });
-    await expect(criticalStat.locator('.text-2xl')).toContainText('0');
+    await expect(criticalStat.locator('.text-2xl')).toContainText('1');
 
     const highStat = page.locator('.glass-card-static').filter({ hasText: 'High Risk' });
     await expect(highStat.locator('.text-2xl')).toContainText('1');
 
     const avgStat = page.locator('.glass-card-static').filter({ hasText: 'Avg Score' });
-    await expect(avgStat.locator('.text-2xl')).toContainText('74');
+    await expect(avgStat.locator('.text-2xl')).toContainText('82');
   });
 
   test('should show empty state when no fraud alerts', async ({ page }) => {

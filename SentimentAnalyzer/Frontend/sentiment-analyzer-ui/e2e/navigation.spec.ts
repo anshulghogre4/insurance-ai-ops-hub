@@ -47,8 +47,9 @@ test.describe('Navigation', () => {
   test('should highlight active nav link', async ({ page }) => {
     skipOnMobile(page);
     await page.goto('/insurance');
-    const activeLink = page.locator('a[href="/insurance"].nav-link-active');
-    await expect(activeLink).toBeVisible();
+    // /insurance is under the Analyze dropdown; the dropdown button gets nav-link-active
+    const activeButton = page.locator('.hidden.md\\:flex >> button.nav-link-active:has-text("Analyze")');
+    await expect(activeButton).toBeVisible();
   });
 
   test('should show logo that links to home', async ({ page }) => {
@@ -67,10 +68,11 @@ test.describe('Navigation', () => {
   test('should show all nav links when auth is disabled', async ({ page }) => {
     skipOnMobile(page);
     await page.goto('/');
-    await expect(page.locator('text=Sentiment v1')).toBeVisible();
-    await expect(page.getByText('Insurance').first()).toBeVisible();
-    await expect(page.getByText('Claims').first()).toBeVisible();
-    await expect(page.getByText('Dashboard').first()).toBeVisible();
+    // Nav uses dropdown buttons: Analyze, Claims, Workspace, Dashboard
+    await expect(page.locator('.hidden.md\\:flex >> button:has-text("Analyze")')).toBeVisible();
+    await expect(page.locator('.hidden.md\\:flex >> button:has-text("Claims")')).toBeVisible();
+    await expect(page.locator('.hidden.md\\:flex >> button:has-text("Workspace")')).toBeVisible();
+    await expect(page.locator('.hidden.md\\:flex >> button:has-text("Dashboard")')).toBeVisible();
   });
 
   test('should navigate to claims triage via dropdown menu', async ({ page }) => {

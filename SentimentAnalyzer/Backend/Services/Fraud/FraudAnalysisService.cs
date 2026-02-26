@@ -40,9 +40,19 @@ public class FraudAnalysisService : IFraudAnalysisService
             throw new KeyNotFoundException($"Claim {claimId} not found");
         }
 
+        // Build evidence context from multimodal evidence (image descriptions, audio transcripts, OCR text)
+        var analysisText = claim.ClaimText;
+        if (claim.Evidence?.Count > 0)
+        {
+            var evidenceContext = string.Join("\n", claim.Evidence.Select(e =>
+                $"[{e.EvidenceType.ToUpperInvariant()} EVIDENCE via {e.Provider}]: {e.ProcessedText}"));
+            analysisText = $"{claim.ClaimText}\n\n--- ATTACHED EVIDENCE ---\n{evidenceContext}";
+            _logger.LogInformation("Fraud analysis for claim {ClaimId} includes {Count} evidence items", claimId, claim.Evidence.Count);
+        }
+
         // Run the FraudScoring orchestration profile
         var agentResult = await _orchestrator.AnalyzeAsync(
-            claim.ClaimText, OrchestrationProfile.FraudScoring, InteractionType.Complaint);
+            analysisText, OrchestrationProfile.FraudScoring, InteractionType.Complaint);
 
         var fraud = agentResult.FraudAnalysis;
 

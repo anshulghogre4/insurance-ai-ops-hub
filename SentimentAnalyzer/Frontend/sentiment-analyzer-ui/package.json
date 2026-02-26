@@ -7,10 +7,11 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "e2e": "npx playwright test",
+    "e2e": "npx playwright test && npm run e2e:cleanup",
     "e2e:headed": "npx playwright test --headed",
     "e2e:ui": "npx playwright test --ui",
-    "e2e:report": "npx playwright show-report e2e/report"
+    "e2e:report": "npx playwright show-report e2e/report",
+    "e2e:cleanup": "node -e \"const fs=require('fs');['e2e/test-results','e2e/report'].forEach(d=>{if(fs.existsSync(d)){fs.rmSync(d,{recursive:true,force:true});console.log('Cleaned',d)}})\""
   },
   "prettier": {
     "printWidth": 100,

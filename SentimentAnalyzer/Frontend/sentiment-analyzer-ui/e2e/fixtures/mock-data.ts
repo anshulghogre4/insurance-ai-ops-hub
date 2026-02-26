@@ -143,7 +143,7 @@ export const MOCK_CLAIM_TRIAGE_RESPONSE = {
   severity: 'High',
   urgency: 'Immediate',
   claimType: 'Water Damage',
-  fraudScore: 42,
+  fraudScore: 48,
   fraudRiskLevel: 'Medium',
   estimatedLossRange: '$5,000 - $15,000',
   recommendedActions: [
@@ -159,7 +159,7 @@ export const MOCK_CLAIM_TRIAGE_RESPONSE = {
 
 export const MOCK_CLAIMS_HISTORY_RESPONSE = {
   items: [
-    { claimId: 101, severity: 'High', urgency: 'Immediate', claimType: 'Water Damage', fraudScore: 42, fraudRiskLevel: 'Medium', estimatedLossRange: '$5K-$15K', recommendedActions: [], fraudFlags: [], evidence: [], status: 'Triaged', createdAt: '2026-02-24T10:00:00Z' },
+    { claimId: 101, severity: 'High', urgency: 'Immediate', claimType: 'Water Damage', fraudScore: 48, fraudRiskLevel: 'Medium', estimatedLossRange: '$5K-$15K', recommendedActions: [], fraudFlags: [], evidence: [], status: 'Triaged', createdAt: '2026-02-24T10:00:00Z' },
     { claimId: 102, severity: 'Low', urgency: 'Standard', claimType: 'Auto Scratch', fraudScore: 12, fraudRiskLevel: 'Low', estimatedLossRange: '$500-$1,500', recommendedActions: [], fraudFlags: [], evidence: [], status: 'Resolved', createdAt: '2026-02-23T14:00:00Z' },
     { claimId: 103, severity: 'Critical', urgency: 'Emergency', claimType: 'Structure Fire', fraudScore: 78, fraudRiskLevel: 'High', estimatedLossRange: '$50K-$200K', recommendedActions: [], fraudFlags: ['Timing anomaly', 'Financial motive'], evidence: [], status: 'UnderReview', createdAt: '2026-02-22T08:00:00Z' }
   ],
@@ -167,8 +167,8 @@ export const MOCK_CLAIMS_HISTORY_RESPONSE = {
 };
 
 export const MOCK_FRAUD_ALERTS_RESPONSE = [
-  { claimId: 201, severity: 'Critical', urgency: 'Emergency', claimType: 'Structure Fire', fraudScore: 82, fraudRiskLevel: 'VeryHigh', estimatedLossRange: '$100K-$500K', recommendedActions: [{ action: 'Refer to SIU', priority: 'Critical', reasoning: 'Multiple fraud indicators' }], fraudFlags: ['Timing anomaly', 'Financial motive', 'Inconsistent documentation'], evidence: [], status: 'UnderReview', createdAt: '2026-02-24T08:00:00Z' },
-  { claimId: 202, severity: 'High', urgency: 'Priority', claimType: 'Theft', fraudScore: 65, fraudRiskLevel: 'High', estimatedLossRange: '$10K-$25K', recommendedActions: [], fraudFlags: ['Pattern match with known fraud ring'], evidence: [], status: 'UnderReview', createdAt: '2026-02-23T14:00:00Z' }
+  { claimId: 201, severity: 'Critical', urgency: 'Emergency', claimType: 'Structure Fire', fraudScore: 92, fraudRiskLevel: 'VeryHigh', estimatedLossRange: '$100K-$500K', recommendedActions: [{ action: 'Refer to SIU', priority: 'Critical', reasoning: 'Multiple fraud indicators' }], fraudFlags: ['Timing anomaly', 'Financial motive', 'Inconsistent documentation'], evidence: [], status: 'UnderReview', createdAt: '2026-02-24T08:00:00Z' },
+  { claimId: 202, severity: 'High', urgency: 'Priority', claimType: 'Theft', fraudScore: 72, fraudRiskLevel: 'High', estimatedLossRange: '$10K-$25K', recommendedActions: [], fraudFlags: ['Pattern match with known fraud ring'], evidence: [], status: 'UnderReview', createdAt: '2026-02-23T14:00:00Z' }
 ];
 
 export const MOCK_PROVIDER_HEALTH_RESPONSE = {

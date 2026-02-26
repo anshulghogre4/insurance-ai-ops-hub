@@ -56,7 +56,7 @@ test.describe('Claims Triage', () => {
 
     // Fraud Risk Score gauge
     await expect(page.getByText('Fraud Risk Score')).toBeVisible();
-    await expect(page.getByText('42').first()).toBeVisible();
+    await expect(page.getByText('48').first()).toBeVisible();
     await expect(page.getByText('Medium').first()).toBeVisible();
 
     // Recommended actions

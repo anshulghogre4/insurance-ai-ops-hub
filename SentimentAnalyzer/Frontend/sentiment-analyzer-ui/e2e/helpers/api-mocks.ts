@@ -89,7 +89,7 @@ export async function mockAllApis(page: Page): Promise<void> {
   });
 
   // Claims upload endpoint
-  await page.route('**/api/insurance/claims/upload', (route) => {
+  await page.route('**/api/insurance/claims/upload*', (route) => {
     if (route.request().method() === 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EVIDENCE_RESPONSE) });
     }

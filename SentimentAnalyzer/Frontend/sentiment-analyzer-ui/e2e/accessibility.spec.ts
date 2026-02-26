@@ -101,7 +101,7 @@ test.describe('Accessibility (WCAG AA)', () => {
   test('insurance results should have no accessibility violations', async ({ page }) => {
     await page.goto('/insurance');
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
 
     const results = await new AxeBuilder({ page })
@@ -140,7 +140,7 @@ test.describe('Accessibility (WCAG AA)', () => {
   test('progress bars should have proper ARIA attributes', async ({ page }) => {
     await page.goto('/insurance');
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
 
     const progressBars = page.locator('[role="progressbar"]');

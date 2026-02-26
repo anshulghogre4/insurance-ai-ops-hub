@@ -443,34 +443,35 @@ Angular 21 SPA (Port 4200) — unchanged
 | 5.3 | Claims Workflow Revamp | Redesign claims triage, history, detail, and fraud alerts with modern insurance UX patterns |
 | 5.4 | Dashboard Revamp | Redesign dashboard with improved data visualization, provider health, and KPI cards |
 | 5.5 | Design System Extraction | Extract consistent design tokens (colors, spacing, typography) from Stitch outputs |
+| 5.6 | Evidence-Aware Fraud Analysis | Feed multimodal evidence context (image descriptions, OCR text, damage indicators) into fraud analysis agent prompt so it can cross-reference evidence against claim narrative |
 
 ### Week 2: MCP Ecosystem Expansion
 
 | # | Item | Deliverable |
 |---|------|-------------|
-| 5.6 | Supabase MCP | Direct database schema management, query testing, migration validation |
-| 5.7 | GitHub MCP | PR management, automated code review, issue tracking integration |
-| 5.8 | Context7 MCP | Up-to-date docs for .NET 10, Angular 21, Semantic Kernel, Playwright |
-| 5.9 | Sequential Thinking MCP | Structured reasoning for multi-agent architecture decisions |
-| 5.10 | Sentry MCP | Production error tracking across 5 LLM providers and 5 multimodal services |
+| 5.7 | Supabase MCP | Direct database schema management, query testing, migration validation |
+| 5.8 | GitHub MCP | PR management, automated code review, issue tracking integration |
+| 5.9 | Context7 MCP | Up-to-date docs for .NET 10, Angular 21, Semantic Kernel, Playwright |
+| 5.10 | Sequential Thinking MCP | Structured reasoning for multi-agent architecture decisions |
+| 5.11 | Sentry MCP | Production error tracking across 5 LLM providers and 5 multimodal services |
 
 ### Week 3: Observability + Security
 
 | # | Item | Deliverable |
 |---|------|-------------|
-| 5.11 | Grafana Dashboards | Provider health monitoring, agent orchestration metrics, rate limit tracking |
-| 5.12 | Snyk Security Scanning | Dependency vulnerability scanning for .NET + npm packages |
-| 5.13 | Docker Containerization | Multi-stage Dockerfiles for backend + frontend + Ollama sidecar |
-| 5.14 | Upstash Redis Caching | Cache identical analyses, per-endpoint rate limiting (from v4.0 design) |
+| 5.12 | Grafana Dashboards | Provider health monitoring, agent orchestration metrics, rate limit tracking |
+| 5.13 | Snyk Security Scanning | Dependency vulnerability scanning for .NET + npm packages |
+| 5.14 | Docker Containerization | Multi-stage Dockerfiles for backend + frontend + Ollama sidecar |
+| 5.15 | Upstash Redis Caching | Cache identical analyses, per-endpoint rate limiting (from v4.0 design) |
 
 ### Week 4: Polish + Testing + Documentation
 
 | # | Item | Deliverable |
 |---|------|-------------|
-| 5.15 | Playwright MCP Test Generation | Auto-generate E2E specs from browser sessions for new UI |
-| 5.16 | Accessibility Audit | Full WCAG AA re-audit on revamped UI with axe-core |
-| 5.17 | Performance Optimization | Lighthouse audits, bundle size analysis, lazy loading |
-| 5.18 | Documentation | Updated all MD files, API docs, architecture diagrams |
+| 5.16 | Playwright MCP Test Generation | Auto-generate E2E specs from browser sessions for new UI |
+| 5.17 | Accessibility Audit | Full WCAG AA re-audit on revamped UI with axe-core |
+| 5.18 | Performance Optimization | Lighthouse audits, bundle size analysis, lazy loading |
+| 5.19 | Documentation | Updated all MD files, API docs, architecture diagrams |
 
 ### MCP Server Stack (Sprint 5)
 

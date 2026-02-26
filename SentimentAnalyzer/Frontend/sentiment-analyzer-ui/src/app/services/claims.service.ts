@@ -27,8 +27,7 @@ export class ClaimsService {
   uploadEvidence(claimId: number, file: File): Observable<ClaimEvidenceResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('claimId', claimId.toString());
-    return this.http.post<ClaimEvidenceResponse>(`${this.apiUrl}/claims/upload`, formData);
+    return this.http.post<ClaimEvidenceResponse>(`${this.apiUrl}/claims/upload?claimId=${claimId}`, formData);
   }
 
   /** Retrieve a triaged claim by its ID. */

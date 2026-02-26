@@ -47,7 +47,7 @@ test.describe('Claims History', () => {
     await expect(table).toBeVisible({ timeout: 10_000 });
 
     // Fraud scores
-    await expect(page.getByText('42').first()).toBeVisible();
+    await expect(page.getByText('48').first()).toBeVisible();
     await expect(page.getByText('12').first()).toBeVisible();
     await expect(page.getByText('78').first()).toBeVisible();
   });

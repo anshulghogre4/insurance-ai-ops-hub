@@ -49,7 +49,7 @@ test.describe('Insurance Analyzer (v2)', () => {
 
   test('should analyze insurance text and show all result cards', async ({ page }) => {
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
 
     // Wait for results to appear
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
@@ -89,7 +89,7 @@ test.describe('Insurance Analyzer (v2)', () => {
 
   test('should show action buttons after results', async ({ page }) => {
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
 
     await expect(page.getByText('Analyze Another')).toBeVisible();
@@ -98,7 +98,7 @@ test.describe('Insurance Analyzer (v2)', () => {
 
   test('should clear results and scroll to input', async ({ page }) => {
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
 
     await page.getByText('Analyze Another').click();
@@ -108,7 +108,7 @@ test.describe('Insurance Analyzer (v2)', () => {
   test('should show error state on API failure', async ({ page }) => {
     await mockApiError(page, '**/api/insurance/analyze', 500);
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
 
     const errorBanner = page.locator('.border-l-rose-500');
     await expect(errorBanner).toBeVisible({ timeout: 10_000 });
@@ -129,7 +129,7 @@ test.describe('Insurance Analyzer (v2)', () => {
   test('should show error state on 429 rate limit', async ({ page }) => {
     await mockApiError(page, '**/api/insurance/analyze', 429);
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
 
     const errorBanner = page.locator('[role="alert"], .border-l-rose-500');
     await expect(errorBanner).toBeVisible({ timeout: 10_000 });
@@ -138,7 +138,7 @@ test.describe('Insurance Analyzer (v2)', () => {
   test('should show error state on 503 all providers down', async ({ page }) => {
     await mockApiError(page, '**/api/insurance/analyze', 503);
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
 
     const errorBanner = page.locator('[role="alert"], .border-l-rose-500');
     await expect(errorBanner).toBeVisible({ timeout: 10_000 });
@@ -148,7 +148,7 @@ test.describe('Insurance Analyzer (v2)', () => {
     // First request fails
     await mockApiError(page, '**/api/insurance/analyze', 500);
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible({ timeout: 10_000 });
 
     // Re-mock with success for retry
@@ -159,7 +159,7 @@ test.describe('Insurance Analyzer (v2)', () => {
 
   test('should navigate to dashboard via View Dashboard button', async ({ page }) => {
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.claimComplaint);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
 
     await page.getByText('View Dashboard').click();
@@ -173,7 +173,7 @@ test.describe('Insurance Analyzer (v2)', () => {
     await expect(select).toHaveValue('Complaint');
 
     await page.locator('textarea').fill(INSURANCE_TEST_TEXTS.billingDispute);
-    await page.getByRole('button', { name: 'Analyze' }).click();
+    await page.getByRole('main').getByRole('button', { name: 'Analyze' }).click();
     await expect(page.getByText('Overall Sentiment')).toBeVisible({ timeout: 10_000 });
   });
 });

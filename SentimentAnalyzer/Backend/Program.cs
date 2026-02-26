@@ -273,6 +273,31 @@ using (var scope = app.Services.CreateScope())
     if (dbProvider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
     {
         db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
+
+        // EnsureCreated() does NOT add new columns to existing tables.
+        // This block adds columns introduced after initial table creation (Sprint 4+).
+        var conn = db.Database.GetDbConnection();
+        conn.Open();
+        using var cmd = conn.CreateCommand();
+
+        // Helper: returns true if column exists in the given table
+        bool ColumnExists(string table, string column)
+        {
+            cmd.CommandText = $"PRAGMA table_info({table});";
+            using var reader = cmd.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), column, StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
+            return false;
+        }
+
+        // Sprint 4: EntitiesJson added to ClaimEvidence
+        if (!ColumnExists("ClaimEvidence", "EntitiesJson"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE ClaimEvidence ADD COLUMN EntitiesJson TEXT NOT NULL DEFAULT '[]';");
+        }
     }
 }
 
