@@ -29,7 +29,8 @@
       "Bash(python -c:*)",
       "Bash(node -e:*)",
       "Bash(node -p:*)",
-      "Bash(node --input-type=commonjs -e:*)"
+      "Bash(node --input-type=commonjs -e:*)",
+      "mcp__playwright__browser_navigate"
     ]
   }
 }

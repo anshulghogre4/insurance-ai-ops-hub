@@ -10,6 +10,14 @@ import {
   MOCK_PROVIDER_HEALTH_RESPONSE,
   MOCK_EVIDENCE_RESPONSE,
   MOCK_FRAUD_ANALYSIS_RESPONSE,
+  MOCK_DOCUMENT_UPLOAD_RESULT,
+  MOCK_DOCUMENT_QUERY_RESULT,
+  MOCK_DOCUMENT_DETAIL,
+  MOCK_DOCUMENT_HISTORY_RESPONSE,
+  MOCK_CX_CHAT_RESPONSE,
+  MOCK_CX_STREAM_EVENTS,
+  MOCK_CORRELATE_RESULT,
+  MOCK_CORRELATIONS_PAGINATED,
 } from '../fixtures/mock-data';
 
 /** Set up all API mock routes so e2e tests don't need a running backend. */
@@ -124,6 +132,92 @@ export async function mockAllApis(page: Page): Promise<void> {
       return route.fallback();
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CLAIM_TRIAGE_RESPONSE) });
+  });
+
+  // ===================== Document Intelligence RAG =====================
+
+  // Document upload endpoint (include query params like ?category=Policy)
+  await page.route('**/api/insurance/documents/upload*', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_UPLOAD_RESULT) });
+    }
+    return route.continue();
+  });
+
+  // Document query endpoint
+  await page.route('**/api/insurance/documents/query', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_QUERY_RESULT) });
+    }
+    return route.continue();
+  });
+
+  // Document history endpoint
+  await page.route('**/api/insurance/documents/history*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_HISTORY_RESPONSE) })
+  );
+
+  // Document by ID endpoint (must be after upload/query/history)
+  await page.route('**/api/insurance/documents/*', (route) => {
+    const url = route.request().url();
+    if (url.includes('/upload') || url.includes('/query') || url.includes('/history')) {
+      return route.fallback();
+    }
+    if (route.request().method() === 'DELETE') {
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_DETAIL) });
+  });
+
+  // ===================== Customer Experience Copilot =====================
+
+  // CX chat endpoint
+  await page.route('**/api/insurance/cx/chat', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CX_CHAT_RESPONSE) });
+    }
+    return route.continue();
+  });
+
+  // CX stream endpoint (SSE)
+  await page.route('**/api/insurance/cx/stream', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({
+        status: 200,
+        headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
+        body: MOCK_CX_STREAM_EVENTS
+      });
+    }
+    return route.continue();
+  });
+
+  // ===================== Fraud Correlation =====================
+
+  // Fraud correlate endpoint
+  await page.route('**/api/insurance/fraud/correlate', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CORRELATE_RESULT) });
+    }
+    return route.continue();
+  });
+
+  // Fraud correlations by claimId (GET + DELETE)
+  await page.route('**/api/insurance/fraud/correlations/*/review', (route) => {
+    if (route.request().method() === 'PATCH') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: 1001, status: 'Confirmed', message: 'Correlation reviewed successfully' }) });
+    }
+    return route.continue();
+  });
+
+  await page.route('**/api/insurance/fraud/correlations/*', (route) => {
+    const url = route.request().url();
+    if (url.includes('/review')) {
+      return route.fallback();
+    }
+    if (route.request().method() === 'DELETE') {
+      return route.fulfill({ status: 204 });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CORRELATIONS_PAGINATED) });
   });
 }
 

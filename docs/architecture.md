@@ -86,6 +86,62 @@ Claude Code CLI
 | Upstash | Caching | Redis rate limiting + analysis caching |
 | Tavily | Research | Insurance domain research |
 
+## Sprint 4 Week 4 Frontend Architecture
+
+### Document Intelligence RAG Frontend Flow
+```
+User uploads document (document-upload component)
+  -> POST /api/insurance/documents/upload (FormData: file + type)
+  -> Backend: OCR (OCR.space) -> chunk (section-aware) -> embed (Voyage AI) -> store (SQLite)
+  -> Upload result displayed (document-result component)
+
+User queries document (document-query component)
+  -> POST /api/insurance/documents/query { query, documentId? }
+  -> Backend: embed query -> vector search top-5 chunks -> LLM answer with citations
+  -> Answer + source citations rendered inline
+```
+
+### SSE Streaming Pattern (CX Copilot)
+The CX Copilot component uses raw `fetch()` + `ReadableStream` for POST-based SSE, because Angular's `HttpClient` does not support streaming responses from POST requests.
+
+```typescript
+// Pattern: POST-based SSE with ReadableStream (not EventSource, which is GET-only)
+const response = await fetch('/api/insurance/cx/stream', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message, sessionId })
+});
+const reader = response.body!.getReader();
+const decoder = new TextDecoder();
+// Read SSE chunks: "data: {json}\n\n" format
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+  // Parse SSE lines, update Angular Signal for reactive UI
+}
+```
+
+Key design choices:
+- Angular Signals for real-time message state (not RxJS Subject)
+- Typing indicator shown while streaming, hidden on completion
+- Dual-pass PII redaction: input redacted before sending, output redacted by backend before streaming
+- Session ID persisted for conversation continuity
+
+### Fraud Correlation UI
+The fraud-correlation component uses a split-card design:
+- **Left panel**: Source claim summary (severity, type, fraud score)
+- **Right panel**: Correlated claims list with 4-strategy badges (DateProximity, SimilarNarrative, SharedFlags, SameSeverity)
+- **Review workflow**: Each correlation has Pending/Confirmed/Dismissed status with PATCH action buttons
+- **Confidence gauge**: Horizontal bar showing correlation confidence (0-100) with color zones
+
+### Angular Application Totals (v4.0)
+- **Components**: 18 (was 13 after Sprint 3)
+- **Routes**: 15 (was 10 after Sprint 3)
+- **Services**: claims, document, customer-experience, fraud-correlation, sentiment, insurance, auth, theme
+- **Model files**: claims.model.ts, document.model.ts
+
+---
+
 ## Agent Orchestration Flows
 
 ### Default Sentiment Analysis Flow
@@ -116,13 +172,17 @@ User Input -> CTO Agent (decomposes task)
 -> QA Agent (verify citations, no-hallucination check)
 ```
 
-### Customer Experience Flow (v4.0 planned)
+### Customer Experience Flow (v4.0 — Sprint 4 Week 3 COMPLETE)
 ```
--> BA Agent (domain context)
--> Developer Agent (response formatting)
--> UX Designer Agent (tone, empathy, clarity)
--> QA Agent (quality check)
--> SSE streaming to frontend
+User message -> PII redact input -> CustomerExperienceService
+  -> Orchestrator (CustomerExperience profile)
+     -> BA Agent (domain context)
+     -> Developer Agent (response formatting)
+     -> UX Designer Agent (tone, empathy, clarity)
+     -> QA Agent (quality check)
+  -> Tone classification + escalation detection (16 keywords + LLM tags)
+  -> PII redact output -> SSE streaming to frontend
+  -> CxInteractionRecord audit trail (SHA-256 message hash, never raw PII)
 ```
 
 ## Orchestration Profiles (v3.0+)
@@ -131,7 +191,7 @@ Selective agent activation reduces token usage 50-60% for specialized workflows:
 - **ClaimsTriage**: ClaimsTriage + FraudDetection + BA + QA, 8 max turns
 - **FraudScoring**: FraudDetection + ClaimsTriage + BA + QA, 8 max turns
 - **DocumentQuery**: DocumentQuery + BA + Developer + QA, 6 max turns (v4.0)
-- **CustomerExperience**: BA + Developer + UX + QA, 8 max turns (v4.0)
+- **CustomerExperience**: BA + Developer + UX + QA, 8 max turns (v4.0 — LIVE)
 
 Managed by `IOrchestrationProfileFactory` / `OrchestrationProfileFactory`.
 
@@ -146,6 +206,8 @@ Managed by `IOrchestrationProfileFactory` / `OrchestrationProfileFactory`.
 - **Claims Triage** (v3.0): Claim severity, urgency, action recommendations
 - **Fraud Detection** (v3.0): Fraud probability, indicator categorization, SIU referral
 - **Document Query** (v4.0): RAG-based Q&A, source citations, no-hallucination guardrails
+- **Customer Experience** (v4.0 Week 3): CX Copilot SSE chat, tone classification, escalation detection, regulatory disclaimers
+- **Fraud Correlation** (v4.0 Week 3): Cross-claim 4-strategy detection (DateProximity, SimilarNarrative, SharedFlags, SameSeverity), claim-type-specific windows, review workflow
 
 ## Agent Output Parsing (Critical)
 LLM agents produce non-deterministic output. The orchestrator uses resilient two-phase parsing:

@@ -321,7 +321,7 @@ Angular 21 SPA (Port 4200) — unchanged
 
 ---
 
-## Sprint 4: Document Intelligence RAG + Technical Debt (PLANNED)
+## Sprint 4: Document Intelligence RAG + Technical Debt (COMPLETE)
 
 **Goal:** Fix critical P0/P1 technical debt, then build Document Intelligence RAG foundation for insurance policy/claims document understanding, Customer Experience Copilot, and cross-claim fraud correlation.
 
@@ -352,35 +352,44 @@ Angular 21 SPA (Port 4200) — unchanged
 
 **Gate:** RAG pipeline operational (upload + query), 32+ new backend tests, Voyage AI validated.
 
-### Week 3: CX Copilot + Fraud Enhancement (SHOULD-HAVE)
+### Week 3: CX Copilot + Fraud Enhancement (COMPLETE)
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 3.1 | Customer Experience Copilot | `CustomerExperienceService` with SSE streaming, `CustomerExperience` orchestration profile, chat endpoint, 6 tests |
-| 3.2 | Cross-Claim Fraud Correlation | Pattern matching (address, phone, date overlap 90d, narrative similarity >0.92), 2+ indicators to flag, `FraudCorrelationRecord`, 8 tests |
-| 3.3 | Related Claims Context in Triage | Query related claims before triage, inject context into agent prompt |
+| # | Item | Deliverable | Status |
+|---|------|-------------|--------|
+| 3.1 | Customer Experience Copilot | `CustomerExperienceService` with SSE streaming, `CustomerExperience` orchestration profile, chat endpoint, PII dual-pass redaction (input+output), tone classification, 16-keyword escalation detection, regulatory disclaimers, `CxInteractionRecord` audit trail | DONE |
+| 3.2 | Cross-Claim Fraud Correlation | 4-strategy detection (DateProximity, SimilarNarrative, SharedFlags, SameSeverity), claim-type-specific windows (Auto 90d, Property/Liability 180d, WorkersComp 365d), review workflow (Pending/Confirmed/Dismissed), `FraudCorrelationRecord` | DONE |
+| 3.3 | Related Claims Context in Triage | Query related claims before triage, inject context into agent prompt | DONE |
 
-**Gate:** CX copilot endpoint working, fraud correlation returning results, 20+ new tests.
+**Files Created:** 12 new (CX service/interface/models/command/endpoint, fraud correlation entity/service/interface/repository/response/commands, CxInteractionRecord audit)
+**Files Modified:** 12 updated (Program.cs, DbContext, AgentDefinitions, AgentSelectionStrategy, OrchestrationProfileFactory, Orchestrator, FraudEndpoints, FraudCorrelationService, SqliteFraudCorrelationRepository, IFraudCorrelationRepository, OrchestrationProfileFactoryTests, all 10 agent .md files)
+**3-Iteration Adversarial Review:** Iteration 1: 37 issues (8 Critical, 11 High, 18 Med/Low) → Iteration 2: all Critical+High fixed → Iteration 3: Unanimous APPROVE (QA, UX, BA)
 
-### Week 4: Frontend + E2E + MCP Integration + Documentation (SHOULD-HAVE)
+**Gate:** PASSED — 461 backend + 199 frontend + 263 E2E = 923 total tests, 0 failures.
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.1 | Frontend Components (5 new) | document-upload, document-query, document-result, cx-copilot, fraud-correlation |
-| 4.2 | E2E Tests (4 new specs) | document-upload, document-query, cx-copilot, fraud-correlation (36+ tests) |
-| 4.3 | MCP Server Integration | Playwright MCP (E2E test generation from browser sessions, exploratory testing) + Stitch MCP (design-to-code pipeline for Sprint 5 UI revamp) |
-| 4.4 | Documentation Updates | All MD files updated with Sprint 4 content |
+### Week 4: Frontend + E2E + MCP Integration + Documentation (COMPLETE)
 
-**Gate:** All frontend components rendered, 40+ E2E tests pass, MCP servers operational, grand total 892+ tests.
+| # | Item | Deliverable | Status |
+|---|------|-------------|--------|
+| 4.1 | Frontend Components (5 new) | document-upload, document-query, document-result, cx-copilot, fraud-correlation | DONE |
+| 4.2 | Frontend Services (3 new) + Model | document.service.ts, customer-experience.service.ts, fraud-correlation.service.ts, document.model.ts | DONE |
+| 4.3 | E2E Tests (4 new specs) | document-upload, document-query, cx-copilot, fraud-correlation + updated accessibility | DONE |
+| 4.4 | MCP Server Integration | Playwright MCP (E2E test generation from browser sessions) + Stitch MCP (design-to-code pipeline for Sprint 5 UI revamp) | DONE |
+| 4.5 | Documentation Updates | All MD files updated with Sprint 4 content | DONE |
 
-### Sprint 4 Test Targets
+**Files Created:** 5 new components (3 files each = 15 component files), 3 new services, 1 new model, 4 new E2E specs, 5 new unit spec files
+**Files Modified:** app.routes.ts (15 routes, was 10), nav component (new nav items), api-mocks.ts, mock-data.ts, accessibility.spec.ts
+**Angular totals:** 18 components (was 13), 15 routes (was 10)
 
-| Category | Current | Sprint 4 New | Sprint 4 Total |
-|----------|---------|-------------|----------------|
-| Backend (xUnit) | 278 | 76+ | 354+ |
-| Frontend Unit (Vitest) | 199 | 36+ | 235+ |
-| E2E (Playwright) | 263 | 40+ | 303+ |
-| **Grand Total** | **740** | **152+** | **892+** |
+**Gate:** PASSED — 461 backend + 235 frontend unit + 357 E2E = 1053 total tests, 0 failures.
+
+### Sprint 4 Test Progress
+
+| Category | Sprint 3 End | Week 3 Actual | Week 4 Actual | Sprint 4 Final |
+|----------|-------------|--------------|---------------|----------------|
+| Backend (xUnit) | 246 | **461** (+215) | **461** | **461** |
+| Frontend Unit (Vitest) | 199 | 199 | **235** (+36) | **235** |
+| E2E (Playwright) | 263 | 263 | **357** (+94) | **357** |
+| **Grand Total** | **708** | **923** | **1053** (+130) | **1053** |
 
 ### Sprint 4 Risk Register
 
@@ -401,7 +410,7 @@ Angular 21 SPA (Port 4200) — unchanged
 | **Sprint 1** | Infrastructure + Providers | **COMPLETE** | 5-provider fallback, 5 multimodal services, 9 agents, 173 tests |
 | **Sprint 2** | Claims & Fraud Pipeline | **COMPLETE** | 8 API endpoints, 3 DB tables, claims triage, fraud scoring, provider health, 246 tests |
 | **Sprint 3** | Frontend + Dashboard + E2E + Landing | **COMPLETE** | 8 new components, 6 new routes, landing page, Chart.js dashboard, 196 unit tests, 239 E2E tests |
-| **Sprint 4** | Document Intelligence RAG + Tech Debt | **PLANNED** | RAG pipeline, CX Copilot, fraud correlation, PII fixes, rate limiting, 152+ new tests |
+| **Sprint 4** | Document Intelligence RAG + Tech Debt | **COMPLETE** | RAG pipeline, CX Copilot, fraud correlation, PII fixes, rate limiting, 5 new frontend components, 18 total components, 15 routes, 1053 total tests |
 
 ## Free Tier Budget
 

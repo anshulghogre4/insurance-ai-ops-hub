@@ -9,6 +9,11 @@ import { ClaimsHistoryComponent } from './components/claims-history/claims-histo
 import { ClaimResultComponent } from './components/claim-result/claim-result';
 import { ProviderHealthComponent } from './components/provider-health/provider-health';
 import { FraudAlertsComponent } from './components/fraud-alerts/fraud-alerts';
+import { DocumentUploadComponent } from './components/document-upload/document-upload';
+import { DocumentQueryComponent } from './components/document-query/document-query';
+import { DocumentResultComponent } from './components/document-result/document-result';
+import { CxCopilotComponent } from './components/cx-copilot/cx-copilot';
+import { FraudCorrelationComponent } from './components/fraud-correlation/fraud-correlation';
 import { authGuard } from './guards/auth.guard';
 import { guestGuard } from './guards/guest.guard';
 
@@ -23,5 +28,10 @@ export const routes: Routes = [
   { path: 'claims/:id', component: ClaimResultComponent, canActivate: [authGuard] },
   { path: 'dashboard/providers', component: ProviderHealthComponent, canActivate: [authGuard] },
   { path: 'dashboard/fraud', component: FraudAlertsComponent, canActivate: [authGuard] },
+  { path: 'documents/upload', component: DocumentUploadComponent, canActivate: [authGuard] },
+  { path: 'documents/query', component: DocumentQueryComponent, canActivate: [authGuard] },
+  { path: 'documents/:id', component: DocumentResultComponent, canActivate: [authGuard] },
+  { path: 'cx/copilot', component: CxCopilotComponent, canActivate: [authGuard] },
+  { path: 'fraud/correlations/:claimId', component: FraudCorrelationComponent, canActivate: [authGuard] },
   { path: '**', redirectTo: '' },
 ];

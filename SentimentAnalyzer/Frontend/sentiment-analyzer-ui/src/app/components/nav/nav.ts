@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, HostListener, inject, signal } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService, ThemeMode } from '../../services/theme.service';
@@ -30,20 +30,51 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
           <!-- Desktop Navigation -->
           <div class="hidden md:flex items-center gap-1">
             @if (!authService.authEnabled() || authService.isAuthenticated()) {
-              <a routerLink="/sentiment" routerLinkActive="nav-link-active"
-                 class="nav-link flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-                </svg>
-                Sentiment v1
-              </a>
-              <a routerLink="/insurance" routerLinkActive="nav-link-active"
-                 class="nav-link flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                </svg>
-                Insurance
-              </a>
+
+              <!-- Analyze Dropdown (combines Sentiment v1 + Insurance v2) -->
+              <div class="relative" (mouseenter)="showAnalyzeMenu.set(true)" (mouseleave)="showAnalyzeMenu.set(false)">
+                <button class="nav-link flex items-center gap-2"
+                        [class.nav-link-active]="isAnalyzeRoute()"
+                        aria-haspopup="true" [attr.aria-expanded]="showAnalyzeMenu()"
+                        (click)="toggleAnalyzeMenu()">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                  </svg>
+                  Analyze
+                  <svg class="w-3 h-3 transition-transform" [class.rotate-180]="showAnalyzeMenu()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+                @if (showAnalyzeMenu()) {
+                  <div class="absolute left-0 top-full w-56 pt-2 z-50">
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                       [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+                    <a routerLink="/sentiment" (click)="showAnalyzeMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                      </svg>
+                      <div>
+                        <div>Sentiment</div>
+                        <div class="text-[10px] opacity-50">v1 Legacy</div>
+                      </div>
+                    </a>
+                    <a routerLink="/insurance" (click)="showAnalyzeMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      </svg>
+                      <div>
+                        <div>Insurance</div>
+                        <div class="text-[10px] opacity-50">v2 Multi-Agent</div>
+                      </div>
+                    </a>
+                  </div>
+                  </div>
+                }
+              </div>
 
               <!-- Claims Dropdown -->
               <div class="relative" (mouseenter)="showClaimsMenu.set(true)" (mouseleave)="showClaimsMenu.set(false)">
@@ -60,7 +91,8 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                   </svg>
                 </button>
                 @if (showClaimsMenu()) {
-                  <div class="absolute left-0 top-full mt-1 w-48 rounded-xl shadow-xl border p-1.5 animate-fade-in-up z-50"
+                  <div class="absolute left-0 top-full w-48 pt-2 z-50">
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <a routerLink="/claims/triage" (click)="showClaimsMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -78,6 +110,57 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                       </svg>
                       History
                     </a>
+                  </div>
+                  </div>
+                }
+              </div>
+
+              <!-- Workspace Dropdown (Documents + CX Copilot) -->
+              <div class="relative" (mouseenter)="showWorkspaceMenu.set(true)" (mouseleave)="showWorkspaceMenu.set(false)">
+                <button class="nav-link flex items-center gap-2"
+                        [class.nav-link-active]="isWorkspaceRoute()"
+                        aria-haspopup="true" [attr.aria-expanded]="showWorkspaceMenu()"
+                        (click)="toggleWorkspaceMenu()">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                  </svg>
+                  Workspace
+                  <svg class="w-3 h-3 transition-transform" [class.rotate-180]="showWorkspaceMenu()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                  </svg>
+                </button>
+                @if (showWorkspaceMenu()) {
+                  <div class="absolute left-0 top-full w-56 pt-2 z-50">
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                       [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+                    <p class="text-[10px] font-bold uppercase tracking-wider px-3 pt-1 pb-1" [style.color]="'var(--text-muted)'">Documents</p>
+                    <a routerLink="/documents/upload" (click)="showWorkspaceMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                      </svg>
+                      Upload
+                    </a>
+                    <a routerLink="/documents/query" (click)="showWorkspaceMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                      </svg>
+                      Query
+                    </a>
+                    <div class="my-1 border-t" [style.border-color]="'var(--border-secondary)'"></div>
+                    <p class="text-[10px] font-bold uppercase tracking-wider px-3 pt-1 pb-1" [style.color]="'var(--text-muted)'">AI Assistant</p>
+                    <a routerLink="/cx/copilot" (click)="showWorkspaceMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                      </svg>
+                      CX Copilot
+                    </a>
+                  </div>
                   </div>
                 }
               </div>
@@ -97,7 +180,8 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                   </svg>
                 </button>
                 @if (showDashMenu()) {
-                  <div class="absolute left-0 top-full mt-1 w-48 rounded-xl shadow-xl border p-1.5 animate-fade-in-up z-50"
+                  <div class="absolute left-0 top-full w-48 pt-2 z-50">
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <a routerLink="/dashboard" (click)="showDashMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -123,6 +207,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                       </svg>
                       Fraud Alerts
                     </a>
+                  </div>
                   </div>
                 }
               </div>
@@ -216,19 +301,27 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
         <div class="md:hidden border-t animate-fade-in" [style.border-color]="'var(--border-primary)'" [style.background]="'var(--nav-bg)'">
           <div class="px-4 py-3 space-y-1">
             @if (!authService.authEnabled() || authService.isAuthenticated()) {
+              <!-- Analyze section -->
+              <p class="text-[10px] font-bold uppercase tracking-wider px-3 mb-1" [style.color]="'var(--text-muted)'">Analyze</p>
               <a routerLink="/sentiment" routerLinkActive="nav-link-active"
                  (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
                 </svg>
-                Sentiment v1
+                <div>
+                  <div>Sentiment</div>
+                  <div class="text-[10px] opacity-50">v1 Legacy</div>
+                </div>
               </a>
               <a routerLink="/insurance" routerLinkActive="nav-link-active"
                  (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
-                Insurance
+                <div>
+                  <div>Insurance</div>
+                  <div class="text-[10px] opacity-50">v2 Multi-Agent</div>
+                </div>
               </a>
 
               <!-- Claims section -->
@@ -247,6 +340,32 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
                   </svg>
                   History
+                </a>
+              </div>
+
+              <!-- Workspace section -->
+              <div class="pt-2 mt-1 border-t" [style.border-color]="'var(--border-secondary)'">
+                <p class="text-[10px] font-bold uppercase tracking-wider px-3 mb-1" [style.color]="'var(--text-muted)'">Workspace</p>
+                <a routerLink="/documents/upload" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                  </svg>
+                  Upload Document
+                </a>
+                <a routerLink="/documents/query" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                  </svg>
+                  Query Documents
+                </a>
+                <a routerLink="/cx/copilot" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                  </svg>
+                  CX Copilot
                 </a>
               </div>
 
@@ -307,10 +426,21 @@ export class Nav {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
   private router = inject(Router);
+  private el = inject(ElementRef);
+
+  @HostListener('document:click', ['$event.target'])
+  onDocumentClick(target: EventTarget | null): void {
+    if (this.showUserMenu() && target instanceof Node && !this.el.nativeElement.contains(target)) {
+      this.showUserMenu.set(false);
+    }
+  }
 
   showMobileMenu = signal(false);
   showUserMenu = signal(false);
+  showAnalyzeMenu = signal(false);
   showClaimsMenu = signal(false);
+  showWorkspaceMenu = signal(false);
+  showDocsMenu = signal(false);
   showDashMenu = signal(false);
 
   toggleMobileMenu(): void {
@@ -321,8 +451,20 @@ export class Nav {
     this.showUserMenu.update(v => !v);
   }
 
+  toggleAnalyzeMenu(): void {
+    this.showAnalyzeMenu.update(v => !v);
+  }
+
   toggleClaimsMenu(): void {
     this.showClaimsMenu.update(v => !v);
+  }
+
+  toggleWorkspaceMenu(): void {
+    this.showWorkspaceMenu.update(v => !v);
+  }
+
+  toggleDocsMenu(): void {
+    this.showDocsMenu.update(v => !v);
   }
 
   toggleDashMenu(): void {
@@ -343,8 +485,20 @@ export class Nav {
     return labels[this.themeService.currentTheme()];
   }
 
+  isAnalyzeRoute(): boolean {
+    return this.router.url.startsWith('/sentiment') || this.router.url.startsWith('/insurance');
+  }
+
   isClaimsRoute(): boolean {
     return this.router.url.startsWith('/claims');
+  }
+
+  isWorkspaceRoute(): boolean {
+    return this.router.url.startsWith('/documents') || this.router.url.startsWith('/cx');
+  }
+
+  isDocsRoute(): boolean {
+    return this.router.url.startsWith('/documents');
   }
 
   isDashRoute(): boolean {

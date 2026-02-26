@@ -4,7 +4,7 @@
 AI-powered sentiment analysis for the insurance industry. Analyzes policyholder communications, claims notes, agent reviews, and regulatory correspondence.
 
 - **v3.0 (Current)**: 5-provider fallback chain, 5 multimodal services, claims triage + fraud detection agents, orchestration profiles, PII redaction. See `SPRINT-ROADMAP.md`.
-- **v4.0 (In Progress)**: Document Intelligence RAG, CX Copilot (SSE), cross-claim fraud correlation, v1 PII decorator fix, MCP server integration. See `SPRINT-ROADMAP.md` Sprint 4.
+- **v4.0 (COMPLETE)**: Document Intelligence RAG, CX Copilot (SSE streaming), cross-claim fraud correlation (4-strategy), v1 PII decorator fix, MCP server integration. 18 Angular components, 15 routes, 1053 total tests (461 backend + 235 frontend + 357 E2E).
 
 ## Non-Negotiable Rules
 

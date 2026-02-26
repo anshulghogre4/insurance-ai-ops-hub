@@ -3,8 +3,8 @@
 ## URL Structure
 - v1 (legacy, frozen): `/api/sentiment/{action}`
 - v2 (insurance): `/api/insurance/{action}`
-- v2 (documents, v4.0 planned): `/api/insurance/documents/{action}`
-- v2 (CX copilot, v4.0 planned): `/api/insurance/cx/{action}`
+- v2 (documents, v4.0 Week 2): `/api/insurance/documents/{action}`
+- v2 (CX copilot, v4.0 Week 3): `/api/insurance/cx/{action}`
 - Health: `/api/sentiment/health` (v1), `/api/insurance/health` (v2)
 
 ## v2 Response Envelope
@@ -51,15 +51,48 @@
 | `/api/insurance/fraud/alerts` | GET | Get claims with fraud score > 55 |
 | `/api/insurance/health/providers` | GET | LLM + multimodal provider health status |
 
-## Sprint 4 Planned Endpoints (v4.0)
+## Sprint 4 Week 3 Endpoints (v4.0 — LIVE)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/insurance/cx/chat` | POST | CX Copilot chat (PII redacted input + output, tone classification, escalation detection) |
+| `/api/insurance/cx/stream` | POST | CX Copilot SSE streaming chat |
+| `/api/insurance/fraud/correlate` | POST | Trigger cross-claim correlation analysis for a claim |
+| `/api/insurance/fraud/correlations/{claimId}` | GET | Get fraud correlations for a claim |
+| `/api/insurance/fraud/correlations/{claimId}` | DELETE | Delete fraud correlations for a claim |
+
+## Sprint 4 Week 2 Endpoints (v4.0 — LIVE)
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
 | `/api/insurance/documents/upload` | POST | Upload document → OCR → chunk → embed → store |
 | `/api/insurance/documents/query` | POST | RAG query → embed → vector search → LLM answer with citations |
 | `/api/insurance/documents/{id}` | GET | Get document by ID |
 | `/api/insurance/documents/history` | GET | List uploaded documents |
-| `/api/insurance/cx/chat` | POST | CX Copilot chat (SSE streaming response) |
-| `/api/insurance/fraud/correlations` | GET | Cross-claim fraud correlation results |
+
+## Sprint 4 Week 4 Frontend-Consumed Endpoints
+
+The following endpoints are consumed by the 5 new Angular components added in Week 4. They map to backend handlers built in Weeks 2-3.
+
+### Document Intelligence Endpoints (document-upload, document-query, document-result components)
+| Endpoint | Method | Purpose | Request | Response |
+|----------|--------|---------|---------|----------|
+| `/api/insurance/documents/upload` | POST | Upload document for RAG indexing | `FormData` (file + documentType) | `{ id, fileName, documentType, chunkCount, createdAt }` |
+| `/api/insurance/documents/query` | POST | Query documents via RAG | `{ query, documentId? }` | `{ answer, citations: [{ chunkText, documentName, page, score }] }` |
+| `/api/insurance/documents/history` | GET | List uploaded documents | Query: `?page=1&pageSize=10` | `PaginatedResponse<DocumentSummary>` |
+| `/api/insurance/documents/{id}` | GET | Get document by ID | Path param | `{ id, fileName, documentType, chunkCount, status, createdAt }` |
+| `/api/insurance/documents/{id}` | DELETE | Delete document and its chunks | Path param | `204 No Content` |
+
+### CX Copilot Endpoints (cx-copilot component)
+| Endpoint | Method | Purpose | Request | Response |
+|----------|--------|---------|---------|----------|
+| `/api/insurance/cx/chat` | POST | CX Copilot chat (non-streaming) | `{ message, sessionId? }` | `{ response, tone, escalationRecommended, escalationReason?, llmProvider, elapsedMilliseconds, disclaimer }` |
+| `/api/insurance/cx/stream` | POST | CX Copilot SSE streaming chat | `{ message, sessionId? }` | SSE stream: `data: { type:"content", content:"token", metadata? }` |
+
+### Fraud Correlation Endpoints (fraud-correlation component)
+| Endpoint | Method | Purpose | Request | Response |
+|----------|--------|---------|---------|----------|
+| `/api/insurance/fraud/correlate` | POST | Trigger cross-claim correlation | `{ claimId }` | `{ claimId, correlations: [...], count }` |
+| `/api/insurance/fraud/correlations/{claimId}` | GET | Get correlations for a claim | Path + query: `?page=1&pageSize=20` | `PaginatedResponse<FraudCorrelation>` |
+| `/api/insurance/fraud/correlations/{claimId}` | DELETE | Delete all correlations for a claim | Path param | `204 No Content` |
 
 ## HTTP Status Codes
 - 200: Successful analysis

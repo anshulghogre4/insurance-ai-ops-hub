@@ -8,6 +8,9 @@ public class InsuranceAnalysisResponse
 {
     // --- Backward-compatible v1 fields ---
 
+    /// <summary>Original input text (only populated when loading from history).</summary>
+    public string? InputText { get; set; }
+
     /// <summary>Overall sentiment: Positive, Negative, Neutral, or Mixed.</summary>
     public string Sentiment { get; set; } = string.Empty;
 

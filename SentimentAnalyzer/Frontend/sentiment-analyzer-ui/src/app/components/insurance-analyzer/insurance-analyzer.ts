@@ -111,8 +111,12 @@ export class InsuranceAnalyzerComponent implements OnInit, OnDestroy {
     return Object.entries(emotions).sort((a, b) => b[1] - a[1]);
   }
 
-  getSentimentClass(): string {
-    return (this.result()?.sentiment || '').toLowerCase();
+  getSentimentClass(): 'positive' | 'negative' | 'mixed' | 'neutral' {
+    const raw = (this.result()?.sentiment || '').toLowerCase();
+    if (['negative', 'angry', 'frustrated', 'upset', 'furious', 'dissatisfied', 'annoyed', 'hostile', 'bitter'].includes(raw)) return 'negative';
+    if (['positive', 'happy', 'satisfied', 'pleased', 'grateful', 'delighted', 'content', 'impressed'].includes(raw)) return 'positive';
+    if (['mixed', 'ambivalent', 'conflicted'].includes(raw)) return 'mixed';
+    return 'neutral';
   }
 
   getIntentColor(): string {
@@ -264,7 +268,7 @@ export class InsuranceAnalyzerComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.result.set(response);
-          this.inputText = item.inputTextPreview;
+          this.inputText = response.inputText || item.inputTextPreview;
           this.interactionType = item.interactionType || 'General';
           this.isLoading.set(false);
           this.loadingFromHistory.set(false);
@@ -281,12 +285,11 @@ export class InsuranceAnalyzerComponent implements OnInit, OnDestroy {
   }
 
   getSentimentBadgeClass(sentiment: string): string {
-    switch (sentiment?.toLowerCase()) {
-      case 'positive': return 'badge-success';
-      case 'negative': return 'badge-danger';
-      case 'mixed': return 'badge-warning';
-      default: return 'badge-info';
-    }
+    const raw = sentiment?.toLowerCase() || '';
+    if (['positive', 'happy', 'satisfied', 'pleased', 'grateful', 'delighted', 'content', 'impressed'].includes(raw)) return 'badge-success';
+    if (['negative', 'angry', 'frustrated', 'upset', 'furious', 'dissatisfied', 'annoyed', 'hostile', 'bitter'].includes(raw)) return 'badge-danger';
+    if (['mixed', 'ambivalent', 'conflicted'].includes(raw)) return 'badge-warning';
+    return 'badge-info';
   }
 
   getChurnBadgeClass(risk: string): string {

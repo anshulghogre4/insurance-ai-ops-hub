@@ -81,6 +81,13 @@ AgentSystem__HuggingFace__ApiKey=your-key
 4. **Insurance Context**: Classify every analysis (claims, policy servicing, billing, agent interaction, underwriting)
 5. **No Training Data Leakage**: Use API modes that do not train on input
 
+### CX Copilot PII Rules (Sprint 4 Week 3)
+- PII redacted on **both input and output** (dual-pass redaction)
+- `CxInteractionRecord` stores SHA-256 hash of messages — never raw text
+- Escalation detection uses 16 keywords ("attorney", "department of insurance", "file complaint", etc.) + LLM-tagged escalation flags
+- Regulatory disclaimer enforcement on all CX responses
+- Audit trail: every interaction logged with timestamp, tone classification, escalation status
+
 ## MCP Server Security
 - MCP servers run locally via stdio — no external network exposure
 - Playwright MCP runs headless (no visible browser window) — configured with `--headless` flag

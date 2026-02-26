@@ -12,7 +12,8 @@ import {
   getFraudScoreColor,
   getFraudRiskBadge,
   getFraudGaugeGradient,
-  getPriorityBadge
+  getPriorityBadge,
+  getEffectiveFraudScore
 } from '../../utils/claims-display.utils';
 
 @Component({
@@ -266,8 +267,8 @@ import {
             <!-- Key Metrics Grid -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <!-- Severity -->
-              <div class="metric-card text-center">
-                <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Severity</p>
+              <div class="metric-card flex flex-col items-center justify-center py-4">
+                <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Severity</p>
                 <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white"
                       [class]="getSeverityClass(res.severity)"
                       [class.animate-pulse]="res.severity === 'Critical'">
@@ -275,21 +276,21 @@ import {
                 </span>
               </div>
               <!-- Urgency -->
-              <div class="metric-card text-center">
-                <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Urgency</p>
+              <div class="metric-card flex flex-col items-center justify-center py-4">
+                <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Urgency</p>
                 <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold" [class]="getUrgencyBadge(res.urgency)">
                   {{ res.urgency }}
                 </span>
               </div>
               <!-- Claim Type -->
-              <div class="metric-card text-center">
-                <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Claim Type</p>
-                <span class="badge badge-info text-sm">{{ res.claimType }}</span>
+              <div class="metric-card flex flex-col items-center justify-center py-4">
+                <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Claim Type</p>
+                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-info">{{ res.claimType || 'Unclassified' }}</span>
               </div>
               <!-- Status -->
-              <div class="metric-card text-center">
-                <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Status</p>
-                <span class="badge badge-neutral text-sm">{{ res.status }}</span>
+              <div class="metric-card flex flex-col items-center justify-center py-4">
+                <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Status</p>
+                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold badge-neutral">{{ res.status }}</span>
               </div>
             </div>
 
@@ -298,15 +299,15 @@ import {
               <div class="flex items-center justify-between mb-2">
                 <p class="text-sm font-semibold" [style.color]="'var(--text-secondary)'">Fraud Risk Score</p>
                 <div class="flex items-center gap-2">
-                  <span class="text-xl font-bold" [class]="getFraudScoreColor(res.fraudScore)">{{ res.fraudScore }}</span>
+                  <span class="text-xl font-bold" [class]="getFraudScoreColor(getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel))">{{ getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel) }}</span>
                   <span class="text-xs" [style.color]="'var(--text-muted)'">/100</span>
                   <span class="badge text-[10px]" [class]="getFraudRiskBadge(res.fraudRiskLevel)">{{ res.fraudRiskLevel }}</span>
                 </div>
               </div>
               <div class="h-3 rounded-full overflow-hidden" [style.background]="'var(--bg-surface-hover)'">
                 <div class="h-full rounded-full transition-all duration-1000 ease-out"
-                     [style.width.%]="res.fraudScore"
-                     [style.background]="getFraudGaugeGradient(res.fraudScore)">
+                     [style.width.%]="getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel)"
+                     [style.background]="getFraudGaugeGradient(getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel))">
                 </div>
               </div>
               <div class="flex justify-between mt-1 text-[10px]" [style.color]="'var(--text-muted)'">
@@ -621,6 +622,7 @@ export class ClaimsTriageComponent implements OnDestroy {
   getFraudRiskBadge = getFraudRiskBadge;
   getFraudGaugeGradient = getFraudGaugeGradient;
   getPriorityBadge = getPriorityBadge;
+  getEffectiveFraudScore = getEffectiveFraudScore;
 
   getTriagePhase(): string {
     const s = this.elapsedSeconds();

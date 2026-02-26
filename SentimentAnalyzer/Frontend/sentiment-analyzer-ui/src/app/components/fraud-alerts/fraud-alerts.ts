@@ -4,6 +4,7 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ClaimsService } from '../../services/claims.service';
 import { ClaimTriageResponse } from '../../models/claims.model';
+import { getEffectiveFraudScore } from '../../utils/claims-display.utils';
 
 @Component({
   selector: 'app-fraud-alerts',
@@ -116,17 +117,17 @@ import { ClaimTriageResponse } from '../../models/claims.model';
               <div class="mb-4">
                 <div class="flex items-center justify-between mb-1.5">
                   <span class="text-xs font-medium" [style.color]="'var(--text-muted)'">Fraud Score</span>
-                  <span class="text-lg font-bold font-mono" [class]="getFraudScoreColor(alert.fraudScore)">{{ alert.fraudScore }}</span>
+                  <span class="text-lg font-bold font-mono" [class]="getFraudScoreColor(effectiveScore(alert))">{{ effectiveScore(alert) }}</span>
                 </div>
                 <div class="progress-track h-2.5 rounded-full"
                      role="progressbar"
-                     [attr.aria-valuenow]="alert.fraudScore"
+                     [attr.aria-valuenow]="effectiveScore(alert)"
                      aria-valuemin="0"
                      aria-valuemax="100"
-                     [attr.aria-label]="'Fraud score: ' + alert.fraudScore + ' out of 100'">
+                     [attr.aria-label]="'Fraud score: ' + effectiveScore(alert) + ' out of 100'">
                   <div class="h-full rounded-full transition-all duration-500"
-                       [style.width.%]="alert.fraudScore"
-                       [class]="getFraudBarClass(alert.fraudScore)">
+                       [style.width.%]="effectiveScore(alert)"
+                       [class]="getFraudBarClass(effectiveScore(alert))">
                   </div>
                 </div>
               </div>
@@ -313,6 +314,10 @@ export class FraudAlertsComponent implements OnInit {
 
   getSIUReferralCount(): number {
     return this.alerts().filter(a => a.fraudScore >= FraudAlertsComponent.SIU_THRESHOLD).length;
+  }
+
+  effectiveScore(alert: ClaimTriageResponse): number {
+    return getEffectiveFraudScore(alert.fraudScore, alert.fraudRiskLevel);
   }
 
   getFraudScoreColor(score: number): string {

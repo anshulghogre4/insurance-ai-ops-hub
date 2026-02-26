@@ -67,8 +67,12 @@ export class SentimentAnalyzer implements OnInit {
     return Object.entries(this.result()!.emotionBreakdown).sort((a, b) => b[1] - a[1]);
   }
 
-  getSentimentClass(): string {
+  getSentimentClass(): 'positive' | 'negative' | 'mixed' | 'neutral' | '' {
     if (!this.result()) return '';
-    return this.result()!.sentiment.toLowerCase();
+    const raw = this.result()!.sentiment.toLowerCase();
+    if (['negative', 'angry', 'frustrated', 'upset', 'furious', 'dissatisfied', 'annoyed', 'hostile', 'bitter'].includes(raw)) return 'negative';
+    if (['positive', 'happy', 'satisfied', 'pleased', 'grateful', 'delighted', 'content', 'impressed'].includes(raw)) return 'positive';
+    if (['mixed', 'ambivalent', 'conflicted'].includes(raw)) return 'mixed';
+    return 'neutral';
   }
 }

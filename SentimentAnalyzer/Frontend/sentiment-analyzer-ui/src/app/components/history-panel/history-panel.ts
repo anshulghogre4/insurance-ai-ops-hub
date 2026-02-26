@@ -25,12 +25,11 @@ export class HistoryPanelComponent {
   }
 
   getSentimentBadgeClass(sentiment: string): string {
-    switch (sentiment?.toLowerCase()) {
-      case 'positive': return 'badge-success';
-      case 'negative': return 'badge-danger';
-      case 'mixed': return 'badge-warning';
-      default: return 'badge-info';
-    }
+    const raw = sentiment?.toLowerCase() || '';
+    if (['positive', 'happy', 'satisfied', 'pleased', 'grateful', 'delighted', 'content', 'impressed'].includes(raw)) return 'badge-success';
+    if (['negative', 'angry', 'frustrated', 'upset', 'furious', 'dissatisfied', 'annoyed', 'hostile', 'bitter'].includes(raw)) return 'badge-danger';
+    if (['mixed', 'ambivalent', 'conflicted'].includes(raw)) return 'badge-warning';
+    return 'badge-info';
   }
 
   getChurnBadgeClass(risk: string): string {

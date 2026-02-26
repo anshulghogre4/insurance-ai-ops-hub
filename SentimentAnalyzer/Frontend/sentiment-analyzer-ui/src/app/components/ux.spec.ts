@@ -313,6 +313,9 @@ describe('UX: Dashboard - Loading & Empty States', () => {
     expect(component.getSentimentBadge('Negative')).toBe('badge-danger');
     expect(component.getSentimentBadge('Mixed')).toBe('badge-warning');
     expect(component.getSentimentBadge('Neutral')).toBe('badge-info');
+    // Non-standard LLM outputs
+    expect(component.getSentimentBadge('Angry')).toBe('badge-danger');
+    expect(component.getSentimentBadge('Satisfied')).toBe('badge-success');
   });
 
   it('should return correct risk badge class', () => {

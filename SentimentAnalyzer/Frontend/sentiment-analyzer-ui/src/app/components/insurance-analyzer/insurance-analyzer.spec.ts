@@ -134,6 +134,16 @@ describe('InsuranceAnalyzerComponent', () => {
   it('should return correct sentiment class', () => {
     component.result.set(mockResponse);
     expect(component.getSentimentClass()).toBe('positive');
+
+    // Non-standard LLM outputs should be classified correctly
+    component.result.set({ ...mockResponse, sentiment: 'Angry' });
+    expect(component.getSentimentClass()).toBe('negative');
+
+    component.result.set({ ...mockResponse, sentiment: 'Frustrated' });
+    expect(component.getSentimentClass()).toBe('negative');
+
+    component.result.set({ ...mockResponse, sentiment: 'Mixed' });
+    expect(component.getSentimentClass()).toBe('mixed');
   });
 
   it('should return correct intent color based on score', () => {

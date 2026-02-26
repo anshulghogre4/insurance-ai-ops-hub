@@ -75,7 +75,7 @@
       <div class="glass-card-static p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-sm font-medium" [style.color]="'var(--text-secondary)'">Sentiment Result</h3>
-          <span class="badge" [class]="getSentimentClass() === 'positive' ? 'badge-success' : getSentimentClass() === 'negative' ? 'badge-danger' : 'badge-info'">
+          <span class="badge" [class]="getSentimentClass() === 'positive' ? 'badge-success' : getSentimentClass() === 'negative' ? 'badge-danger' : getSentimentClass() === 'mixed' ? 'badge-warning' : 'badge-info'">
             {{ result()!.sentiment }}
           </span>
         </div>
@@ -87,7 +87,7 @@
             <div class="text-xs mb-2" [style.color]="'var(--text-muted)'">Confidence Score</div>
             <div class="progress-track !h-3" role="progressbar" [attr.aria-valuenow]="(result()!.confidenceScore * 100).toFixed(0)" aria-valuemin="0" aria-valuemax="100" [attr.aria-label]="'Confidence score: ' + (result()!.confidenceScore * 100).toFixed(0) + '%'">
               <div class="progress-fill !h-3"
-                   [class]="getSentimentClass() === 'positive' ? 'bg-emerald-500' : getSentimentClass() === 'negative' ? 'bg-rose-500' : 'bg-cyan-500'"
+                   [class]="getSentimentClass() === 'positive' ? 'bg-emerald-500' : getSentimentClass() === 'negative' ? 'bg-rose-500' : getSentimentClass() === 'mixed' ? 'bg-amber-500' : 'bg-cyan-500'"
                    [style.width.%]="result()!.confidenceScore * 100">
               </div>
             </div>

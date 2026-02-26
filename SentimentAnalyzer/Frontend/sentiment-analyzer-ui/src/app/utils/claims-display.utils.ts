@@ -77,6 +77,25 @@ export function getCategoryBadge(category: string): string {
 }
 
 /**
+ * Returns an effective fraud score that reconciles mismatches between the
+ * numeric fraudScore and the textual fraudRiskLevel returned by the LLM.
+ * When the score is 0 (or unreasonably low for the stated risk level),
+ * a minimum floor is derived from the risk level string so the gauge bar
+ * renders consistently with the badge.
+ */
+export function getEffectiveFraudScore(score: number, riskLevel: string): number {
+  const floors: Record<string, number> = {
+    VeryHigh: 85,
+    High: 70,
+    Medium: 45,
+    Low: 20,
+    VeryLow: 5
+  };
+  const floor = floors[riskLevel] ?? 0;
+  return Math.max(score, floor);
+}
+
+/**
  * Formats an ISO date string into a human-readable locale string.
  * @param dateStr - ISO 8601 date string
  * @param includeYear - Whether to include the year in the output (default: true)

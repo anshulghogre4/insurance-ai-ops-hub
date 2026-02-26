@@ -32,6 +32,7 @@ public class GetAnalysisByIdHandler : IRequestHandler<GetAnalysisByIdQuery, Insu
 
         return new InsuranceAnalysisResponse
         {
+            InputText = record.InputText,
             Sentiment = record.Sentiment,
             ConfidenceScore = record.ConfidenceScore,
             Explanation = record.Explanation,

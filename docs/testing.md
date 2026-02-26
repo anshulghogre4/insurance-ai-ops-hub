@@ -39,16 +39,25 @@ var text = "Test text for testing"; // WRONG - never use this
 ### E2E Test Structure
 ```
 e2e/
-├── fixtures/mock-data.ts       # Realistic insurance mock API responses
-├── helpers/api-mocks.ts        # page.route() interceptors for all endpoints
-├── global-setup.ts             # Cleans old screenshots/reports before each run
-├── navigation.spec.ts          # Route navigation, mobile hamburger menu
-├── sentiment-analyzer.spec.ts  # v1 sentiment analysis flow
-├── insurance-analyzer.spec.ts  # v2 insurance analysis (full flow + error paths)
-├── dashboard.spec.ts           # Dashboard metrics, charts, history table
-├── login.spec.ts               # Login/register form UX
-├── theme.spec.ts               # Theme cycling, persistence across routes
-└── accessibility.spec.ts       # axe-core WCAG AA scans + ARIA validation
+├── fixtures/mock-data.ts            # Realistic insurance mock API responses
+├── helpers/api-mocks.ts             # page.route() interceptors for all endpoints
+├── global-setup.ts                  # Cleans old screenshots/reports before each run
+├── navigation.spec.ts               # Route navigation, mobile hamburger menu
+├── sentiment-analyzer.spec.ts       # v1 sentiment analysis flow
+├── insurance-analyzer.spec.ts       # v2 insurance analysis (full flow + error paths)
+├── dashboard.spec.ts                # Dashboard metrics, charts, history table
+├── login.spec.ts                    # Login/register form UX
+├── theme.spec.ts                    # Theme cycling, persistence across routes
+├── accessibility.spec.ts            # axe-core WCAG AA scans + ARIA validation
+├── claims-triage.spec.ts            # Claims triage form + result display (Sprint 3)
+├── claims-detail.spec.ts            # Claim detail view by ID (Sprint 3)
+├── claims-history.spec.ts           # Claims history table + filters (Sprint 3)
+├── provider-health.spec.ts          # Provider health monitor (Sprint 3)
+├── fraud-alerts.spec.ts             # Fraud alerts dashboard (Sprint 3)
+├── document-upload.spec.ts          # Document upload + type selector (Sprint 4 Week 4)
+├── document-query.spec.ts           # RAG Q&A + source citations (Sprint 4 Week 4)
+├── cx-copilot.spec.ts               # SSE streaming chat + typing indicator (Sprint 4 Week 4)
+└── fraud-correlation.spec.ts        # Cross-claim correlation + review workflow (Sprint 4 Week 4)
 ```
 
 ### E2E Rules
@@ -85,10 +94,42 @@ The Playwright MCP server (`@playwright/mcp@latest`) enables AI-assisted E2E tes
 4. Generated specs follow existing patterns in `e2e/` directory
 5. Mock data added to `e2e/fixtures/mock-data.ts` for new endpoints
 
-### Sprint 4 Test Targets
-| Category | Current | Sprint 4 New | Sprint 4 Total |
-|----------|---------|-------------|----------------|
-| Backend (xUnit) | 278 | 76+ | 354+ |
-| Frontend Unit (Vitest) | 199 | 36+ | 235+ |
-| E2E (Playwright) | 263 | 40+ | 303+ |
-| **Grand Total** | **740** | **152+** | **892+** |
+### Sprint 4 Test Counts (COMPLETE)
+| Category | Sprint 3 End | Sprint 4 Week 3 | Sprint 4 Week 4 | Status |
+|----------|-------------|----------------|----------------|--------|
+| Backend (xUnit) | 246 | **461** | **461** | +215 new tests (Weeks 1-3) |
+| Frontend Unit (Vitest) | 199 | 199 | **235** | +36 new tests (Week 4) |
+| E2E (Playwright) | 263 | 263 | **357** | +94 new tests (Week 4) |
+| **Grand Total** | **708** | **923** | **1,053** | **0 failures** |
+
+### Week 4 New Test Files
+| Test File | Type | Tests | Coverage |
+|-----------|------|-------|----------|
+| document.service.spec.ts | Unit | ~8 | Document upload, query, get, history, delete HTTP methods |
+| customer-experience.service.spec.ts | Unit | ~6 | SSE connection, chat messages, session management, error handling |
+| fraud-correlation.service.spec.ts | Unit | ~4 | Correlate, get correlations, review status, delete |
+| document-upload.spec.ts (component) | Unit | ~5 | Form, file input, type selector, submit, loading state |
+| document-query.spec.ts (component) | Unit | ~4 | Query input, submit, citations display, empty state |
+| document-result.spec.ts (component) | Unit | ~3 | Document details, chunk count, metadata |
+| cx-copilot.spec.ts (component) | Unit | ~4 | Message input, streaming indicator, history, error state |
+| fraud-correlation.spec.ts (component) | Unit | ~4 | Correlation cards, strategy badges, review actions, empty state |
+| document-upload.spec.ts (E2E) | E2E | ~10 | Drag-drop, type selector, upload flow, error states |
+| document-query.spec.ts (E2E) | E2E | ~10 | RAG Q&A, source citations, document selector, error states |
+| cx-copilot.spec.ts (E2E) | E2E | ~10 | SSE streaming chat, typing indicator, message history, escalation |
+| fraud-correlation.spec.ts (E2E) | E2E | ~8 | Linked claims, correlation indicators, review workflow, empty state |
+| accessibility.spec.ts (updated) | E2E | +4 | axe-core scans for 4 new routes (15 total routes scanned) |
+
+### SSE Mock Pattern (CX Copilot E2E)
+CX Copilot E2E tests mock SSE streaming using Playwright's `page.route()` with a custom `ReadableStream` response:
+```typescript
+await page.route('**/api/insurance/cx/stream', route => {
+  const encoder = new TextEncoder();
+  const body = ['data: {"token":"Hello"}\n\n', 'data: {"token":" there","done":true}\n\n']
+    .map(chunk => encoder.encode(chunk));
+  route.fulfill({
+    status: 200,
+    headers: { 'Content-Type': 'text/event-stream' },
+    body: Buffer.concat(body)
+  });
+});
+```

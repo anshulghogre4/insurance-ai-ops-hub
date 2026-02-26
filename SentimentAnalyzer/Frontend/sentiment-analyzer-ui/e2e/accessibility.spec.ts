@@ -112,7 +112,7 @@ test.describe('Accessibility (WCAG AA)', () => {
   });
 
   test('all pages should have proper heading hierarchy', async ({ page }) => {
-    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers'];
+    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers', '/documents/upload', '/documents/query', '/cx/copilot', '/documents/501', '/fraud/correlations/101'];
     for (const path of pages) {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
@@ -160,6 +160,56 @@ test.describe('Accessibility (WCAG AA)', () => {
     const alert = page.locator('[role="alert"]');
     await expect(alert).toBeVisible();
   });
+
+  test('document upload page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/documents/upload');
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('document query page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/documents/query');
+    await page.waitForLoadState('networkidle');
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('cx copilot page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/cx/copilot');
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('document result page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/documents/501');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('h1').filter({ hasText: /Document|homeowners/ })).toBeVisible({ timeout: 10_000 });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
+
+  test('fraud correlation page should have no accessibility violations', async ({ page }) => {
+    await page.goto('/fraud/correlations/101');
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('h1').filter({ hasText: 'Fraud Correlations' })).toBeVisible({ timeout: 10_000 });
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa'])
+      .disableRules(AXE_EXCLUDE_RULES)
+      .analyze();
+    expect(results.violations).toEqual([]);
+  });
 });
 
 test.describe('Accessibility Audit - Color Contrast (informational)', () => {
@@ -168,7 +218,7 @@ test.describe('Accessibility Audit - Color Contrast (informational)', () => {
   });
 
   test('audit color contrast issues across all pages', async ({ page }) => {
-    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers'];
+    const pages = ['/', '/sentiment', '/insurance', '/dashboard', '/login', '/claims/triage', '/claims/history', '/dashboard/fraud', '/dashboard/providers', '/documents/upload', '/documents/query', '/cx/copilot', '/documents/501', '/fraud/correlations/101'];
     const allViolations: string[] = [];
 
     for (const path of pages) {

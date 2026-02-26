@@ -136,5 +136,12 @@ describe('SentimentAnalyzer', () => {
 
     component.result.set({ sentiment: 'Neutral', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
     expect(component.getSentimentClass()).toBe('neutral');
+
+    // Non-standard LLM outputs should be classified correctly
+    component.result.set({ sentiment: 'Angry', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
+    expect(component.getSentimentClass()).toBe('negative');
+
+    component.result.set({ sentiment: 'Satisfied', confidenceScore: 0.9, explanation: '', emotionBreakdown: {} });
+    expect(component.getSentimentClass()).toBe('positive');
   });
 });

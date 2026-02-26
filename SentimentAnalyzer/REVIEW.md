@@ -4,6 +4,87 @@ This file tracks all review sessions and quality assessments. For full project c
 
 ---
 
+## Review Session #8 — 2026-02-26 (Sprint 4 Week 4: Frontend + E2E + MCP + Documentation — 3-Iteration Adversarial Review)
+
+### Reviewers
+QA Agent, UX Designer Agent, BA Agent (3-iteration adversarial review with intent to break)
+
+### Overall Result: SHIP — 1,053 TESTS, 0 FAILURES
+
+### What Was Built
+- **5 Angular Components**: document-upload (drag-drop + category), document-query (RAG Q&A + citations + confidence gauge), document-result (chunks browser + inline Q&A + delete modal), cx-copilot (SSE streaming chat + tone badges + escalation), fraud-correlation (split-card correlations + 4-strategy badges + review workflow)
+- **3 Services**: document.service (5 methods), customer-experience.service (SSE via raw fetch + ReadableStream), fraud-correlation.service (4 methods)
+- **1 Model file**: document.model.ts (Document RAG + CX Copilot + Fraud Correlation interfaces)
+- **5 Routes**: /documents/upload, /documents/query, /documents/:id, /cx/copilot, /fraud/correlations/:claimId
+- **4 E2E Spec Files**: document-upload, document-query, cx-copilot, fraud-correlation (94 new E2E tests)
+- **8 Unit Spec Files**: 3 service specs + 5 component specs (36 new unit tests)
+
+### Files: 21 created, 8 modified
+
+### Review Iterations
+
+**Iteration 1** (Build → Adversarial Review):
+12 issues found (3 Critical, 5 High, 4 Medium)
+- Critical #1: `@for` track expression used `msg.timestamp` (Date object) → fixed with incremental `msg.id` counter
+- Critical #2: SSE complete handler missing unique `id` on fallback assistant message → duplicate track keys
+- Critical #3: Missing `ChatMessage.id` field on model interface
+- High #4-8: documentId falsy check, filteredCorrelations method→computed signal, global isReviewing→per-item reviewingId, inline query error display, reactive route params
+
+**Iteration 2** (Fix Critical+High → Re-review):
+All 8 Critical+High issues fixed and verified. 235 unit tests passing, 0 failures.
+
+**Iteration 3** (Final Polish → SHIP):
+12 additional polish items found (1 High, 6 Medium, 5 Low). Top 4 fixed:
+- Nav outside-click close handler with `@HostListener('document:click')` + `instanceof Node` guard
+- Escape key closes modals (fraud-correlation dismiss + document-result delete)
+- NaN guard on document-result route param
+- Dynamic reviewer from `AuthService.user()?.email` instead of hardcoded 'Analyst'
+
+### Test Results
+| Suite | Count | Status |
+|-------|-------|--------|
+| Backend (xUnit) | 461 | ALL PASS |
+| Frontend (Vitest) | 235 | ALL PASS |
+| E2E (Playwright) | 357 | ALL PASS (9 skipped) |
+| **Total** | **1,053** | **0 failures** |
+
+### Key Technical Decisions
+- **SSE streaming**: Raw `fetch()` + `ReadableStream` (not Angular HttpClient — doesn't support POST SSE)
+- **Angular Signals**: All component state uses signals + `computed()` for derived state
+- **Track expressions**: Incremental counter `++chatMsgIdCounter` instead of Date/index for `@for` loops
+- **Per-item loading**: `reviewingId = signal<number | null>(null)` instead of global boolean
+- **Route params**: Reactive `route.params` Observable with `takeUntilDestroyed()` instead of snapshot
+
+---
+
+## Review Session #7 — 2026-02-26 (Sprint 4 Week 3: CX Copilot + Fraud Correlation — 3-Iteration Adversarial Review)
+
+### Reviewers
+QA Agent, UX Designer Agent, BA Agent (3-iteration adversarial review)
+
+### Overall Result: UNANIMOUS APPROVE
+
+### What Was Built
+- **Customer Experience Copilot**: AI-powered SSE streaming chat with insurance CX specialist persona, PII dual-pass redaction (input + output), tone classification, 16-keyword escalation detection, regulatory disclaimer enforcement, CxInteractionRecord audit trail (SHA-256 message hashing)
+- **Cross-Claim Fraud Correlation**: 4-strategy detection (DateProximity, SimilarNarrative, SharedFlags, SameSeverity), claim-type-specific windows (Auto 90d, Property/Liability 180d, WorkersComp 365d), pagination through all claims, review workflow (Pending/Confirmed/Dismissed)
+
+### Files: 12 created, 12 modified (including all 10 agent .md prompts)
+
+### Review Iterations
+- **Iteration 1**: 37 issues found (8 Critical, 11 High, 18 Medium/Low) — Builder Squad assigned fixes
+- **Iteration 2**: All Critical + High fixes applied and verified
+- **Iteration 3**: Unanimous APPROVE from QA, UX, BA — 0 blocking issues
+
+### Test Results
+| Suite | Count | Status |
+|-------|-------|--------|
+| Backend (xUnit) | 461 | ALL PASS |
+| Frontend (Vitest) | 199 | ALL PASS |
+| E2E (Playwright) | 263 | ALL PASS (9 skipped) |
+| **Total** | **923** | **0 failures** |
+
+---
+
 ## Review Session #6 — 2026-02-25 (Sprint 4 Brainstorming: 9-Agent, 3 Iterations)
 
 ### Reviewers

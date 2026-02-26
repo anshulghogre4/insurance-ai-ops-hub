@@ -1,0 +1,102 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792]
+   /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1350 >>
+stream
+BT
+/F1 16 Tf
+72 740 Td
+(HOMEOWNERS INSURANCE POLICY SUMMARY) Tj
+/F1 10 Tf
+0 -30 Td
+(Policy Number: HO-2024-TEST-001) Tj
+0 -16 Td
+(Policyholder: Jane Doe) Tj
+0 -16 Td
+(Property: 4521 Oak Ridge Drive, Springfield, IL 62704) Tj
+0 -16 Td
+(Effective: January 1, 2024 - January 1, 2025) Tj
+0 -25 Td
+/F1 13 Tf
+(COVERAGE LIMITS) Tj
+/F1 10 Tf
+0 -20 Td
+(Coverage A - Dwelling: $350,000) Tj
+0 -16 Td
+(Coverage B - Other Structures: $35,000) Tj
+0 -16 Td
+(Coverage C - Personal Property: $175,000) Tj
+0 -16 Td
+(Coverage D - Loss of Use: $70,000) Tj
+0 -16 Td
+(Coverage E - Personal Liability: $300,000) Tj
+0 -16 Td
+(Coverage F - Medical Payments: $5,000) Tj
+0 -25 Td
+/F1 13 Tf
+(WATER DAMAGE COVERAGE) Tj
+/F1 10 Tf
+0 -20 Td
+(Sudden and accidental water discharge from plumbing: COVERED) Tj
+0 -16 Td
+(Gradual water damage or seepage: NOT COVERED) Tj
+0 -16 Td
+(Flood damage from external sources: NOT COVERED) Tj
+0 -16 Td
+(  Note: Requires separate NFIP flood policy) Tj
+0 -16 Td
+(Sewer and drain backup: COVERED with Endorsement E-102) Tj
+0 -16 Td
+(Ice dam damage to roof and gutters: COVERED) Tj
+0 -25 Td
+/F1 13 Tf
+(DEDUCTIBLES AND PREMIUM) Tj
+/F1 10 Tf
+0 -20 Td
+(Standard deductible: $1,000 per occurrence) Tj
+0 -16 Td
+(Wind/hail deductible: 2% of Coverage A = $7,000) Tj
+0 -16 Td
+(Annual premium: $1,847) Tj
+0 -25 Td
+/F1 13 Tf
+(EXCLUSIONS) Tj
+/F1 10 Tf
+0 -20 Td
+(Earth movement including earthquake and landslide) Tj
+0 -16 Td
+(Government action, war, nuclear hazard) Tj
+0 -16 Td
+(Intentional loss or neglect) Tj
+0 -16 Td
+(Power failure originating away from the premises) Tj
+0 -16 Td
+(Ordinance or law unless endorsed) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000266 00000 n 
+0000001668 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1747
+%%EOF

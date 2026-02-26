@@ -9,7 +9,7 @@ An AI-powered insurance domain sentiment analysis platform that uses a multi-age
 - **Emotion Breakdown**: Detailed emotional components (joy, sadness, anger, fear, etc.)
 - **Confidence Scores**: Visual indicators showing confidence levels
 
-### v3 (Current - Insurance AI Operations Hub)
+### v3 (Insurance AI Operations Hub)
 - **Interactive Landing Page**: Public showcase with agent orchestration visualization, provider failover simulation, multimodal pipeline tabs, interactive demo, PII redaction demo
 - **Multi-Agent AI Analysis**: 9-agent pipeline (CTO, BA, Developer, QA, Architect, UX Designer, AI Expert, Claims Triage, Fraud Detection) via Semantic Kernel
 - **Insurance Context Classification**: Claims, policy servicing, billing, agent interaction, underwriting
@@ -27,6 +27,14 @@ An AI-powered insurance domain sentiment analysis platform that uses a multi-age
 - **Persistent Storage**: SQLite (development) / Supabase PostgreSQL (production)
 - **3 Themes**: Dark, semi-dark, and light themes across all 13 components
 - **WCAG AA Accessibility**: axe-core validated on all routes, ARIA attributes, keyboard navigation
+
+### v4 (Current — Sprint 4 COMPLETE)
+- **Document Intelligence RAG**: Voyage AI finance-optimized embeddings (1024-dim) + Ollama fallback, insurance section-aware chunking, SQLite vector store with SIMD cosine similarity, upload → OCR → chunk → embed → store, query → embed → vector search → LLM answer with citations
+- **Customer Experience Copilot**: AI-powered SSE streaming chat with insurance CX specialist persona, dual-pass PII redaction (input + output), tone classification, 16-keyword escalation detection, regulatory disclaimer enforcement, CxInteractionRecord audit trail
+- **Cross-Claim Fraud Correlation**: 4-strategy detection (DateProximity, SimilarNarrative, SharedFlags, SameSeverity), claim-type-specific windows (Auto 90d, Property/Liability 180d, WorkersComp 365d), review workflow (Pending/Confirmed/Dismissed)
+- **V1 PII Fix**: Decorator pattern (`PiiRedactingSentimentService`) wrapping frozen `ISentimentService` without modifying v1 files
+- **Per-Endpoint Rate Limiting**: analyze 10/min, triage 5/min, fraud 5/min, doc upload 3/min
+- **MCP Server Integration**: Playwright MCP (E2E test generation) + Stitch MCP (design-to-code pipeline)
 
 ---
 
@@ -95,7 +103,7 @@ The fallback chain terminates at **Ollama** -- a locally hosted LLM that never s
 
 ## Platform Screens
 
-The Insurance AI Operations Hub ships with **10 routes** across claims operations, sentiment analysis, provider monitoring, and fraud detection. Built with a **glassmorphism design system** featuring translucent cards with `backdrop-filter: blur(12px)`, indigo-to-purple gradient accents, and staggered entrance animations.
+The Insurance AI Operations Hub ships with **15 routes** across claims operations, sentiment analysis, provider monitoring, fraud detection, document intelligence, and customer experience. Built with a **glassmorphism design system** featuring translucent cards with `backdrop-filter: blur(12px)`, indigo-to-purple gradient accents, and staggered entrance animations.
 
 > **Design System**: 3-theme toggle (Dark / Semi-Dark / Light), glassmorphism cards with 12px blur, responsive Tailwind breakpoints, WCAG AA accessibility, `prefers-reduced-motion` support.
 
@@ -151,9 +159,27 @@ Horizontal fallback chain visualization (Groq→Cerebras→Mistral→Gemini→Op
 
 Summary stats: Critical Risk, High Risk, Avg Score, SIU Referrals. Alert cards sorted by fraud score with left-border accent coloring, SIU Referral flags, fraud gauge bars, claim info grid, category-colored fraud flag badges, and "View Claim" / "Deep Analysis" action buttons.
 
-### Sentiment Analyzer v1 (`/sentiment`)
+### Document Upload (`/documents/upload`)
 
-![Sentiment Analyzer](docs/screenshots/03-sentiment-analyzer.png)
+Drag-and-drop file upload for RAG pipeline processing. Category selector (Policy/Claim/Endorsement/Correspondence/Other), 5MB limit, PDF/PNG/JPEG/TIFF. Multi-phase loading animation (OCR → Chunking → Embedding). Result card with document ID, page count, chunk count, embedding provider.
+
+### Document Query (`/documents/query`)
+
+RAG-powered natural language Q&A across uploaded insurance documents. Optional document scope filter, 2000-char question input. Answer display with confidence gauge (green/yellow/red), expandable citations with similarity scores, LLM provider + elapsed time metadata.
+
+### Document Detail (`/documents/:id`)
+
+Full document metadata viewer: file name, MIME type, category badge, status, page/chunk counts. Scrollable chunk browser with section names and token counts. Inline Q&A scoped to document. Delete with confirmation modal.
+
+### CX Copilot (`/cx/copilot`)
+
+AI-powered customer experience chat with SSE streaming. User/assistant message bubbles, incremental token display with blinking cursor. Tone badges (Professional/Empathetic/Urgent/Informational), escalation warnings, regulatory disclaimers. Optional claim context input.
+
+### Fraud Correlations (`/fraud/correlations/:claimId`)
+
+Cross-claim fraud pattern analysis. Summary stats (total correlations, avg score, pending/confirmed counts). Correlation cards with split-card design (source vs correlated claim), strategy badges (DateProximity/SimilarNarrative/SharedFlags/SameSeverity), score gauge. Status filter tabs, review workflow (Confirm/Dismiss with reason).
+
+### Sentiment Analyzer v1 (`/sentiment`)
 
 Legacy general-purpose sentiment analysis with text input, confidence bar, and emotion breakdown chart.
 
@@ -190,9 +216,10 @@ Legacy general-purpose sentiment analysis with text input, confidence bar, and e
 | Entity Extraction | HuggingFace BERT NER | Extract names, orgs, locations, insurance entities |
 
 ### Testing
-- Backend: xUnit 2.9.3 + Moq 4.20.72 (246 tests across 24 files)
-- Frontend unit: Vitest 4.0.8 via Angular CLI (196 tests across 20 spec files)
-- E2E: Playwright 1.58+ with @axe-core/playwright (239 tests across 12 spec files)
+- Backend: xUnit 2.9.3 + Moq 4.20.72 (**461 tests**)
+- Frontend unit: Vitest 4.0.8 via Angular CLI (**235 tests** across 28 spec files)
+- E2E: Playwright 1.58+ with @axe-core/playwright (**357 tests** across 16 spec files)
+- **Total: 1,053 tests, 0 failures**
 
 ## Prerequisites
 
@@ -280,15 +307,15 @@ The app will open at `http://localhost:4200`
 ### 4. Run Tests
 
 ```bash
-# Backend tests (246 tests)
+# Backend tests (461 tests)
 cd SentimentAnalyzer/Tests
 dotnet test
 
-# Frontend unit tests (196 tests - must use Angular CLI, not direct vitest)
+# Frontend unit tests (235 tests - must use Angular CLI, not direct vitest)
 cd SentimentAnalyzer/Frontend/sentiment-analyzer-ui
 npx ng test --watch=false
 
-# E2E tests (239 tests - requires frontend dev server running)
+# E2E tests (357 tests - requires frontend dev server running)
 cd SentimentAnalyzer/Frontend/sentiment-analyzer-ui
 npm run e2e
 ```
@@ -305,6 +332,9 @@ npm run e2e
    - **Dashboard** (`/dashboard`) - Analytics, charts, and quick links
    - **Provider Health** (`/dashboard/providers`) - Real-time AI provider health
    - **Fraud Alerts** (`/dashboard/fraud`) - High-risk fraud alert monitoring
+   - **Document Upload** (`/documents/upload`) - Upload documents for RAG processing
+   - **Document Query** (`/documents/query`) - Ask questions about uploaded documents
+   - **CX Copilot** (`/cx/copilot`) - AI-powered customer experience chat
    - **Login** (`/login`) - Supabase authentication (optional)
 3. On the Insurance Analyzer page:
    - Enter policyholder text or use a sample template
@@ -367,6 +397,25 @@ npm run e2e
 | GET | `/api/insurance/fraud/score/{claimId}` | Get fraud score for a claim |
 | GET | `/api/insurance/fraud/alerts` | List high-risk fraud alerts (score > 55) |
 | GET | `/api/insurance/health/providers` | Real-time health of all LLM + multimodal providers |
+
+### Document Intelligence RAG (Sprint 4 Week 2)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/documents/upload` | Upload document → OCR → chunk → embed → store |
+| POST | `/api/insurance/documents/query` | RAG query → vector search → LLM answer with citations |
+| GET | `/api/insurance/documents/{id}` | Get document by ID |
+| GET | `/api/insurance/documents/history` | List uploaded documents |
+
+### CX Copilot + Fraud Correlation (Sprint 4 Week 3)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/cx/chat` | CX Copilot SSE streaming chat (PII redacted, tone classified) |
+| GET | `/api/insurance/fraud/correlations` | Cross-claim fraud correlation results |
+| POST | `/api/insurance/fraud/correlations/analyze` | Trigger correlation analysis for a claim |
+| PUT | `/api/insurance/fraud/correlations/{id}/review` | Review correlation (Confirm/Dismiss) |
+| DELETE | `/api/insurance/fraud/correlations/{id}` | Delete fraud correlation record |
 
 **v2 Request:**
 ```json
@@ -480,7 +529,7 @@ SentimentAnalyzer/
 │
 ├── Frontend/sentiment-analyzer-ui/
 │   └── src/app/
-│       ├── components/ (13 total)
+│       ├── components/ (18 total)
 │       │   ├── landing/                       # Public landing page (interactive showcase)
 │       │   ├── sentiment-analyzer/            # v1 general analyzer (legacy)
 │       │   ├── insurance-analyzer/            # v2 insurance analysis UI (signals, timer, phases)
@@ -491,6 +540,11 @@ SentimentAnalyzer/
 │       │   ├── claims-history/                # Filterable/paginated claims table
 │       │   ├── provider-health/               # LLM + multimodal service health monitor
 │       │   ├── fraud-alerts/                  # High-risk fraud alert cards
+│       │   ├── document-upload/               # Document RAG upload (drag-drop, OCR progress)
+│       │   ├── document-query/                # RAG document Q&A with citations
+│       │   ├── document-result/               # Document detail + chunk browser
+│       │   ├── cx-copilot/                    # CX Copilot SSE streaming chat
+│       │   ├── fraud-correlation/             # Cross-claim fraud pattern analysis
 │       │   ├── login/                         # Supabase auth login
 │       │   └── nav/                           # Navigation bar (theme toggle, mobile menu)
 │       ├── services/
@@ -509,7 +563,7 @@ SentimentAnalyzer/
 │       └── interceptors/
 │           ├── auth.interceptor.ts            # JWT header injection
 │           └── error.interceptor.ts           # 401/403 redirect handling
-│   └── e2e/ (12 spec files, 239 tests)
+│   └── e2e/ (12 spec files, 263 tests)
 │       ├── fixtures/mock-data.ts              # Realistic insurance mock API responses
 │       ├── helpers/api-mocks.ts               # page.route() interceptors
 │       ├── claims-triage.spec.ts              # Claims triage E2E tests
@@ -519,7 +573,7 @@ SentimentAnalyzer/
 │       ├── fraud-alerts.spec.ts               # Fraud alerts E2E tests
 │       └── ... (7 more spec files)
 │
-├── Tests/ (24 test files, 246 tests)
+├── Tests/ (461 tests)
 │   ├── SentimentControllerTests.cs            # v1 regression (9 tests - FROZEN)
 │   ├── InsuranceAnalysisControllerTests.cs    # CQRS handler tests (27 tests incl. 7 MapQuality)
 │   ├── PIIRedactionTests.cs                   # PII redaction tests (11 tests)

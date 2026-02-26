@@ -5,6 +5,7 @@ export interface InsuranceAnalysisRequest {
 }
 
 export interface InsuranceAnalysisResponse {
+  inputText?: string;
   sentiment: string;
   confidenceScore: number;
   explanation: string;
