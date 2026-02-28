@@ -64,8 +64,8 @@ public class FraudCommandsTests
         mockService.Setup(s => s.GetFraudAlertsAsync(60, 25))
             .ReturnsAsync(
             [
-                new FraudAnalysisResponse { ClaimId = 1, FraudScore = 78, RiskLevel = "High" },
-                new FraudAnalysisResponse { ClaimId = 2, FraudScore = 65, RiskLevel = "Medium" }
+                new ClaimTriageResponse { ClaimId = 1, FraudScore = 78, FraudRiskLevel = "High", Severity = "High", ClaimType = "Fire" },
+                new ClaimTriageResponse { ClaimId = 2, FraudScore = 65, FraudRiskLevel = "Medium", Severity = "Medium", ClaimType = "Theft" }
             ]);
 
         var handler = new GetFraudAlertsHandler(mockService.Object);

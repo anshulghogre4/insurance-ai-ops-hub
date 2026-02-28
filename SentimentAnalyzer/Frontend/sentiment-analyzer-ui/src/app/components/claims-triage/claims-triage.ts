@@ -6,6 +6,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ClaimsService } from '../../services/claims.service';
 import { ClaimTriageResponse } from '../../models/claims.model';
 import { EvidenceViewerComponent } from '../evidence-viewer/evidence-viewer';
+import { AiLoaderComponent } from '../ai-loader/ai-loader';
 import {
   getSeverityClass,
   getUrgencyBadge,
@@ -19,7 +20,7 @@ import {
 @Component({
   selector: 'app-claims-triage',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, EvidenceViewerComponent],
+  imports: [CommonModule, FormsModule, RouterLink, EvidenceViewerComponent, AiLoaderComponent],
   template: `
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
@@ -213,30 +214,12 @@ import {
       </div>
 
       <!-- Loading State -->
-      @if (isLoading()) {
-        <div class="glass-card-static p-6 sm:p-8 mb-6 animate-fade-in" role="status" aria-live="polite">
-          <div class="flex items-center gap-4 mb-5">
-            <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-              <svg class="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-            </div>
-            <div>
-              <p class="font-semibold" [style.color]="'var(--text-primary)'">{{ getTriagePhase() }}</p>
-              <p class="text-xs" [style.color]="'var(--text-muted)'">{{ elapsedSeconds() }}s elapsed</p>
-            </div>
-          </div>
-          <div class="progress-track" role="progressbar" [attr.aria-valuenow]="elapsedSeconds()" aria-valuemin="0" aria-valuemax="60">
-            <div class="progress-fill bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" [style.width.%]="Math.min((elapsedSeconds() / 45) * 100, 95)"></div>
-          </div>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-            @for (i of [1,2,3,4]; track i) {
-              <div class="skeleton h-20 rounded-xl"></div>
-            }
-          </div>
-        </div>
-      }
+      <app-ai-loader
+        [isActive]="isLoading()"
+        [elapsedSeconds]="elapsedSeconds()"
+        profile="triage"
+        [showSkeletons]="true"
+      />
 
       <!-- Error State -->
       @if (error()) {
@@ -261,6 +244,9 @@ import {
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
               <h2 class="text-lg font-bold" [style.color]="'var(--text-primary)'">Triage Complete</h2>
+              @if (res.createdAt) {
+                <p class="text-xs" [style.color]="'var(--text-muted)'">Submitted {{ res.createdAt | date:'MMM d, yyyy, h:mm a' }}</p>
+              }
               <span class="badge badge-info ml-auto">Claim #{{ res.claimId }}</span>
             </div>
 
@@ -323,7 +309,7 @@ import {
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
                 </svg>
                 <span class="text-sm font-medium" [style.color]="'var(--text-secondary)'">Estimated Loss:</span>
-                <span class="text-sm font-bold" [style.color]="'var(--text-primary)'">{{ res.estimatedLossRange }}</span>
+                <span class="text-sm font-bold" [style.color]="'var(--text-primary)'">{{ res.estimatedLossRange || 'N/A' }}</span>
               </div>
             }
 
@@ -623,16 +609,6 @@ export class ClaimsTriageComponent implements OnDestroy {
   getFraudGaugeGradient = getFraudGaugeGradient;
   getPriorityBadge = getPriorityBadge;
   getEffectiveFraudScore = getEffectiveFraudScore;
-
-  getTriagePhase(): string {
-    const s = this.elapsedSeconds();
-    if (s < 3) return 'Submitting claim...';
-    if (s < 10) return 'Claims Triage Agent analyzing severity...';
-    if (s < 20) return 'Fraud Detection Agent scoring risk...';
-    if (s < 30) return 'Business Analyst validating domain rules...';
-    if (s < 40) return 'QA Agent checking quality...';
-    return 'Finalizing triage assessment...';
-  }
 
   private startTimer(): void {
     this.stopTimer();

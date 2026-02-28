@@ -226,19 +226,19 @@ export class CxCopilotComponent {
       .subscribe({
         next: (chunk: CustomerExperienceStreamChunk) => {
           if (chunk.type === 'content') {
-            this.currentStreamText.update(t => t + chunk.content);
+            this.currentStreamText.update(t => t + (chunk.content ?? ''));
             this.scrollToBottom();
           } else if (chunk.type === 'metadata' && chunk.metadata) {
             const assistantMsg: ChatMessage = {
               id: ++chatMsgIdCounter,
               role: 'assistant',
-              content: chunk.metadata.response,
-              tone: chunk.metadata.tone,
-              escalationRecommended: chunk.metadata.escalationRecommended,
-              escalationReason: chunk.metadata.escalationReason,
-              llmProvider: chunk.metadata.llmProvider,
-              elapsedMs: chunk.metadata.elapsedMilliseconds,
-              disclaimer: chunk.metadata.disclaimer,
+              content: chunk.metadata?.response ?? this.currentStreamText() ?? '',
+              tone: chunk.metadata?.tone,
+              escalationRecommended: chunk.metadata?.escalationRecommended,
+              escalationReason: chunk.metadata?.escalationReason,
+              llmProvider: chunk.metadata?.llmProvider,
+              elapsedMs: chunk.metadata?.elapsedMilliseconds,
+              disclaimer: chunk.metadata?.disclaimer,
               timestamp: new Date()
             };
             this.messages.update(msgs => [...msgs, assistantMsg]);

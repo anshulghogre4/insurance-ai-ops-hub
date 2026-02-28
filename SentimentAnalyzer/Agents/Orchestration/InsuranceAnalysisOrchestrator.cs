@@ -68,20 +68,23 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         {
             _logger.LogError(ex, "Error during multi-agent insurance analysis with provider {Provider}", _kernelProvider.ActiveProviderName);
 
-            // Report failure to trigger provider fallback
+            // Report failure and walk the entire fallback chain — retry all remaining providers
             _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, ex);
-            _logger.LogInformation("Provider fallback triggered. New active provider: {Provider}", _kernelProvider.ActiveProviderName);
+            var maxRetries = Math.Max(1, _kernelProvider.GetHealthStatus().Count - 1);
 
-            // Retry once with fallback provider
-            try
+            for (var attempt = 1; attempt <= maxRetries; attempt++)
             {
-                _logger.LogInformation("Retrying multi-agent analysis with fallback provider: {Provider}", _kernelProvider.ActiveProviderName);
-                return await RunMultiAgentAnalysis(sanitizedText, interactionType);
-            }
-            catch (Exception retryEx)
-            {
-                _logger.LogWarning(retryEx, "Retry with fallback provider {Provider} also failed", _kernelProvider.ActiveProviderName);
-                _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, retryEx);
+                var nextProvider = _kernelProvider.ActiveProviderName;
+                try
+                {
+                    _logger.LogInformation("Retry #{Attempt} with provider: {Provider}", attempt, nextProvider);
+                    return await RunMultiAgentAnalysis(sanitizedText, interactionType);
+                }
+                catch (Exception retryEx)
+                {
+                    _logger.LogWarning(retryEx, "Retry #{Attempt} failed with provider {Provider}", attempt, nextProvider);
+                    _kernelProvider.ReportFailure(nextProvider, retryEx);
+                }
             }
 
             if (_agentConfig.FallbackToSimpleAnalysis)
@@ -137,30 +140,37 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
             _logger.LogError(ex, "Profile-aware analysis failed for profile {Profile} with provider {Provider}",
                 profile, _kernelProvider.ActiveProviderName);
 
-            // Report failure and retry with fallback provider
+            // Report failure and walk the entire fallback chain — retry all remaining providers
             _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, ex);
+            var maxRetries = Math.Max(1, _kernelProvider.GetHealthStatus().Count - 1);
 
-            try
+            for (var attempt = 1; attempt <= maxRetries; attempt++)
             {
-                _logger.LogInformation("Retrying profile analysis with fallback provider: {Provider}", _kernelProvider.ActiveProviderName);
-                return await RunProfileAgentAnalysis(sanitizedText, profile, interactionType);
-            }
-            catch (Exception retryEx)
-            {
-                _logger.LogWarning(retryEx, "Retry with fallback provider also failed for profile {Profile}", profile);
-                _kernelProvider.ReportFailure(_kernelProvider.ActiveProviderName, retryEx);
+                var nextProvider = _kernelProvider.ActiveProviderName;
+                try
+                {
+                    _logger.LogInformation("Retry #{Attempt} for profile {Profile} with provider: {Provider}",
+                        attempt, profile, nextProvider);
+                    return await RunProfileAgentAnalysis(sanitizedText, profile, interactionType);
+                }
+                catch (Exception retryEx)
+                {
+                    _logger.LogWarning(retryEx, "Retry #{Attempt} failed for profile {Profile} with provider {Provider}",
+                        attempt, profile, nextProvider);
+                    _kernelProvider.ReportFailure(nextProvider, retryEx);
+                }
             }
 
             if (_agentConfig.FallbackToSimpleAnalysis)
             {
-                _logger.LogInformation("Falling back to single-agent analysis for profile {Profile} after provider failures", profile);
+                _logger.LogInformation("Falling back to profile-aware single-agent analysis for {Profile} after provider failures", profile);
                 try
                 {
-                    return await RunSingleAgentFallback(sanitizedText, interactionType);
+                    return await RunProfileSingleAgentFallback(sanitizedText, profile, interactionType);
                 }
                 catch (Exception fallbackEx)
                 {
-                    _logger.LogError(fallbackEx, "Single-agent fallback also failed for profile {Profile}", profile);
+                    _logger.LogError(fallbackEx, "Profile-aware single-agent fallback also failed for {Profile}", profile);
                 }
             }
 
@@ -335,7 +345,7 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
                     "recommendedActions": [{ "action": "string", "priority": "High|Standard|Low", "reasoning": "string" }],
                     "referToSIU": true|false,
                     "siuReferralReason": "string",
-                    "confidenceInAssessment": "Low|Medium|High"
+                    "confidenceInAssessment": 0.0-1.0
                   }
                 }
                 """,
@@ -583,6 +593,42 @@ public class InsuranceAnalysisOrchestrator : IAnalysisOrchestrator
         }
 
         return CreateDefaultResult(text, interactionType, "Single-agent fallback did not produce valid JSON");
+    }
+
+    /// <summary>
+    /// Profile-aware single-agent fallback. Uses the profile-specific prompt schema
+    /// so FraudScoring profiles produce fraudAnalysis JSON, not generic sentiment.
+    /// </summary>
+    private async Task<AgentAnalysisResult> RunProfileSingleAgentFallback(
+        string text, OrchestrationProfile profile, InteractionType interactionType)
+    {
+        // For non-specialized profiles, delegate to the generic fallback
+        if (profile == OrchestrationProfile.SentimentAnalysis)
+        {
+            return await RunSingleAgentFallback(text, interactionType);
+        }
+
+        var userMessage = BuildProfileUserMessage(text, profile, interactionType);
+
+        var chatService = _kernelProvider.GetKernel().GetRequiredService<IChatCompletionService>();
+        var chatHistory = new ChatHistory();
+        chatHistory.AddSystemMessage(
+            "You are an expert insurance analyst. Analyze the input and return ONLY valid JSON matching the requested schema. No markdown code fences.");
+        chatHistory.AddUserMessage(userMessage);
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        var response = await chatService.GetChatMessageContentAsync(chatHistory, cancellationToken: cts.Token);
+
+        var json = ExtractJson(response.Content ?? "");
+        if (json != null)
+        {
+            var result = ParseAnalysisResult(json, $"[ProfileFallback-{profile}]: {response.Content}");
+            result.Quality ??= new QualityMetadata();
+            result.Quality.Suggestions = [$"Analysis produced using single-agent fallback for {profile} profile"];
+            return result;
+        }
+
+        return CreateDefaultResult(text, interactionType, $"Profile-aware fallback for {profile} did not produce valid JSON");
     }
 
     /// <summary>

@@ -403,6 +403,124 @@ Angular 21 SPA (Port 4200) — unchanged
 
 ---
 
+## Sprint 4.5: Azure AI Services Integration (PRE-SPRINT 5)
+
+**Goal:** Integrate 4 new Azure AI services (F0 free tier) into the existing multimodal pipeline, adding content safety screening, resilient NER/STT fallback chains, and multilingual translation support.
+
+**Problem solved:** The platform relied on single providers for NER (HuggingFace, 300 req/hr) and STT (Deepgram, $200 credit) with no fallback. CX Copilot responses had no content safety screening before reaching policyholders. Non-English claims couldn't be processed. Sprint 4.5 adds Azure redundancy for all three plus a new translation capability.
+
+### Azure AI Resource Status
+
+| Resource | Free Tier | Status | Integration |
+|----------|-----------|--------|-------------|
+| Azure AI Vision | 5K txns/month | **Already integrated** | `AzureVisionService.cs`, primary `IImageAnalysisService` |
+| Azure AI Document Intelligence | 500 pages/month | **Already integrated** | `AzureDocumentIntelligenceOcrService.cs`, Tier 2 in 4-tier OCR chain |
+| Azure AI Content Safety | 5K text + 5K image/month | **New** | CX Copilot response screening |
+| Azure AI Language | 5K text records/month | **New** | NER fallback for HuggingFace |
+| Azure AI Speech | 5 hrs STT/month | **New** | STT fallback for Deepgram |
+| Azure AI Translator | 2M chars/month | **New** | Pre-processing for non-English text |
+| Azure Key Vault | Standard ($0.03/10K ops) | **Excluded** | No F0 tier — planned for later |
+
+### Phase 0: Configuration + NuGet Packages
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.0a | NuGet Packages | `Azure.AI.ContentSafety` 1.0.0, `Microsoft.CognitiveServices.Speech` 1.42.0 (note: `Azure.AI.TextAnalytics` already in project) |
+| 4.5.0b | Settings Classes | 4 new settings in `LlmProviderConfiguration.cs`: `AzureLanguageSettings`, `AzureContentSafetySettings`, `AzureTranslatorSettings`, `AzureSpeechSettings` |
+| 4.5.0c | App Configuration | 4 new sections in `appsettings.json` under `AgentSystem` |
+
+### Phase 1 (P1): Content Safety — CX Copilot Protection
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.1a | Interface + Models | `IContentSafetyService` with `AnalyzeTextAsync` + `AnalyzeImageAsync` → `ContentSafetyResult` (severity ints for Hate/Violence/SelfHarm/Sexual, `IsSafe` flag) |
+| 4.5.1b | Implementation | `AzureContentSafetyService` using `ContentSafetyClient` SDK, graceful degradation on missing config |
+| 4.5.1c | CX Integration | Optional `IContentSafetyService?` in `CustomerExperienceService` — screen LLM responses before output |
+| 4.5.1d | Tests | ~6 tests: missing API key, missing endpoint, provider name, insurance-realistic claim descriptions |
+
+### Phase 2 (P1): Language NER + Resilient Entity Extraction
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.2a | Azure NER Service | `AzureLanguageNerService` using `TextAnalyticsClient` SDK, maps Azure entity categories → our format (Person→PERSON, Organization→ORGANIZATION, etc.) + insurance regex patterns |
+| 4.5.2b | Resilient Provider | `ResilientEntityExtractionProvider` — chain: **HuggingFace (300 req/hr) → Azure Language (5K/month)**, exponential backoff cooldown (30s→300s cap) |
+| 4.5.2c | DI Conversion | Convert NER from direct registration to keyed services + resilient wrapper |
+| 4.5.2d | Tests | ~8 tests: AzureLanguageNerService validation + ResilientEntityExtractionProvider fallback chain (Moq) |
+
+### Phase 3 (P2): Speech STT + Resilient Speech Provider
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.3a | Azure STT Service | `AzureSpeechToTextService` using Speech SDK (or REST API fallback if SDK doesn't support .NET 10), PII redaction on output |
+| 4.5.3b | Resilient Provider | `ResilientSpeechToTextProvider` — chain: **Deepgram ($200 credit) → Azure Speech (5 hrs/month)** |
+| 4.5.3c | DI Conversion | Convert STT from direct registration to keyed services + resilient wrapper |
+| 4.5.3d | Tests | ~9 tests: AzureSpeechToTextService validation + ResilientSpeechToTextProvider fallback chain (Moq) |
+
+### Phase 4 (P2): Translator — Multilingual Claims
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.4a | Interface + Models | `ITranslationService` with `TranslateAsync` + `DetectLanguageAsync` → `TranslationResult`, `LanguageDetectionResult` |
+| 4.5.4b | Implementation | `AzureTranslatorService` using raw HttpClient REST (matches Deepgram/HuggingFace pattern), PII redaction before sending |
+| 4.5.4c | Tests | ~8 tests: valid translation, auto-detect, missing API key, API error, PII redaction, insurance-realistic Spanish claim |
+
+### Phase 5: Startup Validation + Documentation
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 4.5.5a | Startup Logging | Azure AI services status in startup log: `Azure AI services: Vision, DocIntel, Language, ContentSafety, Translator, Speech` |
+| 4.5.5b | CLAUDE.md Update | Add NER + STT fallback chains to Provider Fallback Order section |
+
+### New Files (14)
+
+| # | File | Phase |
+|---|------|-------|
+| 1 | `Backend/Services/Multimodal/IContentSafetyService.cs` | 1 |
+| 2 | `Backend/Services/Multimodal/AzureContentSafetyService.cs` | 1 |
+| 3 | `Backend/Services/Multimodal/AzureLanguageNerService.cs` | 2 |
+| 4 | `Backend/Services/Multimodal/ResilientEntityExtractionProvider.cs` | 2 |
+| 5 | `Backend/Services/Multimodal/AzureSpeechToTextService.cs` | 3 |
+| 6 | `Backend/Services/Multimodal/ResilientSpeechToTextProvider.cs` | 3 |
+| 7 | `Backend/Services/Multimodal/ITranslationService.cs` | 4 |
+| 8 | `Backend/Services/Multimodal/AzureTranslatorService.cs` | 4 |
+| 9 | `Tests/AzureContentSafetyServiceTests.cs` | 1 |
+| 10 | `Tests/AzureLanguageNerServiceTests.cs` | 2 |
+| 11 | `Tests/ResilientEntityExtractionProviderTests.cs` | 2 |
+| 12 | `Tests/AzureSpeechToTextServiceTests.cs` | 3 |
+| 13 | `Tests/ResilientSpeechToTextProviderTests.cs` | 3 |
+| 14 | `Tests/AzureTranslatorServiceTests.cs` | 4 |
+
+### Modified Files (5)
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `Agents/Configuration/LlmProviderConfiguration.cs` | 4 settings classes + 4 properties on `AgentSystemSettings` |
+| 2 | `Backend/appsettings.json` | 4 config sections under `AgentSystem` |
+| 3 | `Backend/SentimentAnalyzer.API.csproj` | 2 NuGet packages |
+| 4 | `Backend/Program.cs` | DI registrations (keyed services + resilient providers) + startup validation |
+| 5 | `Backend/Services/CustomerExperience/CustomerExperienceService.cs` | Optional content safety screening integration |
+
+### New Resilient Provider Chains
+
+```
+NER:        HuggingFace (300 req/hr) → Azure Language (5K/month)
+STT:        Deepgram ($200 credit)   → Azure Speech (5 hrs/month)
+```
+
+Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30s→60s→120s→240s→300s cap), thread-safe with `lock`, keyed DI services.
+
+### Sprint 4.5 Stats (Projected)
+- **New files:** 14 (8 service implementations/interfaces + 6 test files)
+- **Modified files:** 5 (config, appsettings, csproj, Program.cs, CX service)
+- **New backend tests:** ~34
+- **Backend tests projected:** ~495 (461 + 34)
+- **New NuGet packages:** 2
+- **Frontend changes:** 0 (backend-only integration, DI resolves automatically)
+
+**Gate:** All ~495 backend tests pass, startup log shows all 6 Azure AI services, `IEntityExtractionService` resolves to `ResilientEntityExtractionProvider`, `ISpeechToTextService` resolves to `ResilientSpeechToTextProvider`.
+
+---
+
 ## Summary Timeline
 
 | Sprint | Focus | Status | Key Deliverable |
@@ -411,6 +529,7 @@ Angular 21 SPA (Port 4200) — unchanged
 | **Sprint 2** | Claims & Fraud Pipeline | **COMPLETE** | 8 API endpoints, 3 DB tables, claims triage, fraud scoring, provider health, 246 tests |
 | **Sprint 3** | Frontend + Dashboard + E2E + Landing | **COMPLETE** | 8 new components, 6 new routes, landing page, Chart.js dashboard, 196 unit tests, 239 E2E tests |
 | **Sprint 4** | Document Intelligence RAG + Tech Debt | **COMPLETE** | RAG pipeline, CX Copilot, fraud correlation, PII fixes, rate limiting, 5 new frontend components, 18 total components, 15 routes, 1053 total tests |
+| **Sprint 4.5** | Azure AI Services Integration | **PLANNED** | 4 new Azure AI services (Content Safety, Language NER, Speech STT, Translator), 2 resilient provider chains, ~34 new backend tests |
 
 ## Free Tier Budget
 
@@ -427,6 +546,10 @@ Angular 21 SPA (Port 4200) — unchanged
 | OCR.space | 500/day | Ready | ~100 documents/day |
 | HuggingFace | 300/hour | Ready | ~50 NER calls/day |
 | Voyage AI | 50M tokens (free) | Sprint 4 planned | Document embeddings (voyage-finance-2, 1024-dim) |
+| Azure AI Content Safety | 5K text + 5K image/month | Sprint 4.5 planned | CX Copilot response safety screening |
+| Azure AI Language | 5K text records/month | Sprint 4.5 planned | NER fallback for HuggingFace (resilient chain) |
+| Azure AI Speech | 5 hrs STT/month | Sprint 4.5 planned | STT fallback for Deepgram (resilient chain) |
+| Azure AI Translator | 2M chars/month | Sprint 4.5 planned | Multilingual claims pre-processing |
 
 ---
 

@@ -21,6 +21,7 @@ public interface IFraudAnalysisService
 
     /// <summary>
     /// Retrieves claims flagged as fraud alerts (FraudScore above threshold).
+    /// Returns full claim triage data so the frontend can render severity, type, dates, and fraud flags.
     /// </summary>
-    Task<List<FraudAnalysisResponse>> GetFraudAlertsAsync(double minFraudScore = 55, int pageSize = 50);
+    Task<List<ClaimTriageResponse>> GetFraudAlertsAsync(double minFraudScore = 55, int pageSize = 50);
 }

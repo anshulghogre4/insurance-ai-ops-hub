@@ -80,7 +80,7 @@ import { FraudCorrelationResponse, ReviewCorrelationRequest } from '../../models
             </div>
             <div class="glass-card-static p-4 text-center">
               <p class="text-2xl font-bold text-orange-400">{{ getAverageScore() | number:'1.0-0' }}%</p>
-              <p class="text-xs" [style.color]="'var(--text-muted)'">Avg Score</p>
+              <p class="text-xs" [style.color]="'var(--text-muted)'">Avg Match Score</p>
             </div>
             <div class="glass-card-static p-4 text-center">
               <p class="text-2xl font-bold text-yellow-400">{{ getStatusCount('Pending') }}</p>
@@ -145,8 +145,8 @@ import { FraudCorrelationResponse, ReviewCorrelationRequest } from '../../models
               <!-- Card Header -->
               <div class="p-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                  <!-- Score Gauge -->
-                  <div class="relative w-12 h-12 flex-shrink-0">
+                  <!-- Match Score Gauge -->
+                  <div class="relative w-12 h-12 flex-shrink-0" [attr.aria-label]="'Match Score: ' + ((corr.correlationScore * 100) | number:'1.0-0') + '%'">
                     <svg class="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
                       <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" [attr.stroke]="'var(--border-secondary)'" stroke-width="3"/>
                       <path d="M18 2.0845a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" [attr.stroke]="getScoreColor(corr.correlationScore)" stroke-width="3" [attr.stroke-dasharray]="(corr.correlationScore * 100) + ', 100'" stroke-linecap="round"/>
@@ -178,7 +178,7 @@ import { FraudCorrelationResponse, ReviewCorrelationRequest } from '../../models
                       <span class="badge text-[10px]" [class]="getSeverityClass(corr.sourceClaimSeverity)">{{ corr.sourceClaimSeverity }}</span>
                     }
                     @if (corr.sourceFraudScore != null) {
-                      <span class="badge badge-neutral text-[10px]">Fraud: {{ (corr.sourceFraudScore * 100) | number:'1.0-0' }}%</span>
+                      <span class="badge badge-neutral text-[10px]">Fraud: {{ corr.sourceFraudScore | number:'1.0-0' }}%</span>
                     }
                   </div>
                 </div>
@@ -195,7 +195,7 @@ import { FraudCorrelationResponse, ReviewCorrelationRequest } from '../../models
                       <span class="badge text-[10px]" [class]="getSeverityClass(corr.correlatedClaimSeverity)">{{ corr.correlatedClaimSeverity }}</span>
                     }
                     @if (corr.correlatedFraudScore != null) {
-                      <span class="badge badge-neutral text-[10px]">Fraud: {{ (corr.correlatedFraudScore * 100) | number:'1.0-0' }}%</span>
+                      <span class="badge badge-neutral text-[10px]">Fraud: {{ corr.correlatedFraudScore | number:'1.0-0' }}%</span>
                     }
                   </div>
                 </div>

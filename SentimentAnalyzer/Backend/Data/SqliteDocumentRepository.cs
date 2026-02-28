@@ -94,7 +94,8 @@ public class SqliteDocumentRepository : IDocumentRepository
 
         var chunks = await chunksQuery.ToListAsync();
 
-        _logger.LogInformation("Vector search across {Count} chunks for top-{TopK}", chunks.Count, topK);
+        _logger.LogInformation("Vector search across {Count} chunks for top-{TopK}. Query embedding dim: {Dim}",
+            chunks.Count, topK, queryEmbedding.Length);
 
         // Compute cosine similarity for each chunk
         var results = new List<(DocumentChunkRecord Chunk, double Similarity)>();
@@ -103,9 +104,17 @@ public class SqliteDocumentRepository : IDocumentRepository
             try
             {
                 var embedding = JsonSerializer.Deserialize<float[]>(chunk.EmbeddingJson);
-                if (embedding == null || embedding.Length == 0) continue;
+                if (embedding == null || embedding.Length == 0)
+                {
+                    _logger.LogWarning("Chunk {ChunkId} has null/empty embedding (JSON length: {Len})",
+                        chunk.Id, chunk.EmbeddingJson?.Length ?? 0);
+                    continue;
+                }
 
                 var similarity = CosineSimilarity.Compute(queryEmbedding, embedding);
+                _logger.LogDebug(
+                    "Chunk {ChunkId} (doc {DocId}): similarity={Similarity:F4}, dim={ChunkDim}",
+                    chunk.Id, chunk.DocumentId, similarity, embedding.Length);
                 results.Add((chunk, similarity));
             }
             catch (JsonException ex)

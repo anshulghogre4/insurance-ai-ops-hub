@@ -159,8 +159,11 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var searchResults = await _documentRepository.SearchSimilarChunksAsync(
             queryEmbedding.Embedding, topK: 5, documentId: documentId);
 
-        // Filter out low-relevance chunks (minimum similarity threshold)
-        const double MinSimilarityThreshold = 0.3;
+        // Filter out low-relevance chunks.
+        // Voyage AI asymmetric embeddings (input_type: "document" vs "query") produce
+        // naturally lower cosine similarity scores than symmetric models.
+        // Empirical testing: exact-match queries score ~0.27, so 0.15 is a safe floor.
+        const double MinSimilarityThreshold = 0.15;
         searchResults = searchResults
             .Where(r => r.Similarity >= MinSimilarityThreshold)
             .ToList();

@@ -106,7 +106,7 @@ import { getEffectiveFraudScore } from '../../utils/claims-display.utils';
                       </span>
                     }
                   </div>
-                  <p class="text-[10px]" [style.color]="'var(--text-muted)'">{{ formatDate(alert.createdAt) }}</p>
+                  <p class="text-[10px]" [style.color]="'var(--text-muted)'">{{ alert.createdAt ? formatDate(alert.createdAt) : 'Date unavailable' }}</p>
                 </div>
                 <span class="badge text-[10px] font-bold" [class]="getRiskBadgeClass(alert.fraudRiskLevel)">
                   {{ alert.fraudRiskLevel }}
@@ -136,11 +136,11 @@ import { getEffectiveFraudScore } from '../../utils/claims-display.utils';
               <div class="grid grid-cols-3 gap-2 mb-3">
                 <div class="text-center p-2 rounded-lg" [style.background]="'var(--bg-surface)'">
                   <p class="text-[10px] font-medium" [style.color]="'var(--text-muted)'">Severity</p>
-                  <p class="text-xs font-bold" [class]="getSeverityColor(alert.severity)">{{ alert.severity }}</p>
+                  <p class="text-xs font-bold" [class]="getSeverityColor(alert.severity)">{{ alert.severity || '—' }}</p>
                 </div>
                 <div class="text-center p-2 rounded-lg" [style.background]="'var(--bg-surface)'">
                   <p class="text-[10px] font-medium" [style.color]="'var(--text-muted)'">Type</p>
-                  <p class="text-xs font-semibold truncate" [style.color]="'var(--text-primary)'">{{ alert.claimType }}</p>
+                  <p class="text-xs font-semibold truncate" [style.color]="'var(--text-primary)'">{{ alert.claimType || '—' }}</p>
                 </div>
                 <div class="text-center p-2 rounded-lg" [style.background]="'var(--bg-surface)'">
                   <p class="text-[10px] font-medium" [style.color]="'var(--text-muted)'">Est. Loss</p>
@@ -179,7 +179,15 @@ import { getEffectiveFraudScore } from '../../utils/claims-display.utils';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                   </svg>
-                  View Claim
+                  View
+                </a>
+                <a [routerLink]="'/fraud/correlations/' + alert.claimId"
+                   class="btn-ghost text-xs flex items-center gap-1.5 flex-1 justify-center"
+                   [attr.aria-label]="'View cross-claim correlations for claim ' + alert.claimId">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                  </svg>
+                  Correlations
                 </a>
                 <button (click)="runDeepAnalysis(alert.claimId)"
                         class="btn-primary text-xs flex items-center gap-1.5 flex-1 justify-center !py-2"
@@ -194,7 +202,7 @@ import { getEffectiveFraudScore } from '../../utils/claims-display.utils';
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                     </svg>
-                    Deep Analysis
+                    Analyze
                   }
                 </button>
               </div>

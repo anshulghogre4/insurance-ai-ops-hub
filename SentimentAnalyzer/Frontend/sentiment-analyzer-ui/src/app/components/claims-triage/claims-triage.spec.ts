@@ -122,18 +122,12 @@ describe('ClaimsTriageComponent', () => {
     expect(component.expandedActions()).not.toContain(0);
   });
 
-  it('should return correct triage phase description', () => {
+  it('should track elapsed seconds for AI loader during loading', () => {
     component.elapsedSeconds.set(0);
-    expect(component.getTriagePhase()).toBe('Submitting claim...');
-    component.elapsedSeconds.set(5);
-    expect(component.getTriagePhase()).toContain('Claims Triage Agent');
+    expect(component.elapsedSeconds()).toBe(0);
     component.elapsedSeconds.set(15);
-    expect(component.getTriagePhase()).toContain('Fraud Detection Agent');
-    component.elapsedSeconds.set(25);
-    expect(component.getTriagePhase()).toContain('Business Analyst');
-    component.elapsedSeconds.set(35);
-    expect(component.getTriagePhase()).toContain('QA Agent');
+    expect(component.elapsedSeconds()).toBe(15);
     component.elapsedSeconds.set(45);
-    expect(component.getTriagePhase()).toContain('Finalizing');
+    expect(component.elapsedSeconds()).toBe(45);
   });
 });

@@ -8,6 +8,31 @@ AI-powered sentiment analysis for the insurance industry. Analyzes policyholder 
 
 ## Non-Negotiable Rules
 
+### #1 End-to-End Feature Development (MOST IMPORTANT)
+**Every feature MUST be built end-to-end in a single pass — NEVER backend-first or frontend-first.**
+
+When building any feature, implement ALL layers together in this order:
+1. **C# Model** (`Backend/Models/`) — Define the response shape
+2. **Backend Service + Endpoint** — Implement the business logic and API
+3. **Backend Tests** (xUnit) — Verify the service works correctly
+4. **TypeScript Interface** (`Frontend/.../models/`) — Must match the C# model exactly, property-for-property
+5. **Angular Service** (`Frontend/.../services/`) — HTTP client calling the endpoint
+6. **Angular Component** — UI rendering with defensive null guards on every field
+7. **Frontend Unit Tests** (Vitest) — Component and service tests
+8. **E2E Mock Data** (`e2e/fixtures/mock-data.ts`) — Must match the C# model shape exactly
+9. **E2E Tests** (Playwright) — Full user journey tests written immediately, not deferred
+10. **Navigation Link** — Every new route must have at least one `routerLink` from another component
+
+**Why:** Building layers separately across sprints causes contract mismatches where the backend returns different data than the frontend expects. E2E mocks mask these gaps. This rule prevents that.
+
+**E2E tests are mandatory, not optional.** Every feature must ship with Playwright E2E tests covering:
+- Happy path (form fill → submit → verify results render)
+- Error states (API 500, 429, empty responses)
+- Navigation (links to/from the new feature work)
+- Accessibility (axe-core scan on the new page)
+
+This routine applies to ALL sprints uniformly — no exceptions.
+
 ### v1 Backward Compatibility
 **NEVER** modify these frozen files: `SentimentController.cs`, `SentimentRequest.cs`, `SentimentResponse.cs`, `ISentimentService.cs`, `OpenAISentimentService.cs`
 
@@ -15,7 +40,19 @@ AI-powered sentiment analysis for the insurance industry. Analyzes policyholder 
 Before ANY external AI call, redact SSN, policy numbers, claim numbers, phone, email. See [docs/security.md](docs/security.md).
 
 ### Provider Fallback Order
-Groq -> Mistral -> Gemini -> OpenRouter -> Ollama -> error. Never skip the chain. Managed by `IResilientKernelProvider`.
+**LLM:** Groq -> Cerebras -> Mistral -> Gemini -> OpenRouter -> OpenAI -> Ollama -> error. Never skip the chain. Managed by `IResilientKernelProvider`.
+
+**OCR (Document Processing, ordered by data safety):** PdfPig (local, no data transfer) -> Azure Document Intelligence (no training on data) -> OCR Space (immediate deletion, GDPR compliant) -> Gemini Vision (last resort — free tier may train on data). Never skip the chain. Managed by `ResilientOcrProvider`. PdfPig handles native/digital PDFs in <50ms with no API calls; Azure/OCR Space/Gemini handle scanned documents.
+
+**NER (Entity Extraction):** HuggingFace BERT (300 req/hr) -> Azure AI Language (5K/month). Never skip the chain. Managed by `ResilientEntityExtractionProvider`.
+
+**STT (Speech-to-Text):** Deepgram ($200 credit) -> Azure AI Speech (5 hrs/month). Never skip the chain. Managed by `ResilientSpeechToTextProvider`.
+
+**Embeddings:** Voyage AI -> Ollama. Managed by `ResilientEmbeddingProvider`.
+
+**Content Safety:** Azure AI Content Safety (5K text + 5K image/month). Screens CX Copilot responses before sending to policyholders. Managed by `IContentSafetyService`.
+
+**Translation:** Azure AI Translator (2M chars/month). Pre-processes non-English claims text. Managed by `ITranslationService`.
 
 ## Tech Stack
 - **Backend**: .NET 10, C# 13, ASP.NET Core, Semantic Kernel, System.Text.Json, xUnit + Moq
@@ -75,6 +112,38 @@ Active in `.mcp.json`:
 - **Stitch MCP** (`@_davideast/stitch-mcp`) — Google Stitch AI design-to-code pipeline for UI components
 
 Sprint 5 planned: Supabase, GitHub, Context7, Sequential Thinking, Sentry, Grafana, Snyk, Upstash, Tavily. See [docs/architecture.md](docs/architecture.md).
+
+## Quality Checklist (Mandatory for All Agents)
+
+### Backend-Frontend Contract Validation
+- When building/changing a backend endpoint return type, verify the corresponding frontend TypeScript interface matches the C# model property-for-property
+- When building frontend components, verify E2E mock data shapes in `e2e/fixtures/mock-data.ts` match actual backend C# response models in `Backend/Models/`
+- When changing E2E mocks, verify the mock values are consistent with any display transformation utils (e.g., `getEffectiveFraudScore()` floors)
+
+### Defensive Template Rendering
+- **EVERY** API property access in Angular templates MUST have a fallback:
+  - Strings: `{{ value || 'N/A' }}`
+  - Dates: `{{ value ? formatDate(value) : 'Date unavailable' }}`
+  - Objects: `{{ obj?.property }}` (optional chaining)
+  - Arrays: `@if (arr && arr.length > 0)` before `@for`
+- Never trust that the backend will return all optional fields populated
+- Use `?? ''` for string concatenation in TypeScript to prevent "undefined" literals
+
+### Navigation Completeness
+- Every route in `app.routes.ts` MUST have at least one `routerLink` pointing to it from another component
+- After adding a new route, verify navigation exists: `grep -r "routerLink.*your-route" src/app/components/`
+- Related features must cross-link (e.g., fraud alerts → correlations, claims → fraud analysis)
+
+### E2E Mock Consistency
+- Mock route patterns MUST use trailing `*` wildcard to match query parameters: `**/api/endpoint*` not `**/api/endpoint`
+- When nav uses dropdown buttons, scope page-level button queries: `page.getByRole('main').getByRole('button', { name: 'X' })`
+- After adding display transformation utilities, update mock values to be post-transformation consistent
+
+### UX Consistency Rules
+- All dates formatted via `formatDate()` or Angular `DatePipe` — never raw ISO strings
+- All fraud scores on 0-100 scale (correlation match scores labeled "Match Score" to distinguish)
+- Error banners: rose/red for failures, amber/yellow for partial success/warnings
+- Backend `errorMessage` fields must always be surfaced to the user when non-null
 
 ## Detailed Reference Docs
 - [docs/architecture.md](docs/architecture.md) — Agent system, orchestration flows, providers, multimodal services, MCP servers

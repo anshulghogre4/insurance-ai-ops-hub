@@ -1,8 +1,8 @@
 <!-- ═══════════════════════════════════════════════════════════════
      INSURANCE AI OPERATIONS HUB - TECHNICAL SHOWCASE LANDING PAGE
-     7 Sections: Hero, Agent Orchestration, Provider Chain,
-                 Multimodal Pipeline, Interactive Demo,
-                 Security/PII, Stats & Tech Grid
+     8 Sections: Hero, Agent Orchestration, Provider Chain,
+                 Multimodal Pipeline, Azure AI & OCR Pipeline,
+                 Interactive Demo, Security/PII, Stats & Tech Grid
      ═══════════════════════════════════════════════════════════════ -->
 
 <div class="landing-page">
@@ -38,14 +38,14 @@
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 animate-fade-in-up"
            style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-xs font-semibold" style="color: var(--text-secondary);">v3.0 - Insurance AI Operations Hub</span>
+        <span class="text-xs font-semibold" style="color: var(--text-secondary);">v4.0 - Insurance AI Operations Hub</span>
       </div>
 
       <!-- Main headline -->
       <h1 class="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up stagger-1">
         <span style="color: var(--text-primary);">9 AI Agents.</span><br>
         <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-          5 LLM Providers.
+          7 LLM Providers.
         </span><br>
         <span style="color: var(--text-primary);">1 Intelligent Platform.</span>
       </h1>
@@ -54,8 +54,8 @@
       <p class="text-lg sm:text-xl max-w-3xl mx-auto mb-10 animate-fade-in-up stagger-2"
          style="color: var(--text-secondary);">
         Multi-agent AI orchestration for insurance claims triage, fraud detection,
-        and sentiment analysis -- powered by a resilient 5-provider fallback chain
-        with full PII protection.
+        and sentiment analysis -- powered by a resilient 7-provider fallback chain,
+        6 Azure AI services, and full PII protection.
       </p>
 
       <!-- CTA Buttons -->
@@ -82,11 +82,11 @@
         </div>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
              style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
-          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> 5 LLM Fallback Providers
+          <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span> 7 LLM Fallback Providers
         </div>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
              style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
-          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> 5 Multimodal Services
+          <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span> 6 Azure AI Services
         </div>
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
              style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
@@ -328,26 +328,24 @@
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Resilient Infrastructure</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
-          5-Provider Fallback Chain
+          7-Provider Fallback Chain
         </h2>
         <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
           If one provider hits a rate limit or goes down, the system automatically falls through to the next
-          with exponential backoff cooldown. Ollama is always available as the local, unlimited fallback.
+          with exponential backoff cooldown. 7 providers ensure near-zero downtime -- Ollama is always available as the local fallback.
         </p>
       </div>
 
       <!-- Provider Chain Visualization -->
-      <div class="flex flex-col lg:flex-row items-stretch gap-4 mb-8">
-        @for (provider of providers; track provider.name; let i = $index; let last = $last) {
-          <div class="flex-1 flex flex-col">
-            <!-- Provider Card -->
-            <div class="glass-card-static p-5 flex-1 transition-all duration-500 relative overflow-hidden"
+      <!-- Provider cards: 2 rows on large screens (4 top + 3 bottom centered) -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        @for (provider of providers.slice(0, 4); track provider.name; let i = $index) {
+          <div class="relative">
+            <div class="glass-card-static p-4 h-full transition-all duration-500 relative overflow-hidden"
                  [class.ring-2]="getProviderStatus(i) === 'trying'"
                  [class.ring-indigo-400]="getProviderStatus(i) === 'trying'"
                  [class.ring-emerald-400]="getProviderStatus(i) === 'success'"
                  [class.opacity-40]="getProviderStatus(i) === 'failed'">
-
-              <!-- Status indicator overlay -->
               @if (getProviderStatus(i) === 'trying') {
                 <div class="absolute inset-0 bg-indigo-500/5 animate-pulse pointer-events-none"></div>
               }
@@ -356,43 +354,92 @@
               }
               @if (getProviderStatus(i) === 'failed') {
                 <div class="absolute top-2 right-2">
-                  <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                   </svg>
                 </div>
               }
               @if (getProviderStatus(i) === 'success') {
                 <div class="absolute top-2 right-2">
-                  <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                   </svg>
                 </div>
               }
-
               <div class="relative">
-                <div class="flex items-center gap-2 mb-3">
-                  <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">{{ i + 1 }}.</span>
-                  <span class="text-base font-bold" [class]="provider.color">{{ provider.name }}</span>
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] font-bold" style="color: var(--text-muted);">{{ i + 1 }}.</span>
+                  <span class="text-sm font-bold" [class]="provider.color">{{ provider.name }}</span>
                 </div>
-                <p class="text-xs mb-1" style="color: var(--text-secondary);">{{ provider.model }}</p>
-                <div class="flex items-center justify-between mt-3">
-                  <span class="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                <p class="text-xs mb-2" style="color: var(--text-secondary);">{{ provider.model }}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
                         style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-secondary);">
                     {{ provider.freeLimit }}
                   </span>
-                  <span class="text-xs font-mono" style="color: var(--text-muted);">{{ provider.latency }}</span>
+                  <span class="text-[10px] font-mono" style="color: var(--text-muted);">{{ provider.latency }}</span>
                 </div>
               </div>
             </div>
-
-            <!-- Arrow between providers -->
-            @if (!last) {
-              <div class="hidden lg:flex items-center justify-center py-2">
-                <svg class="w-5 h-5 rotate-90 lg:rotate-0" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
-                </svg>
+          </div>
+        }
+      </div>
+      <!-- Arrows row -->
+      <div class="hidden lg:flex items-center justify-center gap-1 mb-3">
+        <svg class="w-4 h-4" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+        </svg>
+        <span class="text-[10px] font-medium px-2 py-0.5 rounded-full" style="color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border-primary);">
+          fallback
+        </span>
+        <svg class="w-4 h-4" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+        </svg>
+      </div>
+      <!-- Second row: 3 providers centered -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3 max-w-3xl mx-auto mb-8">
+        @for (provider of providers.slice(4); track provider.name; let i = $index) {
+          <div class="relative">
+            <div class="glass-card-static p-4 h-full transition-all duration-500 relative overflow-hidden"
+                 [class.ring-2]="getProviderStatus(i + 4) === 'trying'"
+                 [class.ring-indigo-400]="getProviderStatus(i + 4) === 'trying'"
+                 [class.ring-emerald-400]="getProviderStatus(i + 4) === 'success'"
+                 [class.opacity-40]="getProviderStatus(i + 4) === 'failed'">
+              @if (getProviderStatus(i + 4) === 'trying') {
+                <div class="absolute inset-0 bg-indigo-500/5 animate-pulse pointer-events-none"></div>
+              }
+              @if (getProviderStatus(i + 4) === 'success') {
+                <div class="absolute inset-0 bg-emerald-500/5 pointer-events-none"></div>
+              }
+              @if (getProviderStatus(i + 4) === 'failed') {
+                <div class="absolute top-2 right-2">
+                  <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </div>
+              }
+              @if (getProviderStatus(i + 4) === 'success') {
+                <div class="absolute top-2 right-2">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  </svg>
+                </div>
+              }
+              <div class="relative">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <span class="text-[10px] font-bold" style="color: var(--text-muted);">{{ i + 5 }}.</span>
+                  <span class="text-sm font-bold" [class]="provider.color">{{ provider.name }}</span>
+                </div>
+                <p class="text-xs mb-2" style="color: var(--text-secondary);">{{ provider.model }}</p>
+                <div class="flex items-center justify-between">
+                  <span class="text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap"
+                        style="background: var(--bg-surface); color: var(--text-muted); border: 1px solid var(--border-secondary);">
+                    {{ provider.freeLimit }}
+                  </span>
+                  <span class="text-[10px] font-mono" style="color: var(--text-muted);">{{ provider.latency }}</span>
+                </div>
               </div>
-            }
+            </div>
           </div>
         }
       </div>
@@ -465,11 +512,11 @@
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Multimodal Processing</span>
         </div>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
-          5 Modalities, 1 Unified Pipeline
+          4 Modalities, Resilient Pipelines
         </h2>
         <p class="text-base max-w-2xl mx-auto" style="color: var(--text-secondary);">
           Voice recordings, damage photos, scanned documents, and raw text all feed through
-          specialized processors into a single claims assessment. Zero new NuGet packages -- all via REST.
+          resilient fallback chains into a single claims assessment. Each modality has automatic provider failover.
         </p>
       </div>
 
@@ -565,6 +612,188 @@
           </span>
         </div>
       </div>
+    </div>
+  </section>
+
+
+  <!-- ══════════════════════════════════════════════
+       SECTION 3b: AZURE AI & OCR PIPELINE
+       ══════════════════════════════════════════════ -->
+  <section id="azure" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('azure')"
+           style="background: var(--bg-secondary);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+      <!-- Section Header -->
+      <div class="text-center mb-12">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-4"
+             style="background: var(--bg-surface); border: 1px solid var(--border-primary); color: var(--text-secondary)">
+          <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+          </svg>
+          Azure AI & Data Pipeline
+        </div>
+        <h2 class="text-3xl lg:text-4xl font-bold mb-4" style="color: var(--text-primary)">
+          6 Azure AI Services + 4-Tier OCR Chain
+        </h2>
+        <p class="text-lg max-w-2xl mx-auto" style="color: var(--text-secondary)">
+          Enterprise-grade AI services on free F0 tiers, with a data-safety-first document processing pipeline
+        </p>
+      </div>
+
+      <!-- OCR Pipeline (Horizontal chain) -->
+      <div class="mb-12">
+        <h3 class="text-lg font-semibold mb-4 text-center" style="color: var(--text-primary)">
+          Document OCR Fallback Chain
+          <span class="text-xs font-normal ml-2" style="color: var(--text-secondary)">(ordered by data safety)</span>
+        </h3>
+        <!-- Mobile: stacked cards -->
+        <div class="grid grid-cols-1 gap-3 lg:hidden">
+          @for (tier of ocrTiers; track tier.name; let last = $last) {
+            <div class="glass-card-static p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      [class]="tier.bgColor + ' ' + tier.color">
+                  Tier {{ tier.tier }}
+                </span>
+                <span class="text-sm font-semibold" [class]="tier.color">{{ tier.name }}</span>
+              </div>
+              <p class="text-xs mb-2" style="color: var(--text-secondary)">{{ tier.dataSafety }}</p>
+              <span class="text-[10px] px-2 py-0.5 rounded-full"
+                    style="background: var(--bg-surface); border: 1px solid var(--border-primary); color: var(--text-muted)">
+                {{ tier.freeLimit }}
+              </span>
+            </div>
+            @if (!last) {
+              <div class="flex items-center justify-center">
+                <svg class="w-5 h-5" style="color: var(--text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/>
+                </svg>
+              </div>
+            }
+          }
+        </div>
+        <!-- Desktop: cards with arrows inline -->
+        <div class="hidden lg:flex items-center gap-2">
+          @for (tier of ocrTiers; track tier.name; let last = $last) {
+            <div class="flex-1 glass-card-static p-4 min-w-0">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                      [class]="tier.bgColor + ' ' + tier.color">
+                  Tier {{ tier.tier }}
+                </span>
+                <span class="text-sm font-semibold" [class]="tier.color">{{ tier.name }}</span>
+              </div>
+              <p class="text-xs mb-2" style="color: var(--text-secondary)">{{ tier.dataSafety }}</p>
+              <span class="text-[10px] px-2 py-0.5 rounded-full"
+                    style="background: var(--bg-surface); border: 1px solid var(--border-primary); color: var(--text-muted)">
+                {{ tier.freeLimit }}
+              </span>
+            </div>
+            @if (!last) {
+              <div class="flex-shrink-0 flex items-center justify-center w-8">
+                <svg class="w-6 h-6" style="color: var(--text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
+                </svg>
+              </div>
+            }
+          }
+        </div>
+      </div>
+
+      <!-- Azure AI Services Grid (3x2) -->
+      <div class="mb-12">
+        <h3 class="text-lg font-semibold mb-4 text-center" style="color: var(--text-primary)">
+          Azure AI Services
+          <span class="text-xs font-normal ml-2 text-emerald-400">All on F0 Free Tier</span>
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          @for (service of azureServices; track service.name) {
+            <div class="glass-card-static p-4 hover:border-blue-500/30 transition-all duration-300">
+              <div class="flex items-center gap-3 mb-3">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="service.bgColor">
+                  @switch (service.icon) {
+                    @case ('eye') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                      </svg>
+                    }
+                    @case ('document') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                      </svg>
+                    }
+                    @case ('shield') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                      </svg>
+                    }
+                    @case ('tag') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                      </svg>
+                    }
+                    @case ('microphone') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+                      </svg>
+                    }
+                    @case ('translate') {
+                      <svg class="w-4 h-4" [class]="service.color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                      </svg>
+                    }
+                  }
+                </div>
+                <div>
+                  <div class="text-sm font-semibold" style="color: var(--text-primary)">{{ service.name }}</div>
+                  <div class="text-[10px]" style="color: var(--text-muted)">{{ service.freeTier }}</div>
+                </div>
+                <div class="ml-auto">
+                  <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-medium">
+                    Active
+                  </span>
+                </div>
+              </div>
+              <p class="text-xs" style="color: var(--text-secondary)">{{ service.useCase }}</p>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Resilient Provider Chains -->
+      <div>
+        <h3 class="text-lg font-semibold mb-4 text-center" style="color: var(--text-primary)">
+          4 Resilient Fallback Chains
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          @for (chain of resilientChains; track chain.name) {
+            <div class="glass-card-static p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-xs font-bold uppercase tracking-wider" [class]="chain.color">{{ chain.name }}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded-full"
+                      style="background: var(--bg-surface); border: 1px solid var(--border-primary); color: var(--text-muted)">
+                  {{ chain.providers.length }} providers
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-1">
+                @for (provider of chain.providers; track provider; let last = $last) {
+                  <span class="text-xs font-mono px-1.5 py-0.5 rounded"
+                        style="background: var(--bg-surface); color: var(--text-secondary)">
+                    {{ provider }}
+                  </span>
+                  @if (!last) {
+                    <svg class="w-3 h-3" style="color: var(--text-muted)" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -1174,7 +1403,7 @@
               </div>
               <p class="text-xs font-bold text-indigo-400">Multimodal Pipeline</p>
               <p class="text-[10px] mt-1" style="color: var(--text-muted);">STT, Vision, OCR, NER</p>
-              <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">5 Services, 0 NuGet</p>
+              <p class="text-[9px] mt-0.5" style="color: var(--text-muted);">11 Services, 4 Chains</p>
             </div>
           </div>
 
@@ -1199,7 +1428,7 @@
                 </div>
                 <div>
                   <p class="text-sm font-bold text-cyan-400">IResilientKernelProvider</p>
-                  <p class="text-[10px]" style="color: var(--text-muted);">Fallback: Groq → Mistral → Gemini → OpenRouter → Ollama</p>
+                  <p class="text-[10px]" style="color: var(--text-muted);">Fallback: Groq → Cerebras → Mistral → Gemini → OpenRouter → OpenAI → Ollama</p>
                 </div>
               </div>
               <div class="flex gap-2 flex-wrap">
@@ -1211,13 +1440,17 @@
             <div class="mt-3 flex items-center gap-1 flex-wrap">
               <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-orange-500/10 text-orange-400 border border-orange-500/20">Groq</span>
               <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Cerebras</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">Mistral</span>
               <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Gemini</span>
               <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
               <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20">OpenRouter</span>
               <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
-              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Ollama</span>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-teal-500/10 text-teal-400 border border-teal-500/20">OpenAI</span>
+              <svg class="w-3 h-3" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+              <span class="text-[9px] font-bold px-2 py-0.5 rounded bg-lime-500/10 text-lime-400 border border-lime-500/20">Ollama</span>
             </div>
           </div>
 
@@ -1421,7 +1654,7 @@
       <!-- Footer credits -->
       <div class="mt-12 pt-8" style="border-top: 1px solid var(--border-secondary);">
         <p class="text-xs" style="color: var(--text-muted);">
-          Insurance AI Operations Hub v3.0 -- .NET 10 + Angular 21 + Semantic Kernel -- 9 Agents, 5 Providers, 5 Modalities
+          Insurance AI Operations Hub v4.0 -- .NET 10 + Angular 21 + Semantic Kernel -- 9 Agents, 7 Providers, 6 Azure AI, 4 Resilient Chains
         </p>
       </div>
     </div>

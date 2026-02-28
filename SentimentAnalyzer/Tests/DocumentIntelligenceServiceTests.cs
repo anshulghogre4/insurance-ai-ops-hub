@@ -484,7 +484,7 @@ public class DocumentIntelligenceServiceTests
     [Fact]
     public async Task QueryAsync_FiltersLowSimilarityChunks()
     {
-        // Arrange — return chunks with mixed similarity scores, some below 0.3 threshold
+        // Arrange — return chunks with mixed similarity scores, some below 0.15 threshold
         var question = "What are the coverage limits?";
         var queryEmbedding = new float[1024];
 
@@ -515,7 +515,7 @@ public class DocumentIntelligenceServiceTests
                 Content = "Policy period: 01/01/2025 to 01/01/2026.",
                 TokenCount = 20,
                 Document = new DocumentRecord { Id = 42, FileName = "policy.pdf" }
-            }, 0.15),  // Below 0.3 threshold — should be filtered out
+            }, 0.12),  // Below 0.15 threshold — should be filtered out
             (new DocumentChunkRecord
             {
                 Id = 3, DocumentId = 42, ChunkIndex = 2,
@@ -523,7 +523,7 @@ public class DocumentIntelligenceServiceTests
                 Content = "Random unrelated content.",
                 TokenCount = 15,
                 Document = new DocumentRecord { Id = 42, FileName = "policy.pdf" }
-            }, 0.10)   // Below 0.3 threshold — should be filtered out
+            }, 0.05)   // Below 0.15 threshold — should be filtered out
         };
 
         _mockDocumentRepository

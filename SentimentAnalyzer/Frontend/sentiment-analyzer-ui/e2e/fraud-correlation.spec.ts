@@ -21,7 +21,7 @@ test.describe('Fraud Correlations', () => {
     await expect(totalCard.locator('.text-2xl')).toContainText('2');
 
     // Avg score: (78 + 62) / 2 = 70
-    const avgCard = page.locator('.glass-card-static').filter({ hasText: 'Avg Score' });
+    const avgCard = page.locator('.glass-card-static').filter({ hasText: 'Avg Match Score' });
     await expect(avgCard.locator('.text-2xl')).toContainText('70');
 
     // Pending count: 2

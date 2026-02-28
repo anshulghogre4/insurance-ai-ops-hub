@@ -79,6 +79,35 @@ interface TechBadge {
   color: string;
 }
 
+/** Represents a tier in the OCR fallback chain. */
+interface OcrTier {
+  name: string;
+  tier: number;
+  dataSafety: string;
+  freeLimit: string;
+  color: string;
+  bgColor: string;
+  icon: string;
+}
+
+/** Represents an Azure AI service. */
+interface AzureService {
+  name: string;
+  freeTier: string;
+  status: 'active' | 'configured' | 'planned';
+  useCase: string;
+  color: string;
+  bgColor: string;
+  icon: string;
+}
+
+/** Represents a resilient provider fallback chain. */
+interface ResilientChain {
+  name: string;
+  providers: string[];
+  color: string;
+}
+
 @Component({
   selector: 'app-landing',
   standalone: true,
@@ -140,10 +169,12 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly providers: ProviderNode[] = [
     { name: 'Groq', model: 'Llama 3.3 70B', freeLimit: '250 req/day', color: 'text-orange-400', bgColor: 'bg-orange-500/15', status: 'active', latency: '~0.3s' },
+    { name: 'Cerebras', model: 'GPT-OSS 120B', freeLimit: '1M tokens/day', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', status: 'active' as const, latency: '~0.1s' },
     { name: 'Mistral', model: 'Mistral Large', freeLimit: '500K tokens/mo', color: 'text-blue-400', bgColor: 'bg-blue-500/15', status: 'active', latency: '~0.8s' },
     { name: 'Gemini', model: 'Gemini Pro', freeLimit: '60 req/min', color: 'text-cyan-400', bgColor: 'bg-cyan-500/15', status: 'active', latency: '~1.2s' },
     { name: 'OpenRouter', model: 'Multi-model', freeLimit: '$1 credit', color: 'text-purple-400', bgColor: 'bg-purple-500/15', status: 'active', latency: '~1.5s' },
-    { name: 'Ollama', model: 'Local LLM', freeLimit: 'Unlimited', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', status: 'active', latency: '~2.0s' },
+    { name: 'OpenAI', model: 'GPT-4o Mini', freeLimit: 'Pay-as-you-go', color: 'text-teal-400', bgColor: 'bg-teal-500/15', status: 'active' as const, latency: '~1.2s' },
+    { name: 'Ollama', model: 'Local LLM', freeLimit: 'Unlimited', color: 'text-lime-400', bgColor: 'bg-lime-500/15', status: 'active', latency: '~2.0s' },
   ];
 
   providerChainStep = signal(-1);
@@ -154,7 +185,7 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly modalities: ModalityStage[] = [
     {
-      id: 'stt', name: 'Voice to Text', provider: 'Deepgram Nova-2',
+      id: 'stt', name: 'Voice to Text', provider: 'Deepgram \u2192 Azure Speech',
       icon: 'microphone', inputLabel: 'Audio Waveform', outputLabel: 'Transcript',
       color: 'text-violet-400', bgColor: 'bg-violet-500/15',
       example: { input: 'adjuster-call-recording.wav', output: '"The policyholder reports water damage in the basement affecting approximately 800 sq ft..."' }
@@ -166,13 +197,13 @@ export class LandingComponent implements OnInit, OnDestroy {
       example: { input: 'water-damage-basement.jpg', output: 'Detected: Standing water (6+ inches), damaged drywall, warped flooring. Severity: HIGH' }
     },
     {
-      id: 'ocr', name: 'Document OCR', provider: 'OCR.space',
+      id: 'ocr', name: 'Document OCR', provider: 'PdfPig \u2192 Azure Doc Intel \u2192 OCR Space \u2192 Gemini',
       icon: 'document', inputLabel: 'Scanned Document', outputLabel: 'Extracted Text',
       color: 'text-amber-400', bgColor: 'bg-amber-500/15',
       example: { input: 'policy-declaration-page.pdf', output: 'Policy: HO-2024-789456 | Coverage: $350,000 | Deductible: $1,000 | Effective: 01/01/2024' }
     },
     {
-      id: 'ner', name: 'Entity Extraction', provider: 'HuggingFace BERT',
+      id: 'ner', name: 'Entity Extraction', provider: 'HuggingFace \u2192 Azure Language',
       icon: 'tag', inputLabel: 'Raw Text', outputLabel: 'Named Entities',
       color: 'text-emerald-400', bgColor: 'bg-emerald-500/15',
       example: { input: 'John Smith reported damage at 123 Oak St on Feb 10...', output: 'PER: John Smith | LOC: 123 Oak St | DATE: Feb 10 | POLICY: HO-2024-789456' }
@@ -181,6 +212,31 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   activeModalityIndex = signal(0);
   modalityAnimating = signal(false);
+
+  // ─── Section 3b: Azure AI & OCR Pipeline ───
+
+  readonly ocrTiers: OcrTier[] = [
+    { name: 'PdfPig', tier: 1, dataSafety: 'Local \u2014 zero data transfer', freeLimit: 'Unlimited', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', icon: 'local' },
+    { name: 'Azure Doc Intel', tier: 2, dataSafety: 'No training on data', freeLimit: '500 pages/mo', color: 'text-blue-400', bgColor: 'bg-blue-500/15', icon: 'cloud' },
+    { name: 'OCR Space', tier: 3, dataSafety: 'GDPR compliant', freeLimit: '500 req/day', color: 'text-amber-400', bgColor: 'bg-amber-500/15', icon: 'shield' },
+    { name: 'Gemini Vision', tier: 4, dataSafety: 'Free tier may train', freeLimit: '60 req/min', color: 'text-rose-400', bgColor: 'bg-rose-500/15', icon: 'warning' },
+  ];
+
+  readonly azureServices: AzureService[] = [
+    { name: 'AI Vision', freeTier: '5K txns/mo', status: 'active', useCase: 'Damage photo analysis', color: 'text-blue-400', bgColor: 'bg-blue-500/15', icon: 'eye' },
+    { name: 'Document Intelligence', freeTier: '500 pages/mo', status: 'active', useCase: 'OCR Tier 2 (highest accuracy)', color: 'text-cyan-400', bgColor: 'bg-cyan-500/15', icon: 'document' },
+    { name: 'Content Safety', freeTier: '5K+5K/mo', status: 'active', useCase: 'CX Copilot response screening', color: 'text-emerald-400', bgColor: 'bg-emerald-500/15', icon: 'shield' },
+    { name: 'Language', freeTier: '5K records/mo', status: 'active', useCase: 'NER entity extraction fallback', color: 'text-violet-400', bgColor: 'bg-violet-500/15', icon: 'tag' },
+    { name: 'Speech', freeTier: '5 hrs/mo', status: 'active', useCase: 'Speech-to-text fallback', color: 'text-orange-400', bgColor: 'bg-orange-500/15', icon: 'microphone' },
+    { name: 'Translator', freeTier: '2M chars/mo', status: 'active', useCase: 'Multilingual claims processing', color: 'text-pink-400', bgColor: 'bg-pink-500/15', icon: 'translate' },
+  ];
+
+  readonly resilientChains: ResilientChain[] = [
+    { name: 'LLM', providers: ['Groq', 'Cerebras', 'Mistral', 'Gemini', 'OpenRouter', 'OpenAI', 'Ollama'], color: 'text-indigo-400' },
+    { name: 'OCR', providers: ['PdfPig', 'Azure Doc Intel', 'OCR Space', 'Gemini Vision'], color: 'text-cyan-400' },
+    { name: 'NER', providers: ['HuggingFace', 'Azure Language'], color: 'text-violet-400' },
+    { name: 'STT', providers: ['Deepgram', 'Azure Speech'], color: 'text-orange-400' },
+  ];
 
   // ─── Section 4: Interactive Demo ───
 
@@ -222,13 +278,14 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly stats: StatItem[] = [
     { value: '9', label: 'AI Agents', subtext: 'Specialized collaboration', color: 'text-indigo-400', icon: 'users' },
-    { value: '5', label: 'LLM Providers', subtext: 'Resilient fallback chain', color: 'text-cyan-400', icon: 'server' },
-    { value: '5', label: 'Multimodal Services', subtext: 'Voice, vision, OCR, NER', color: 'text-purple-400', icon: 'layers' },
-    { value: '99.9%', label: 'Uptime Target', subtext: '5-provider redundancy', color: 'text-emerald-400', icon: 'shield' },
+    { value: '7', label: 'LLM Providers', subtext: 'Resilient fallback chain', color: 'text-cyan-400', icon: 'server' },
+    { value: '9', label: 'AI Services', subtext: 'Multimodal + Azure AI', color: 'text-purple-400', icon: 'layers' },
+    { value: '6', label: 'Azure AI Services', subtext: 'All on F0 free tier', color: 'text-blue-400', icon: 'shield' },
+    { value: '99.9%', label: 'Uptime Target', subtext: '7-provider redundancy', color: 'text-emerald-400', icon: 'shield' },
     { value: '< 60s', label: 'Analysis Time', subtext: '9-agent orchestration', color: 'text-amber-400', icon: 'clock' },
     { value: '100%', label: 'PII Protection', subtext: '5 redaction patterns', color: 'text-rose-400', icon: 'lock' },
-    { value: '4', label: 'Orchestration Profiles', subtext: 'Optimized token usage', color: 'text-teal-400', icon: 'sliders' },
-    { value: '246+', label: 'Test Cases', subtext: 'xUnit + Vitest + Playwright', color: 'text-orange-400', icon: 'check-list' },
+    { value: '4', label: 'Resilient Chains', subtext: 'LLM, OCR, NER, STT', color: 'text-teal-400', icon: 'sliders' },
+    { value: '1053+', label: 'Test Cases', subtext: 'xUnit + Vitest + Playwright', color: 'text-orange-400', icon: 'check-list' },
   ];
 
   // ─── Section 7: Technology Badges ───
@@ -240,21 +297,29 @@ export class LandingComponent implements OnInit, OnDestroy {
       badges: [
         { name: 'Semantic Kernel', category: 'ai', color: 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300' },
         { name: 'Groq', category: 'ai', color: 'border-orange-500/30 bg-orange-500/10 text-orange-300' },
+        { name: 'Cerebras', category: 'ai', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
         { name: 'Mistral', category: 'ai', color: 'border-blue-500/30 bg-blue-500/10 text-blue-300' },
         { name: 'Gemini', category: 'ai', color: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' },
         { name: 'OpenRouter', category: 'ai', color: 'border-purple-500/30 bg-purple-500/10 text-purple-300' },
-        { name: 'Ollama', category: 'ai', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+        { name: 'OpenAI', category: 'ai', color: 'border-teal-500/30 bg-teal-500/10 text-teal-300' },
+        { name: 'Ollama', category: 'ai', color: 'border-lime-500/30 bg-lime-500/10 text-lime-300' },
       ]
     },
     {
-      label: 'Multimodal',
+      label: 'Multimodal & Azure',
       color: 'text-purple-400',
       badges: [
         { name: 'Deepgram', category: 'multi', color: 'border-violet-500/30 bg-violet-500/10 text-violet-300' },
         { name: 'Azure Vision', category: 'multi', color: 'border-blue-500/30 bg-blue-500/10 text-blue-300' },
+        { name: 'Azure Doc Intel', category: 'multi', color: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300' },
+        { name: 'Azure Speech', category: 'multi', color: 'border-orange-500/30 bg-orange-500/10 text-orange-300' },
+        { name: 'Azure Language', category: 'multi', color: 'border-violet-500/30 bg-violet-500/10 text-violet-300' },
+        { name: 'Content Safety', category: 'multi', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+        { name: 'Translator', category: 'multi', color: 'border-pink-500/30 bg-pink-500/10 text-pink-300' },
         { name: 'Cloudflare AI', category: 'multi', color: 'border-orange-500/30 bg-orange-500/10 text-orange-300' },
         { name: 'OCR.space', category: 'multi', color: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
         { name: 'HuggingFace', category: 'multi', color: 'border-yellow-500/30 bg-yellow-500/10 text-yellow-300' },
+        { name: 'PdfPig', category: 'multi', color: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
       ]
     },
     {
@@ -293,6 +358,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     { id: 'agents', label: 'Agents' },
     { id: 'providers', label: 'Providers' },
     { id: 'multimodal', label: 'Multimodal' },
+    { id: 'azure', label: 'Azure' },
     { id: 'demo', label: 'Demo' },
     { id: 'security', label: 'Security' },
     { id: 'stats', label: 'Stats' },
@@ -351,7 +417,7 @@ export class LandingComponent implements OnInit, OnDestroy {
 
     // Defer to allow DOM to render
     setTimeout(() => {
-      const sectionIds = ['hero', 'agents', 'providers', 'multimodal', 'demo', 'security', 'stats', 'tech'];
+      const sectionIds = ['hero', 'agents', 'providers', 'multimodal', 'azure', 'demo', 'security', 'stats', 'tech'];
       sectionIds.forEach(id => {
         const el = document.getElementById(id);
         if (el && this.observer) {
@@ -427,16 +493,16 @@ export class LandingComponent implements OnInit, OnDestroy {
     const stepThrough = (index: number) => {
       if (index >= this.providers.length) {
         this.failoverActive.set(false);
-        this.providerChainStep.set(0);
+        this.providerChainStep.set(this.providers.length - 1);
         return;
       }
       this.providerChainStep.set(index);
       this.failoverTimer = setTimeout(() => {
-        // Simulate: first two fail, third succeeds
-        if (index < 2) {
+        // Simulate: all providers fail except the last one (Ollama — local, always available)
+        if (index < this.providers.length - 1) {
           stepThrough(index + 1);
         } else {
-          // Success - stay on this one
+          // Last resort succeeds
           this.failoverActive.set(false);
         }
       }, 1200);
@@ -590,7 +656,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   scrollToSection(sectionId: string): void {
     // Immediately mark the target section (and all sections above it) visible
     // This prevents the opacity:0 CSS from hiding content when smooth-scrolling
-    const sectionOrder = ['hero', 'agents', 'providers', 'multimodal', 'demo', 'security', 'stats', 'tech'];
+    const sectionOrder = ['hero', 'agents', 'providers', 'multimodal', 'azure', 'demo', 'security', 'stats', 'tech'];
     const targetIdx = sectionOrder.indexOf(sectionId);
     this.visibleSections.update(set => {
       const next = new Set(set);

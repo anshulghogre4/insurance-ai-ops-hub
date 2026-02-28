@@ -8,6 +8,7 @@ using SentimentAnalyzer.Agents.Orchestration;
 using SentimentAnalyzer.API.Data;
 using SentimentAnalyzer.API.Data.Entities;
 using SentimentAnalyzer.API.Models;
+using SentimentAnalyzer.API.Services.Multimodal;
 
 namespace SentimentAnalyzer.API.Services.CustomerExperience;
 
@@ -23,6 +24,7 @@ public class CustomerExperienceService : ICustomerExperienceService
     private readonly IPIIRedactor _piiRedactor;
     private readonly ICxInteractionRepository _auditRepo;
     private readonly ILogger<CustomerExperienceService> _logger;
+    private readonly IContentSafetyService? _contentSafety;
 
     /// <summary>
     /// Standard regulatory disclaimer appended to all CX Copilot responses.
@@ -85,16 +87,19 @@ public class CustomerExperienceService : ICustomerExperienceService
     /// <param name="piiRedactor">PII redaction service — mandatory before external AI calls.</param>
     /// <param name="auditRepo">Repository for CX interaction audit trail (regulatory compliance).</param>
     /// <param name="logger">Structured logger for this service.</param>
+    /// <param name="contentSafety">Optional content safety screening service for policyholder protection.</param>
     public CustomerExperienceService(
         IResilientKernelProvider kernelProvider,
         IPIIRedactor piiRedactor,
         ICxInteractionRepository auditRepo,
-        ILogger<CustomerExperienceService> logger)
+        ILogger<CustomerExperienceService> logger,
+        IContentSafetyService? contentSafety = null)
     {
         _kernelProvider = kernelProvider ?? throw new ArgumentNullException(nameof(kernelProvider));
         _piiRedactor = piiRedactor ?? throw new ArgumentNullException(nameof(piiRedactor));
         _auditRepo = auditRepo ?? throw new ArgumentNullException(nameof(auditRepo));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _contentSafety = contentSafety;
     }
 
     /// <inheritdoc />
@@ -121,6 +126,19 @@ public class CustomerExperienceService : ICustomerExperienceService
 
             var response = await chatService.GetChatMessageContentAsync(chatHistory, cancellationToken: ct);
             var rawContent = response.Content ?? "I apologize, but I was unable to generate a response. Please try again or contact our customer service line.";
+
+            // Content safety screening — protect policyholders from harmful AI responses
+            if (_contentSafety != null)
+            {
+                var safetyResult = await _contentSafety.AnalyzeTextAsync(rawContent, ct);
+                if (safetyResult.IsSuccess && !safetyResult.IsSafe)
+                {
+                    _logger.LogWarning("CX Copilot response flagged by Content Safety: {Categories}",
+                        string.Join(", ", safetyResult.FlaggedCategories));
+                    rawContent = "I apologize, but I was unable to generate an appropriate response. " +
+                        "Please contact our customer service line for assistance.";
+                }
+            }
 
             var (cleanedResponse, tone, escalationRecommended, escalationReason) = ParseResponseMetadata(rawContent);
 
@@ -326,6 +344,20 @@ public class CustomerExperienceService : ICustomerExperienceService
         providerName = _kernelProvider.ActiveProviderName;
 
         var rawContent = fullResponse.ToString();
+
+        // Content safety screening — protect policyholders from harmful AI responses
+        if (_contentSafety != null)
+        {
+            var safetyResult = await _contentSafety.AnalyzeTextAsync(rawContent, ct);
+            if (safetyResult.IsSuccess && !safetyResult.IsSafe)
+            {
+                _logger.LogWarning("CX Copilot streamed response flagged by Content Safety: {Categories}",
+                    string.Join(", ", safetyResult.FlaggedCategories));
+                rawContent = "I apologize, but I was unable to generate an appropriate response. " +
+                    "Please contact our customer service line for assistance.";
+            }
+        }
+
         var (cleanedResponse, tone, escalationRecommended, escalationReason) = ParseResponseMetadata(rawContent);
 
         // BA-H3: Output-side PII redaction — LLM may echo back PII even though input was redacted

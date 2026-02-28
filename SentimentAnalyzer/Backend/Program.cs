@@ -69,10 +69,47 @@ builder.Services.AddSingleton<IOrchestrationProfileFactory, OrchestrationProfile
 // ==========================================
 // Multimodal Services (STT, Vision, OCR, NER)
 // ==========================================
-builder.Services.AddHttpClient<ISpeechToTextService, DeepgramSpeechToTextService>();
-builder.Services.AddHttpClient<IDocumentOcrService, OcrSpaceService>();
-builder.Services.AddHttpClient<IEntityExtractionService, HuggingFaceNerService>();
+
+// STT Services: 2-tier resilient fallback chain (Deepgram → Azure Speech)
+builder.Services.AddHttpClient<DeepgramSpeechToTextService>();
+builder.Services.AddKeyedSingleton<ISpeechToTextService>("Deepgram", (sp, _) =>
+    sp.GetRequiredService<DeepgramSpeechToTextService>());
+builder.Services.AddHttpClient<AzureSpeechToTextService>();
+builder.Services.AddKeyedSingleton<ISpeechToTextService>("AzureSpeech", (sp, _) =>
+    sp.GetRequiredService<AzureSpeechToTextService>());
+builder.Services.AddSingleton<ISpeechToTextService, ResilientSpeechToTextProvider>();
+
+// OCR Services: 4-tier resilient fallback chain ordered by data safety (PdfPig -> Azure Doc Intel -> OCR Space -> Gemini Vision)
+builder.Services.AddSingleton<PdfPigTextExtractor>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("PdfPig", (sp, _) =>
+    sp.GetRequiredService<PdfPigTextExtractor>());
+builder.Services.AddSingleton<AzureDocumentIntelligenceOcrService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("AzureDocIntel", (sp, _) =>
+    sp.GetRequiredService<AzureDocumentIntelligenceOcrService>());
+builder.Services.AddHttpClient<GeminiOcrService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("GeminiOcr", (sp, _) =>
+    sp.GetRequiredService<GeminiOcrService>());
+builder.Services.AddHttpClient<OcrSpaceService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("OcrSpace", (sp, _) =>
+    sp.GetRequiredService<OcrSpaceService>());
+builder.Services.AddSingleton<IDocumentOcrService, ResilientOcrProvider>();
+
+// NER Services: 2-tier resilient fallback chain (HuggingFace → Azure Language)
+builder.Services.AddHttpClient<HuggingFaceNerService>();
+builder.Services.AddKeyedSingleton<IEntityExtractionService>("HuggingFace", (sp, _) =>
+    sp.GetRequiredService<HuggingFaceNerService>());
+builder.Services.AddSingleton<AzureLanguageNerService>();
+builder.Services.AddKeyedSingleton<IEntityExtractionService>("AzureLanguage", (sp, _) =>
+    sp.GetRequiredService<AzureLanguageNerService>());
+builder.Services.AddSingleton<IEntityExtractionService, ResilientEntityExtractionProvider>();
+
 builder.Services.AddHttpClient<IFinancialSentimentPreScreener, FinBertSentimentService>();
+
+// Content Safety (screens CX Copilot responses before sending to policyholders)
+builder.Services.AddSingleton<IContentSafetyService, AzureContentSafetyService>();
+
+// Translation (multilingual claims pre-processing)
+builder.Services.AddHttpClient<ITranslationService, AzureTranslatorService>();
 
 // Vision services: Azure (primary) and Cloudflare (secondary) via keyed services
 builder.Services.AddHttpClient<IImageAnalysisService, AzureVisionService>();
@@ -258,6 +295,19 @@ if (resolvedSettings != null)
     else
     {
         Console.WriteLine($"Configured AI providers: {string.Join(" → ", configuredProviders)}");
+    }
+
+    // Azure AI services status (Sprint 4.5)
+    var azureServices = new List<string>();
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureVision.ApiKey)) azureServices.Add("Vision");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureDocumentIntelligence.ApiKey)) azureServices.Add("DocIntel");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureLanguage.ApiKey)) azureServices.Add("Language");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureContentSafety.ApiKey)) azureServices.Add("ContentSafety");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureTranslator.ApiKey)) azureServices.Add("Translator");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureSpeech.ApiKey)) azureServices.Add("Speech");
+    if (azureServices.Count > 0)
+    {
+        Console.WriteLine($"Azure AI services: {string.Join(", ", azureServices)}");
     }
 }
 

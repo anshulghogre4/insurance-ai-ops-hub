@@ -39,7 +39,7 @@ import {
           </h1>
         </div>
         @if (claim(); as c) {
-          <span class="badge badge-neutral">{{ c.status }}</span>
+          <span class="badge badge-neutral">{{ c.status || 'Unknown' }}</span>
           <span class="text-xs" [style.color]="'var(--text-muted)'">{{ formatDate(c.createdAt) }}</span>
         }
       </div>
@@ -75,12 +75,12 @@ import {
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div class="metric-card flex flex-col items-center justify-center py-4">
                 <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Severity</p>
-                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white" [class]="getSeverityClass(c.severity)"
-                      [class.animate-pulse]="c.severity === 'Critical'">{{ c.severity }}</span>
+                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold text-white" [class]="getSeverityClass(c.severity || 'Low')"
+                      [class.animate-pulse]="c.severity === 'Critical'">{{ c.severity || 'Low' }}</span>
               </div>
               <div class="metric-card flex flex-col items-center justify-center py-4">
                 <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Urgency</p>
-                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold" [class]="getUrgencyBadge(c.urgency)">{{ c.urgency }}</span>
+                <span class="inline-block px-4 py-1.5 rounded-full text-sm font-bold" [class]="getUrgencyBadge(c.urgency || 'Standard')">{{ c.urgency || 'Standard' }}</span>
               </div>
               <div class="metric-card flex flex-col items-center justify-center py-4">
                 <p class="text-[10px] uppercase tracking-wider mb-2.5 font-semibold" [style.color]="'var(--text-muted)'">Claim Type</p>
@@ -97,15 +97,15 @@ import {
               <div class="flex items-center justify-between mb-2">
                 <span class="text-sm font-semibold" [style.color]="'var(--text-secondary)'">Fraud Risk Score</span>
                 <div class="flex items-center gap-2">
-                  <span class="text-2xl font-bold" [class]="getFraudScoreColor(getEffectiveFraudScore(c.fraudScore, c.fraudRiskLevel))">{{ getEffectiveFraudScore(c.fraudScore, c.fraudRiskLevel) }}</span>
+                  <span class="text-2xl font-bold" [class]="getFraudScoreColor(getEffectiveFraudScore(c.fraudScore || 0, c.fraudRiskLevel || 'Low'))">{{ getEffectiveFraudScore(c.fraudScore || 0, c.fraudRiskLevel || 'Low') }}</span>
                   <span class="text-xs" [style.color]="'var(--text-muted)'">/100</span>
-                  <span class="badge text-[10px]" [class]="getFraudBadge(c.fraudRiskLevel)">{{ c.fraudRiskLevel }}</span>
+                  <span class="badge text-[10px]" [class]="getFraudBadge(c.fraudRiskLevel || 'Low')">{{ c.fraudRiskLevel || 'Low' }}</span>
                 </div>
               </div>
               <div class="h-3 rounded-full overflow-hidden" [style.background]="'var(--bg-surface-hover)'">
                 <div class="h-full rounded-full transition-all duration-1000"
-                     [style.width.%]="getEffectiveFraudScore(c.fraudScore, c.fraudRiskLevel)"
-                     [style.background]="getGaugeGradient(getEffectiveFraudScore(c.fraudScore, c.fraudRiskLevel))"></div>
+                     [style.width.%]="getEffectiveFraudScore(c.fraudScore || 0, c.fraudRiskLevel || 'Low')"
+                     [style.background]="getGaugeGradient(getEffectiveFraudScore(c.fraudScore || 0, c.fraudRiskLevel || 'Low'))"></div>
               </div>
               <div class="flex justify-between mt-1 text-[10px]" [style.color]="'var(--text-muted)'">
                 <span>Low Risk</span><span>High Risk</span>
@@ -144,11 +144,11 @@ import {
                        (keydown.enter)="toggleAction(i)"
                        (keydown.space)="$event.preventDefault(); toggleAction(i)">
                     <div class="flex items-start gap-3">
-                      <span class="badge text-[10px] flex-shrink-0 mt-0.5" [class]="getPriorityBadge(action.priority)">{{ action.priority }}</span>
+                      <span class="badge text-[10px] flex-shrink-0 mt-0.5" [class]="getPriorityBadge(action.priority || 'Medium')">{{ action.priority || 'Medium' }}</span>
                       <div class="flex-1">
-                        <p class="text-sm font-semibold" [style.color]="'var(--text-primary)'">{{ action.action }}</p>
+                        <p class="text-sm font-semibold" [style.color]="'var(--text-primary)'">{{ action.action || 'No action specified' }}</p>
                         @if (expandedActions().includes(i)) {
-                          <p class="text-xs mt-2 leading-relaxed animate-fade-in" [style.color]="'var(--text-secondary)'">{{ action.reasoning }}</p>
+                          <p class="text-xs mt-2 leading-relaxed animate-fade-in" [style.color]="'var(--text-secondary)'">{{ action.reasoning || 'No reasoning provided' }}</p>
                         }
                       </div>
                       <svg class="w-4 h-4 transition-transform flex-shrink-0" [class.rotate-180]="expandedActions().includes(i)"
@@ -183,11 +183,11 @@ import {
               <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
                 <div class="metric-card text-center">
                   <p class="text-[10px] uppercase tracking-wider mb-1" [style.color]="'var(--text-muted)'">Fraud Score</p>
-                  <span class="text-xl font-bold" [class]="getFraudScoreColor(fraudResult()!.fraudScore)">{{ fraudResult()!.fraudScore }}</span>
+                  <span class="text-xl font-bold" [class]="getFraudScoreColor(fraudResult()!.fraudScore || 0)">{{ fraudResult()!.fraudScore || 0 }}</span>
                 </div>
                 <div class="metric-card text-center">
                   <p class="text-[10px] uppercase tracking-wider mb-1" [style.color]="'var(--text-muted)'">Confidence</p>
-                  <span class="text-xl font-bold text-indigo-400">{{ (fraudResult()!.confidence * 100).toFixed(0) }}%</span>
+                  <span class="text-xl font-bold text-indigo-400">{{ ((fraudResult()!.confidence || 0) * 100).toFixed(0) }}%</span>
                 </div>
                 <div class="metric-card text-center">
                   <p class="text-[10px] uppercase tracking-wider mb-1" [style.color]="'var(--text-muted)'">SIU Referral</p>
@@ -200,9 +200,9 @@ import {
                 <div class="space-y-2">
                   @for (ind of fraudResult()!.indicators; track ind.description) {
                     <div class="flex items-center gap-2 p-2 rounded-lg" [style.background]="'var(--bg-surface)'">
-                      <span class="badge text-[10px]" [class]="getCategoryBadge(ind.category)">{{ ind.category }}</span>
-                      <span class="text-xs flex-1" [style.color]="'var(--text-secondary)'">{{ ind.description }}</span>
-                      <span class="badge text-[10px]" [class]="getSeverityBadge(ind.severity)">{{ ind.severity }}</span>
+                      <span class="badge text-[10px]" [class]="getCategoryBadge(ind.category || 'General')">{{ ind.category || 'General' }}</span>
+                      <span class="text-xs flex-1" [style.color]="'var(--text-secondary)'">{{ ind.description || 'No description' }}</span>
+                      <span class="badge text-[10px]" [class]="getSeverityBadge(ind.severity || 'Low')">{{ ind.severity || 'Low' }}</span>
                     </div>
                   }
                 </div>

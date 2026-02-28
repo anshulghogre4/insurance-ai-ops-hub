@@ -163,6 +163,15 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
             <span class="badge badge-success ml-auto">{{ res.status }}</span>
           </div>
 
+          @if (res.errorMessage) {
+            <div class="flex items-start gap-3 p-4 mb-6 rounded-lg bg-amber-500/10 border border-amber-500/20" role="alert">
+              <svg class="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+              </svg>
+              <p class="text-sm text-amber-400">{{ res.errorMessage }}</p>
+            </div>
+          }
+
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
             <div class="metric-card text-center">
               <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Document ID</p>

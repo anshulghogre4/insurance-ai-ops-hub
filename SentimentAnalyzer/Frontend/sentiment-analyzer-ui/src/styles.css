@@ -232,6 +232,278 @@ body {
   border-radius: 0.5rem;
 }
 
+/* ============================================
+   AI Loader - Neural Network & Pipeline
+   ============================================ */
+
+/* Neural pulse: nodes light up in staggered sequence */
+@keyframes neural-pulse {
+  0%, 100% { opacity: 0.3; r: 6; }
+  50% { opacity: 1; r: 8; }
+}
+
+/* Hub breathe: center node pulses gently */
+@keyframes neural-hub-breathe {
+  0%, 100% { opacity: 0.8; r: 10; filter: drop-shadow(0 0 4px rgba(99, 102, 241, 0.3)); }
+  50% { opacity: 1; r: 12; filter: drop-shadow(0 0 12px rgba(99, 102, 241, 0.6)); }
+}
+
+/* Hub pulse ring: expanding ring from center */
+@keyframes neural-hub-ring {
+  0% { r: 10; opacity: 0.6; stroke-width: 2; }
+  100% { r: 24; opacity: 0; stroke-width: 0.5; }
+}
+
+/* Connection flow: dash offset animation for line flow effect */
+@keyframes connection-flow {
+  0% { stroke-dashoffset: 20; opacity: 0.15; }
+  50% { opacity: 0.6; }
+  100% { stroke-dashoffset: 0; opacity: 0.15; }
+}
+
+/* Stage activate: pipeline stage lights up */
+@keyframes stage-activate {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+  50% { transform: scale(1.15); box-shadow: 0 0 20px rgba(99, 102, 241, 0.4); }
+  100% { transform: scale(1); box-shadow: 0 0 8px rgba(99, 102, 241, 0.2); }
+}
+
+/* Neural brain container */
+.neural-brain svg {
+  overflow: visible;
+}
+
+/* Neural connection lines */
+.neural-connection {
+  stroke: rgba(99, 102, 241, 0.15);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  animation: connection-flow 2s ease-in-out infinite;
+  fill: none;
+}
+.neural-conn-1 { animation-delay: 0s; }
+.neural-conn-2 { animation-delay: 0.2s; }
+.neural-conn-3 { animation-delay: 0.4s; }
+.neural-conn-4 { animation-delay: 0.6s; }
+.neural-conn-5 { animation-delay: 0.8s; }
+.neural-conn-6 { animation-delay: 1s; }
+.neural-conn-7 { animation-delay: 0.3s; }
+.neural-conn-8 { animation-delay: 0.7s; }
+.neural-conn-9 { animation-delay: 1.1s; }
+.neural-conn-hub-1 { animation-delay: 0.15s; }
+.neural-conn-hub-2 { animation-delay: 0.35s; }
+.neural-conn-hub-3 { animation-delay: 0.55s; }
+.neural-conn-hub-4 { animation-delay: 0.75s; }
+.neural-conn-hub-5 { animation-delay: 0.95s; }
+.neural-conn-hub-6 { animation-delay: 1.15s; }
+
+/* Neural nodes: outer ring dots */
+.neural-node {
+  fill: #6366f1;
+  animation: neural-pulse 2.4s ease-in-out infinite;
+}
+.neural-node-1 { animation-delay: 0s; }
+.neural-node-2 { animation-delay: 0.4s; }
+.neural-node-3 { animation-delay: 0.8s; }
+.neural-node-4 { animation-delay: 1.2s; }
+.neural-node-5 { animation-delay: 1.6s; }
+.neural-node-6 { animation-delay: 2s; }
+
+/* Neural hub: center node */
+.neural-hub {
+  fill: #8b5cf6;
+  animation: neural-hub-breathe 3s ease-in-out infinite;
+}
+
+/* Neural hub expanding pulse ring */
+.neural-hub-pulse {
+  fill: none;
+  stroke: #8b5cf6;
+  stroke-width: 2;
+  animation: neural-hub-ring 2s ease-out infinite;
+}
+
+/* Active pipeline stage pulsing glow */
+.stage-active {
+  animation: stage-activate 2s ease-in-out infinite;
+}
+
+/* ============================================
+   AI Loader - Profile Illustrations
+   ============================================ */
+
+/* Illustration container */
+.ai-illustration { overflow: visible; }
+
+/* Triage: Shield scanning effect */
+.ai-shield-path {
+  stroke-dasharray: 300;
+  stroke-dashoffset: 300;
+  animation: draw-shield 3s ease-out forwards, shield-glow 2s ease-in-out 3s infinite;
+}
+@keyframes draw-shield {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes shield-glow {
+  0%, 100% { filter: drop-shadow(0 0 2px rgba(99,102,241,0.3)); }
+  50% { filter: drop-shadow(0 0 8px rgba(99,102,241,0.6)); }
+}
+
+/* Scan lines sweep down and fade */
+.ai-scan-line {
+  opacity: 0;
+  animation: scan-sweep 2.5s ease-in-out infinite;
+}
+.scan-1 { animation-delay: 0s; }
+.scan-2 { animation-delay: 0.4s; }
+.scan-3 { animation-delay: 0.8s; }
+@keyframes scan-sweep {
+  0% { opacity: 0; transform: translateY(-8px); }
+  30% { opacity: 0.8; }
+  60% { opacity: 0.4; transform: translateY(4px); }
+  100% { opacity: 0; transform: translateY(8px); }
+}
+
+/* Checkmark draw animation */
+.ai-checkmark-draw {
+  stroke-dasharray: 50;
+  stroke-dashoffset: 50;
+  opacity: 0;
+  animation: draw-check 0.8s ease-out 4s forwards;
+}
+@keyframes draw-check {
+  0% { opacity: 0; stroke-dashoffset: 50; }
+  50% { opacity: 1; }
+  100% { opacity: 1; stroke-dashoffset: 0; }
+}
+
+/* Pulsing dot (shared across profiles) */
+.ai-dot-pulse {
+  animation: dot-pulse 2s ease-in-out infinite;
+}
+@keyframes dot-pulse {
+  0%, 100% { opacity: 0.4; r: 4; }
+  50% { opacity: 1; r: 6; }
+}
+
+/* Fraud: Magnifying glass orbit */
+.ai-mag-lens {
+  animation: mag-orbit 4s ease-in-out infinite;
+  transform-origin: 78px 72px;
+}
+@keyframes mag-orbit {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-8px, -10px); }
+  50% { transform: translate(-15px, -5px); }
+  75% { transform: translate(-5px, -12px); }
+}
+.ai-mag-handle {
+  animation: mag-orbit 4s ease-in-out infinite;
+}
+
+/* Fraud alert dots pulsing sequentially */
+.ai-alert-dot {
+  opacity: 0;
+  animation: alert-blink 3s ease-in-out infinite;
+}
+.alert-1 { animation-delay: 0s; }
+.alert-2 { animation-delay: 1s; }
+.alert-3 { animation-delay: 2s; }
+@keyframes alert-blink {
+  0%, 25% { opacity: 0; r: 0; }
+  35% { opacity: 1; r: 4; }
+  65% { opacity: 1; r: 3; }
+  75%, 100% { opacity: 0; r: 0; }
+}
+
+/* Document: Scan beam sweeping down */
+.ai-doc-scan-beam {
+  animation: doc-scan 3s ease-in-out infinite;
+}
+@keyframes doc-scan {
+  0% { y: 10; opacity: 0.8; }
+  100% { y: 76; opacity: 0.2; }
+}
+
+/* Document: Embedding dots flying out */
+.ai-embed-dot {
+  opacity: 0;
+  animation: embed-fly 2.5s ease-out infinite;
+}
+.embed-1 { animation-delay: 0s; }
+.embed-2 { animation-delay: 0.6s; }
+.embed-3 { animation-delay: 1.2s; }
+.embed-4 { animation-delay: 1.8s; }
+@keyframes embed-fly {
+  0% { opacity: 0; transform: translateX(-10px); }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.6; transform: translateX(8px); }
+  100% { opacity: 0; transform: translateX(15px); }
+}
+
+/* CX: Chat bubble animate in */
+.ai-chat-bubble {
+  stroke-dasharray: 200;
+  stroke-dashoffset: 200;
+  animation: draw-bubble 2s ease-out forwards, shield-glow 2s ease-in-out 2s infinite;
+}
+@keyframes draw-bubble {
+  to { stroke-dashoffset: 0; }
+}
+
+/* CX: Typing line animation */
+.ai-typing-line {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: type-line 1.5s ease-out infinite;
+}
+.type-1 { animation-delay: 0.5s; }
+.type-2 { animation-delay: 1.2s; }
+@keyframes type-line {
+  0% { stroke-dashoffset: 40; opacity: 0.3; }
+  60% { stroke-dashoffset: 0; opacity: 0.8; }
+  100% { stroke-dashoffset: 0; opacity: 0.3; }
+}
+
+/* CX: Sound waves radiating */
+.ai-wave {
+  opacity: 0;
+  animation: wave-radiate 2s ease-out infinite;
+}
+.wave-1 { animation-delay: 0s; }
+.wave-2 { animation-delay: 0.4s; }
+.wave-3 { animation-delay: 0.8s; }
+@keyframes wave-radiate {
+  0% { opacity: 0; transform: scaleX(0.8); }
+  30% { opacity: 0.7; }
+  100% { opacity: 0; transform: scaleX(1.2); }
+}
+
+/* Correlation: Connection lines animate */
+.ai-corr-line {
+  stroke-dasharray: 4 3;
+  animation: connection-flow 2.5s ease-in-out infinite;
+}
+.corr-1 { animation-delay: 0s; }
+.corr-2 { animation-delay: 0.5s; }
+.corr-3 { animation-delay: 1s; }
+.corr-4 { animation-delay: 1.5s; }
+.corr-5 { animation-delay: 2s; }
+
+/* Correlation: Claim nodes pulse in sequence */
+.ai-claim-node {
+  animation: claim-node-pulse 3s ease-in-out infinite;
+}
+.node-1 { animation-delay: 0s; }
+.node-2 { animation-delay: 0.6s; }
+.node-3 { animation-delay: 1.2s; }
+.node-4 { animation-delay: 1.8s; }
+.node-5 { animation-delay: 2.4s; }
+@keyframes claim-node-pulse {
+  0%, 100% { stroke-width: 1.5; filter: none; }
+  50% { stroke-width: 2.5; filter: drop-shadow(0 0 6px rgba(245,158,11,0.5)); }
+}
+
 /* Light theme overrides */
 .theme-light .glass-card,
 .theme-light .glass-card-static { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); }

@@ -134,7 +134,7 @@ public class FraudAnalysisServiceTests
     }
 
     [Fact]
-    public async Task GetFraudAlertsAsync_ReturnsSortedAlerts()
+    public async Task GetFraudAlertsAsync_ReturnsClaimTriageResponses()
     {
         // Arrange
         var alerts = new List<ClaimRecord>
@@ -150,8 +150,9 @@ public class FraudAnalysisServiceTests
         // Assert
         Assert.Equal(2, results.Count);
         Assert.Equal(85, results[0].FraudScore);
-        Assert.True(results[0].ReferToSIU);
-        Assert.False(results[1].ReferToSIU);
+        Assert.Equal("VeryHigh", results[0].FraudRiskLevel);
+        Assert.Equal("Medium", results[0].Severity);
+        Assert.Equal("Medium", results[1].FraudRiskLevel);
     }
 
     [Theory]
@@ -194,14 +195,58 @@ public class FraudAnalysisServiceTests
         Assert.Equal(expectSIU, result!.ReferToSIU);
     }
 
+    [Fact]
+    public async Task AnalyzeFraudAsync_LLMFailed_PreservesExistingTriageScore()
+    {
+        // Arrange — claim already has triage fraud score of 70/High from triage pipeline
+        var claim = CreateClaim(15, "Theft of electronics from rental apartment while on vacation", 70, "High");
+        _mockRepo.Setup(r => r.GetClaimByIdAsync(15)).ReturnsAsync(claim);
+
+        // LLM fails: orchestrator returns result with FraudAnalysis = null
+        _mockOrchestrator.Setup(o => o.AnalyzeAsync(It.IsAny<string>(), OrchestrationProfile.FraudScoring, It.IsAny<InteractionType>()))
+            .ReturnsAsync(new AgentAnalysisResult { IsSuccess = false, FraudAnalysis = null });
+
+        // Act
+        var result = await _service.AnalyzeFraudAsync(15);
+
+        // Assert — should return the existing triage data, NOT zeros
+        Assert.Equal(70, result.FraudScore);
+        Assert.Equal("High", result.RiskLevel);
+
+        // Should NOT update the claim record (preserve existing data)
+        _mockRepo.Verify(r => r.UpdateClaimAsync(It.IsAny<ClaimRecord>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AnalyzeFraudAsync_LLMFailed_DoesNotOverwriteDBWithZeros()
+    {
+        // Arrange — claim with existing fraud data from triage
+        var claim = CreateClaim(16, "Water damage claim with inconsistent timeline and inflated estimates", 82, "VeryHigh");
+        claim.Status = "UnderReview";
+        _mockRepo.Setup(r => r.GetClaimByIdAsync(16)).ReturnsAsync(claim);
+
+        // LLM returns empty result (all providers down)
+        _mockOrchestrator.Setup(o => o.AnalyzeAsync(It.IsAny<string>(), OrchestrationProfile.FraudScoring, It.IsAny<InteractionType>()))
+            .ReturnsAsync(new AgentAnalysisResult { IsSuccess = false, FraudAnalysis = null });
+
+        // Act
+        await _service.AnalyzeFraudAsync(16);
+
+        // Assert — DB should NOT be updated, claim stays UnderReview with score 82
+        _mockRepo.Verify(r => r.UpdateClaimAsync(It.IsAny<ClaimRecord>()), Times.Never);
+        Assert.Equal(82, claim.FraudScore);
+        Assert.Equal("VeryHigh", claim.FraudRiskLevel);
+        Assert.Equal("UnderReview", claim.Status);
+    }
+
     [Theory]
-    [InlineData(74, false)]
-    [InlineData(75, true)]
-    [InlineData(76, true)]
-    public async Task GetFraudAlertsAsync_SIUBoundary_CorrectlyAppliesThreshold(int score, bool expectSIU)
+    [InlineData(74, "Medium")]
+    [InlineData(75, "High")]
+    [InlineData(92, "VeryHigh")]
+    public async Task GetFraudAlertsAsync_ReturnsCorrectRiskLevel(int score, string expectedRiskLevel)
     {
         // Arrange
-        var claims = new List<ClaimRecord> { CreateClaim(102, "Boundary alert claim", score, score >= 75 ? "High" : "Medium") };
+        var claims = new List<ClaimRecord> { CreateClaim(102, "Boundary alert claim", score, expectedRiskLevel) };
         _mockRepo.Setup(r => r.GetFraudAlertsAsync(55, 50)).ReturnsAsync(claims);
 
         // Act
@@ -209,7 +254,8 @@ public class FraudAnalysisServiceTests
 
         // Assert
         Assert.Single(results);
-        Assert.Equal(expectSIU, results[0].ReferToSIU);
+        Assert.Equal(score, results[0].FraudScore);
+        Assert.Equal(expectedRiskLevel, results[0].FraudRiskLevel);
     }
 
     private static ClaimRecord CreateClaim(int id, string text, double fraudScore = 0, string riskLevel = "VeryLow")
