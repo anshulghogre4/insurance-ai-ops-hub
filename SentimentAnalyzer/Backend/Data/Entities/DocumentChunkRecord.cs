@@ -35,6 +35,21 @@ public class DocumentChunkRecord
     /// </summary>
     public string EmbeddingJson { get; set; } = "[]";
 
+    /// <summary>Page number this chunk originates from (1-based).</summary>
+    public int? PageNumber { get; set; }
+
+    /// <summary>ID of parent chunk for hierarchical retrieval (null = top-level).</summary>
+    public int? ParentChunkId { get; set; }
+
+    /// <summary>Chunk level: 0 = section parent, 1 = paragraph child.</summary>
+    public int ChunkLevel { get; set; }
+
+    /// <summary>Whether this chunk passed content safety screening (default true, updated after screening).</summary>
+    public bool IsSafe { get; set; } = true;
+
+    /// <summary>Pipe-separated safety flags when unsafe (e.g., "Hate|Violence"). Null when safe.</summary>
+    public string? SafetyFlags { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>Navigation property to parent document.</summary>

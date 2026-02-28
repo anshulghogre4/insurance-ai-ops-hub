@@ -5,6 +5,7 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../services/auth.service';
 import { FraudCorrelationService } from '../../services/fraud-correlation.service';
+import { ToastService } from '../../services/toast.service';
 import { FraudCorrelationResponse, ReviewCorrelationRequest } from '../../models/document.model';
 
 @Component({
@@ -288,6 +289,7 @@ export class FraudCorrelationComponent implements OnInit {
   private destroyRef = inject(DestroyRef);
   private authService = inject(AuthService);
   private fraudService = inject(FraudCorrelationService);
+  private toastService = inject(ToastService);
 
   claimId = signal<number>(0);
   correlations = signal<FraudCorrelationResponse[]>([]);
@@ -347,10 +349,12 @@ export class FraudCorrelationComponent implements OnInit {
         next: (result) => {
           this.correlations.set(result.correlations);
           this.isAnalyzing.set(false);
+          this.toastService.success('Correlation analysis complete');
         },
         error: (err) => {
           this.error.set(err.error?.message || err.message || 'Correlation analysis failed.');
           this.isAnalyzing.set(false);
+          this.toastService.error('Correlation analysis failed');
         }
       });
   }
@@ -422,10 +426,12 @@ export class FraudCorrelationComponent implements OnInit {
             items.map(c => c.id === corr.id ? { ...c, status: 'Confirmed', reviewedBy: this.authService.user()?.email ?? 'Analyst', reviewedAt: new Date().toISOString() } : c)
           );
           this.reviewingId.set(null);
+          this.toastService.success('Correlation confirmed as fraud');
         },
         error: (err) => {
           this.error.set(err.error?.message || 'Failed to confirm correlation.');
           this.reviewingId.set(null);
+          this.toastService.error('Failed to confirm correlation');
         }
       });
   }
@@ -466,10 +472,12 @@ export class FraudCorrelationComponent implements OnInit {
           );
           this.reviewingId.set(null);
           this.closeDismissModal();
+          this.toastService.info('Correlation dismissed');
         },
         error: (err) => {
           this.error.set(err.error?.message || 'Failed to dismiss correlation.');
           this.reviewingId.set(null);
+          this.toastService.error('Failed to dismiss correlation');
         }
       });
   }

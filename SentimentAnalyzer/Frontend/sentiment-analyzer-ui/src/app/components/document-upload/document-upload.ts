@@ -1,10 +1,11 @@
-import { Component, DestroyRef, inject, OnDestroy, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DocumentService } from '../../services/document.service';
-import { DocumentUploadResult, DocumentCategory } from '../../models/document.model';
+import { ToastService } from '../../services/toast.service';
+import { DocumentUploadResult, DocumentCategory, DocumentProgressEvent } from '../../models/document.model';
 
 @Component({
   selector: 'app-document-upload',
@@ -48,7 +49,7 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
 
         <!-- Drop Zone -->
         <div
-          class="relative rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200"
+          class="relative rounded-xl border-2 border-dashed p-8 text-center transition-all duration-200 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 focus-within:ring-offset-transparent"
           [class.border-indigo-500]="isDragOver()"
           [class.bg-indigo-500/5]="isDragOver()"
           [style.border-color]="isDragOver() ? '' : 'var(--border-primary)'"
@@ -83,8 +84,8 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="text-sm font-medium truncate" [style.color]="'var(--text-primary)'">{{ selectedFile()!.name }}</p>
-              <p class="text-xs" [style.color]="'var(--text-muted)'">{{ formatFileSize(selectedFile()!.size) }}</p>
+              <p class="text-sm font-medium truncate" [style.color]="'var(--text-primary)'">{{ selectedFile()?.name || 'Unknown file' }}</p>
+              <p class="text-xs" [style.color]="'var(--text-muted)'">{{ selectedFile()?.size ? formatFileSize(selectedFile()!.size) : '' }}</p>
             </div>
             <span class="badge badge-info text-[10px]">{{ category }}</span>
             <button (click)="selectedFile.set(null)" class="p-1 rounded-lg transition-colors hover:bg-rose-500/10 text-rose-400" aria-label="Remove file">
@@ -119,24 +120,71 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
         </div>
       </div>
 
-      <!-- Loading State -->
-      @if (isUploading()) {
-        <div class="glass-card-static p-6 sm:p-8 mb-6 animate-fade-in" role="status" aria-live="polite">
-          <div class="flex items-center gap-4 mb-5">
+      <!-- SSE Progress Loader -->
+      @if (isUploading() || (currentPhase() !== 'idle' && currentPhase() !== 'Error' && !uploadResult())) {
+        <div class="glass-card-static p-6 sm:p-8 animate-fade-in-up" role="status" aria-live="polite">
+          <div class="flex items-center gap-3 mb-6">
             <div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
-              <svg class="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              <svg class="w-5 h-5 text-indigo-400 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             </div>
             <div>
-              <p class="font-semibold" [style.color]="'var(--text-primary)'">{{ getUploadPhase() }}</p>
-              <p class="text-xs" [style.color]="'var(--text-muted)'">{{ elapsedSeconds() }}s elapsed</p>
+              <h3 class="text-sm font-bold" [style.color]="'var(--text-primary)'">Processing Document</h3>
+              <p class="text-xs" [style.color]="'var(--text-muted)'">{{ progressMessage() || 'Starting...' }}</p>
             </div>
           </div>
-          <div class="progress-track" role="progressbar" [attr.aria-valuenow]="elapsedSeconds()" aria-valuemin="0" aria-valuemax="30">
-            <div class="progress-fill bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" [style.width.%]="Math.min((elapsedSeconds() / 25) * 100, 95)"></div>
+
+          <!-- Phase Steps -->
+          <div class="space-y-3 mb-6">
+            @for (phase of phases; track phase.key) {
+              <div class="flex items-center gap-3"
+                   [attr.aria-current]="currentPhase() === phase.key ? 'step' : null">
+                <!-- Phase Icon -->
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500"
+                     [class]="getPhaseIconClass(phase.key)">
+                  @if (completedPhases().includes(phase.key)) {
+                    <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  } @else if (currentPhase() === phase.key) {
+                    <span class="text-sm" [innerHTML]="phase.icon" aria-hidden="true"></span>
+                  } @else {
+                    <span class="text-sm opacity-40" [innerHTML]="phase.icon" aria-hidden="true"></span>
+                  }
+                </div>
+                <!-- Phase Label -->
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-medium truncate"
+                     [style.color]="currentPhase() === phase.key ? 'var(--text-primary)' : completedPhases().includes(phase.key) ? 'var(--text-secondary)' : 'var(--text-muted)'">
+                    {{ phase.label }}
+                  </p>
+                </div>
+                <!-- Phase Status -->
+                <div class="shrink-0">
+                  @if (completedPhases().includes(phase.key)) {
+                    <span class="text-[10px] text-emerald-400 font-medium">Done</span>
+                  } @else if (currentPhase() === phase.key) {
+                    <span class="text-[10px] text-indigo-400 font-medium animate-pulse">In Progress</span>
+                  }
+                </div>
+              </div>
+            }
           </div>
+
+          <!-- Progress Bar -->
+          <div class="progress-track rounded-full overflow-hidden">
+            <div class="h-1.5 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-1000 ease-out"
+                 [style.width.%]="progressPercent()"
+                 role="progressbar"
+                 aria-label="Document processing progress"
+                 [attr.aria-valuenow]="progressPercent()"
+                 aria-valuemin="0"
+                 aria-valuemax="100">
+            </div>
+          </div>
+          <p class="text-[10px] mt-2 text-right" [style.color]="'var(--text-muted)'">{{ progressPercent() }}%</p>
         </div>
       }
 
@@ -160,7 +208,7 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             <h2 class="text-lg font-bold" [style.color]="'var(--text-primary)'">Document Processed</h2>
-            <span class="badge badge-success ml-auto">{{ res.status }}</span>
+            <span class="badge badge-success ml-auto">{{ res.status || 'Unknown' }}</span>
           </div>
 
           @if (res.errorMessage) {
@@ -187,12 +235,12 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
             </div>
             <div class="metric-card text-center">
               <p class="text-[10px] uppercase tracking-wider mb-1.5 font-semibold" [style.color]="'var(--text-muted)'">Embeddings</p>
-              <span class="badge badge-info text-xs">{{ res.embeddingProvider }}</span>
+              <span class="badge badge-info text-xs">{{ res.embeddingProvider || 'N/A' }}</span>
             </div>
           </div>
 
           <p class="text-sm mb-4" [style.color]="'var(--text-secondary)'">
-            <span class="font-semibold">{{ res.fileName }}</span> has been processed into {{ res.chunkCount }} searchable chunks.
+            <span class="font-semibold">{{ res.fileName || 'Document' }}</span> has been processed into {{ res.chunkCount }} searchable chunks.
           </p>
 
           <!-- Action Buttons -->
@@ -222,56 +270,100 @@ import { DocumentUploadResult, DocumentCategory } from '../../models/document.mo
     </div>
   `
 })
-export class DocumentUploadComponent implements OnDestroy {
+export class DocumentUploadComponent {
   private destroyRef = inject(DestroyRef);
   private documentService = inject(DocumentService);
-
-  Math = Math;
+  private toastService = inject(ToastService);
 
   categories: DocumentCategory[] = ['Policy', 'Claim', 'Endorsement', 'Correspondence', 'Other'];
   category: DocumentCategory = 'Other';
+  selectedCategory = signal<DocumentCategory>('Other');
 
   selectedFile = signal<File | null>(null);
   isDragOver = signal(false);
   isUploading = signal(false);
   uploadResult = signal<DocumentUploadResult | null>(null);
   error = signal<string | null>(null);
-  elapsedSeconds = signal(0);
 
-  private elapsedTimer: ReturnType<typeof setInterval> | null = null;
+  // SSE Progress state
+  currentPhase = signal<string>('idle');
+  progressPercent = signal(0);
+  progressMessage = signal('');
+  completedPhases = signal<string[]>([]);
 
-  ngOnDestroy(): void {
-    this.stopTimer();
+  /** Upload processing phases for the progress UI. */
+  readonly phases = [
+    { key: 'Uploading', label: 'Uploading Document', icon: '&#128196;' },
+    { key: 'OCR', label: 'Extracting Text (OCR)', icon: '&#128269;' },
+    { key: 'Chunking', label: 'Splitting into Sections', icon: '&#9986;' },
+    { key: 'Embedding', label: 'Generating Embeddings', icon: '&#129504;' },
+    { key: 'Safety', label: 'Indexing & Safety Check', icon: '&#128737;' },
+    { key: 'Done', label: 'Ready for Queries', icon: '&#9989;' },
+  ];
+
+  getPhaseIconClass(phaseKey: string): string {
+    if (this.completedPhases().includes(phaseKey)) {
+      return 'bg-emerald-500/20 border border-emerald-500/30';
+    }
+    if (this.currentPhase() === phaseKey) {
+      return 'bg-indigo-500/20 border border-indigo-500/30 animate-pulse';
+    }
+    return 'bg-white/5 border border-white/10';
   }
 
   uploadDocument(): void {
     const file = this.selectedFile();
-    if (!file || this.isUploading()) return;
+    if (!file) return;
 
     this.isUploading.set(true);
     this.error.set(null);
     this.uploadResult.set(null);
-    this.startTimer();
+    this.currentPhase.set('Uploading');
+    this.progressPercent.set(0);
+    this.progressMessage.set('Starting upload...');
+    this.completedPhases.set([]);
 
-    this.documentService.uploadDocument(file, this.category)
+    this.documentService.uploadDocumentWithProgress(file, this.category)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: (result) => {
-          this.uploadResult.set(result);
-          this.isUploading.set(false);
-          this.stopTimer();
+        next: (event: DocumentProgressEvent) => {
+          if (event.phase === 'Error') {
+            this.error.set(event.errorMessage ?? 'Processing failed.');
+            this.isUploading.set(false);
+            this.currentPhase.set('Error');
+            this.toastService.error('Failed to upload document');
+            return;
+          }
+
+          // Track completed phases
+          const prevPhase = this.currentPhase();
+          if (prevPhase !== event.phase && prevPhase !== 'idle' && prevPhase !== 'Error') {
+            this.completedPhases.update(phases =>
+              phases.includes(prevPhase) ? phases : [...phases, prevPhase]
+            );
+          }
+
+          this.currentPhase.set(event.phase);
+          this.progressPercent.set(event.progress);
+          this.progressMessage.set(event.message);
+
+          if (event.phase === 'Done' && event.result) {
+            this.uploadResult.set(event.result);
+            this.isUploading.set(false);
+            this.completedPhases.update(phases => [...phases, 'Done']);
+            this.toastService.success('Document uploaded and indexed');
+          }
         },
         error: (err) => {
-          const status = err.status;
-          if (status === 429) {
-            this.error.set(err.error?.error || 'Document limit reached. Delete existing documents to upload more.');
-          } else if (status === 422) {
-            this.error.set(err.error?.error || 'Document processing failed. The file may be corrupted or unsupported.');
-          } else {
-            this.error.set(err.error?.error || 'Failed to upload document. Please try again.');
-          }
+          this.error.set(err?.message ?? 'Upload failed.');
           this.isUploading.set(false);
-          this.stopTimer();
+          this.currentPhase.set('Error');
+          this.toastService.error('Failed to upload document');
+        },
+        complete: () => {
+          if (this.isUploading()) {
+            this.isUploading.set(false);
+          }
         }
       });
   }
@@ -281,6 +373,10 @@ export class DocumentUploadComponent implements OnDestroy {
     this.uploadResult.set(null);
     this.error.set(null);
     this.category = 'Other';
+    this.currentPhase.set('idle');
+    this.progressPercent.set(0);
+    this.progressMessage.set('');
+    this.completedPhases.set([]);
   }
 
   onDragOver(event: DragEvent): void {
@@ -324,27 +420,5 @@ export class DocumentUploadComponent implements OnDestroy {
     if (bytes < 1024) return bytes + ' B';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  }
-
-  getUploadPhase(): string {
-    const s = this.elapsedSeconds();
-    if (s < 3) return 'Uploading document...';
-    if (s < 8) return 'OCR extracting text...';
-    if (s < 15) return 'Chunking into insurance sections...';
-    if (s < 22) return 'Generating vector embeddings...';
-    return 'Finalizing document index...';
-  }
-
-  private startTimer(): void {
-    this.stopTimer();
-    this.elapsedSeconds.set(0);
-    this.elapsedTimer = setInterval(() => this.elapsedSeconds.update(v => v + 1), 1000);
-  }
-
-  private stopTimer(): void {
-    if (this.elapsedTimer) {
-      clearInterval(this.elapsedTimer);
-      this.elapsedTimer = null;
-    }
   }
 }

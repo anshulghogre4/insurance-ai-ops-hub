@@ -13,6 +13,11 @@ public interface IDocumentIntelligenceService
         byte[] fileData, string mimeType, string fileName,
         string category = "Other", CancellationToken cancellationToken = default);
 
+    /// <summary>Upload with SSE progress events for real-time UI feedback.</summary>
+    IAsyncEnumerable<DocumentProgressEvent> UploadWithProgressAsync(
+        byte[] fileData, string mimeType, string fileName,
+        string category = "Other", CancellationToken cancellationToken = default);
+
     Task<DocumentQueryResult> QueryAsync(
         string question, int? documentId = null, CancellationToken cancellationToken = default);
 

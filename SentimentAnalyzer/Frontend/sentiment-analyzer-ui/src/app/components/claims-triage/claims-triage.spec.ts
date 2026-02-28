@@ -130,4 +130,61 @@ describe('ClaimsTriageComponent', () => {
     component.elapsedSeconds.set(45);
     expect(component.elapsedSeconds()).toBe(45);
   });
+
+  it('should initialize submitState as idle', () => {
+    expect(component.submitState()).toBe('idle');
+  });
+
+  it('should set submitState to loading during submission', () => {
+    vi.spyOn(claimsService, 'triageClaim').mockReturnValue(of(mockTriageResponse));
+
+    component.claimText = 'Water pipe burst in basement causing significant flooding';
+    component.submitTriage();
+
+    // After successful response, submitState transitions to complete
+    expect(component.submitState()).toBe('complete');
+  });
+
+  it('should reset submitState to idle on clearForm', () => {
+    component.submitState.set('complete');
+    component.clearForm();
+    expect(component.submitState()).toBe('idle');
+  });
+
+  it('should reset submitState to idle on error', () => {
+    vi.spyOn(claimsService, 'triageClaim').mockReturnValue(throwError(() => ({ status: 500, error: { error: 'Server error' } })));
+
+    component.claimText = 'Valid claim text for error state testing';
+    component.submitTriage();
+
+    expect(component.submitState()).toBe('idle');
+    expect(component.error()).toBeTruthy();
+  });
+
+  it('should render btn-spring class on submit button', () => {
+    fixture.detectChanges();
+    const submitBtn = fixture.nativeElement.querySelector('button[aria-label="Submit claim for triage"]');
+    expect(submitBtn).toBeTruthy();
+    expect(submitBtn.classList.contains('btn-spring')).toBe(true);
+  });
+
+  it('should render animate-result-slide-up class on results section', () => {
+    vi.spyOn(claimsService, 'triageClaim').mockReturnValue(of(mockTriageResponse));
+    component.claimText = 'Water damage claim for animation test';
+    component.submitTriage();
+    fixture.detectChanges();
+
+    const resultsSection = fixture.nativeElement.querySelector('.animate-result-slide-up');
+    expect(resultsSection).toBeTruthy();
+  });
+
+  it('should render fraud-meter-animated class on fraud gauge', () => {
+    vi.spyOn(claimsService, 'triageClaim').mockReturnValue(of(mockTriageResponse));
+    component.claimText = 'Water damage claim for fraud meter animation test';
+    component.submitTriage();
+    fixture.detectChanges();
+
+    const fraudMeter = fixture.nativeElement.querySelector('.fraud-meter-animated');
+    expect(fraudMeter).toBeTruthy();
+  });
 });

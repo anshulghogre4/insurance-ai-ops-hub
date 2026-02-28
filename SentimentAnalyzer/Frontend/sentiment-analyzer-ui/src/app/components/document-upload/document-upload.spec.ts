@@ -4,7 +4,7 @@ import { provideRouter } from '@angular/router';
 import { of, throwError } from 'rxjs';
 import { DocumentUploadComponent } from './document-upload';
 import { DocumentService } from '../../services/document.service';
-import { DocumentUploadResult } from '../../models/document.model';
+import { DocumentUploadResult, DocumentProgressEvent } from '../../models/document.model';
 
 describe('DocumentUploadComponent', () => {
   let fixture: ComponentFixture<DocumentUploadComponent>;
@@ -20,8 +20,19 @@ describe('DocumentUploadComponent', () => {
     errorMessage: null
   };
 
+  /** SSE progress events ending with a Done event carrying the result. */
+  const mockProgressEvents: DocumentProgressEvent[] = [
+    { phase: 'Uploading', progress: 10, message: 'Uploading document...', result: null, errorMessage: null },
+    { phase: 'OCR', progress: 30, message: 'Extracting text via OCR...', result: null, errorMessage: null },
+    { phase: 'Chunking', progress: 50, message: 'Splitting into sections...', result: null, errorMessage: null },
+    { phase: 'Embedding', progress: 75, message: 'Generating embeddings...', result: null, errorMessage: null },
+    { phase: 'Safety', progress: 90, message: 'Safety check...', result: null, errorMessage: null },
+    { phase: 'Done', progress: 100, message: 'Complete', result: mockUploadResult, errorMessage: null },
+  ];
+
   const mockDocumentService = {
-    uploadDocument: vi.fn()
+    uploadDocument: vi.fn(),
+    uploadDocumentWithProgress: vi.fn()
   };
 
   beforeEach(async () => {
@@ -63,40 +74,60 @@ describe('DocumentUploadComponent', () => {
     expect(component.error()).toBeNull();
   });
 
-  it('should call uploadDocument on the service when upload is triggered', () => {
+  it('should call uploadDocumentWithProgress on the service when upload is triggered', () => {
     const claimDocument = new File(
       ['auto collision claim form and damage assessment report'],
       'auto-claim-CLM-2026-55891.pdf',
       { type: 'application/pdf' }
     );
-    mockDocumentService.uploadDocument.mockReturnValue(of(mockUploadResult));
+    mockDocumentService.uploadDocumentWithProgress.mockReturnValue(of(...mockProgressEvents));
 
     component.selectedFile.set(claimDocument);
     component.category = 'Claim';
     component.uploadDocument();
 
-    expect(mockDocumentService.uploadDocument).toHaveBeenCalledWith(claimDocument, 'Claim');
+    expect(mockDocumentService.uploadDocumentWithProgress).toHaveBeenCalledWith(claimDocument, 'Claim');
     expect(component.uploadResult()).toEqual(mockUploadResult);
     expect(component.isUploading()).toBe(false);
   });
 
-  it('should display error on upload failure', () => {
+  it('should display error on upload failure via SSE Error phase', () => {
     const endorsementFile = new File(
       ['endorsement amendment schedule'],
       'endorsement-EN-2026-7743.pdf',
       { type: 'application/pdf' }
     );
-    mockDocumentService.uploadDocument.mockReturnValue(
-      throwError(() => ({
-        status: 422,
-        error: { error: 'Document processing failed. The uploaded PDF appears to be encrypted or password-protected.' }
-      }))
-    );
+    const errorEvent: DocumentProgressEvent = {
+      phase: 'Error',
+      progress: 0,
+      message: 'Processing failed.',
+      result: null,
+      errorMessage: 'Document processing failed. The uploaded PDF appears to be encrypted or password-protected.'
+    };
+    mockDocumentService.uploadDocumentWithProgress.mockReturnValue(of(errorEvent));
 
     component.selectedFile.set(endorsementFile);
     component.uploadDocument();
 
     expect(component.error()).toBe('Document processing failed. The uploaded PDF appears to be encrypted or password-protected.');
+    expect(component.isUploading()).toBe(false);
+    expect(component.uploadResult()).toBeNull();
+  });
+
+  it('should display error on observable error', () => {
+    const endorsementFile = new File(
+      ['endorsement amendment schedule'],
+      'endorsement-EN-2026-7743.pdf',
+      { type: 'application/pdf' }
+    );
+    mockDocumentService.uploadDocumentWithProgress.mockReturnValue(
+      throwError(() => new Error('Network connection lost'))
+    );
+
+    component.selectedFile.set(endorsementFile);
+    component.uploadDocument();
+
+    expect(component.error()).toBe('Network connection lost');
     expect(component.isUploading()).toBe(false);
     expect(component.uploadResult()).toBeNull();
   });

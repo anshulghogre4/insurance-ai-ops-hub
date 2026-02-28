@@ -7,7 +7,8 @@ import {
   DocumentUploadResult,
   DocumentQueryResult,
   DocumentDetailResult,
-  DocumentSummary
+  DocumentSummary,
+  SyntheticQAResult
 } from '../models/document.model';
 import { PaginatedResponse } from '../models/claims.model';
 
@@ -41,7 +42,8 @@ describe('DocumentService', () => {
       }
     ],
     llmProvider: 'Groq',
-    elapsedMilliseconds: 1245
+    elapsedMilliseconds: 1245,
+    answerSafety: null
   };
 
   const mockDocumentDetail: DocumentDetailResult = {
@@ -58,13 +60,23 @@ describe('DocumentService', () => {
         chunkIndex: 0,
         sectionName: 'Declarations Page',
         tokenCount: 312,
-        contentPreview: 'Policy Number: HO-2026-4491827 | Named Insured: Sarah Mitchell | Property Address: 1422 Oakwood Dr...'
+        contentPreview: 'Policy Number: HO-2026-4491827 | Named Insured: Sarah Mitchell | Property Address: 1422 Oakwood Dr...',
+        pageNumber: 1,
+        parentChunkId: null,
+        chunkLevel: 0,
+        isSafe: true,
+        safetyFlags: null
       },
       {
         chunkIndex: 1,
         sectionName: 'Section I - Coverages',
         tokenCount: 487,
-        contentPreview: 'Coverage A - Dwelling: $425,000 | Coverage B - Other Structures: $42,500...'
+        contentPreview: 'Coverage A - Dwelling: $425,000 | Coverage B - Other Structures: $42,500...',
+        pageNumber: 2,
+        parentChunkId: null,
+        chunkLevel: 0,
+        isSafe: true,
+        safetyFlags: null
       }
     ],
     createdAt: '2026-02-25T14:30:00Z'
@@ -201,5 +213,59 @@ describe('DocumentService', () => {
     const req = httpMock.expectOne(`${baseUrl}/101`);
     expect(req.request.method).toBe('DELETE');
     req.flush(null);
+  });
+
+  // ===================== Fine-Tuning Q&A Tests =====================
+
+  it('should generate Q&A pairs via POST', () => {
+    const mockQAResult: SyntheticQAResult = {
+      documentId: 101,
+      documentName: 'homeowners-policy-2026.pdf',
+      totalPairsGenerated: 2,
+      pairs: [
+        { id: 1, chunkId: 1, question: 'What is the dwelling coverage limit?', answer: '$425,000', category: 'factual', confidence: 0.95, sectionName: 'Coverages' },
+        { id: 2, chunkId: 2, question: 'How would a partial loss be calculated?', answer: 'Based on replacement cost minus depreciation.', category: 'inferential', confidence: 0.88, sectionName: 'Loss Settlement' }
+      ],
+      llmProvider: 'Groq',
+      elapsedMilliseconds: 3500,
+      errorMessage: null
+    };
+
+    service.generateQAPairs(101).subscribe(res => {
+      expect(res.documentId).toBe(101);
+      expect(res.totalPairsGenerated).toBe(2);
+      expect(res.pairs.length).toBe(2);
+      expect(res.pairs[0].question).toContain('dwelling coverage');
+      expect(res.llmProvider).toBe('Groq');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/101/generate-qa`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({});
+    req.flush(mockQAResult);
+  });
+
+  it('should get existing Q&A pairs via GET', () => {
+    const mockQAResult: SyntheticQAResult = {
+      documentId: 101,
+      documentName: 'homeowners-policy-2026.pdf',
+      totalPairsGenerated: 1,
+      pairs: [
+        { id: 1, chunkId: 1, question: 'What is the policy cancellation notice period?', answer: '30 days written notice required.', category: 'factual', confidence: 0.92, sectionName: 'Cancellation' }
+      ],
+      llmProvider: 'Groq',
+      elapsedMilliseconds: 450,
+      errorMessage: null
+    };
+
+    service.getQAPairs(101).subscribe(res => {
+      expect(res.documentId).toBe(101);
+      expect(res.pairs.length).toBe(1);
+      expect(res.pairs[0].category).toBe('factual');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/101/qa-pairs`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockQAResult);
   });
 });

@@ -1,7 +1,8 @@
-import { Component, OnInit, OnDestroy, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, OnDestroy, signal, computed, inject, PLATFORM_ID, ElementRef, NgZone } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { ScrollService } from '../../services/scroll.service';
 
 /** Represents an AI agent node in the orchestration visualization. */
 interface AgentNode {
@@ -116,6 +117,241 @@ interface ResilientChain {
   styleUrl: './landing.css'
 })
 export class LandingComponent implements OnInit, OnDestroy {
+
+  // ─── Injected Services ───
+  readonly scrollService = inject(ScrollService);
+  private readonly platformId = inject(PLATFORM_ID);
+  private readonly elRef = inject(ElementRef);
+  private readonly ngZone = inject(NgZone);
+  private readonly isBrowser = isPlatformBrowser(this.platformId);
+
+  // ─── Parallax Computed Transforms ───
+  // NOTE: Factors are DRAMATIC on purpose — subtle parallax is invisible parallax.
+
+  /** Grid background moves slowly up as user scrolls down. */
+  heroGridTransform = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const factor = this.isMobile() ? 0.15 : 0.3;
+    return `translateY(${y * factor}px)`;
+  });
+
+  /** Indigo orb drifts DOWN and RIGHT with scroll — FAST layer for dramatic depth. */
+  heroOrb1Transform = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const vFactor = this.isMobile() ? 0.6 : 1.2;
+    const hFactor = this.isMobile() ? 0.1 : 0.2;
+    const scale = 1 + y * 0.0005;
+    return `translate(${y * hFactor}px, ${y * vFactor}px) scale(${scale})`;
+  });
+
+  /** Purple orb drifts UP and LEFT (OPPOSITE direction) — creates depth contrast against orb1. */
+  heroOrb2Transform = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const vFactor = this.isMobile() ? -0.8 : -1.6;
+    const hFactor = this.isMobile() ? -0.15 : -0.3;
+    const scale = 1 - y * 0.0003;
+    return `translate(${y * hFactor}px, ${y * vFactor}px) scale(${Math.max(0.5, scale)})`;
+  });
+
+  /** Pink orb drifts down with horizontal drift + rotation — mid-speed layer. */
+  heroOrb3Transform = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const vFactor = this.isMobile() ? 0.4 : 0.8;
+    const hFactor = this.isMobile() ? 0.15 : 0.3;
+    return `translateX(calc(-50% + ${y * hFactor}px)) translateY(${y * vFactor}px) rotate(${y * 0.04}deg)`;
+  });
+
+  /** Hero headline rises FASTER than the page — dramatic depth separation. */
+  heroTextParallax = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const factor = this.isMobile() ? -0.35 : -0.7;
+    return `translateY(${y * factor}px)`;
+  });
+
+  /** Hero headline opacity fades as user scrolls past — content scrolls OVER pinned hero. */
+  heroTextOpacity = computed(() => {
+    const y = this.scrollService.scrollY();
+    return Math.max(0, 1 - y / 500);
+  });
+
+  /** Hero subtitle parallax — slower than headline for multi-layer depth. */
+  heroSubtitleParallax = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const factor = this.isMobile() ? -0.2 : -0.4;
+    return `translateY(${y * factor}px)`;
+  });
+
+  /** CTA buttons parallax — slowest foreground layer. */
+  heroCtaParallax = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const factor = this.isMobile() ? -0.1 : -0.2;
+    return `translateY(${y * factor}px)`;
+  });
+
+  /** Stat pills move up for visible depth. */
+  heroPillsTransform = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    const factor = this.isMobile() ? -0.2 : -0.4;
+    return `translateY(${y * factor}px)`;
+  });
+
+  // ─── Floating Geometric Shapes (oscillating — stays in viewport) ───
+  // Uses sin/cos so shapes gently drift ±30-50px around their CSS position
+  // instead of linearly flying off-screen. Visible across ALL sections.
+
+  /** Large ring — gentle X/Y oscillation + rotation. */
+  floatingRing1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.sin(y * 0.0015) * 25}px, ${Math.cos(y * 0.002) * 30}px) rotate(${Math.sin(y * 0.001) * 15}deg)`;
+  });
+
+  /** Diamond — diagonal oscillation + constant 45° base rotation. */
+  floatingDiamond1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.cos(y * 0.0018) * 20}px, ${Math.sin(y * 0.0025) * 35}px) rotate(${45 + Math.sin(y * 0.0012) * 20}deg)`;
+  });
+
+  /** Circle — subtle drift with breathing scale. */
+  floatingCircle1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.sin(y * 0.002) * 15}px, ${Math.cos(y * 0.0015) * 25}px) scale(${1 + Math.sin(y * 0.003) * 0.15})`;
+  });
+
+  /** Dotted line — gentle horizontal + vertical drift. */
+  floatingLine1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.cos(y * 0.0012) * 20}px, ${Math.sin(y * 0.0018) * 25}px)`;
+  });
+
+  /** Ring 2 — opposite-phase oscillation for depth contrast. */
+  floatingRing2 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.sin(y * 0.0022) * 30}px, ${Math.cos(y * 0.0016) * 25}px) rotate(${Math.cos(y * 0.001) * 20}deg)`;
+  });
+
+  /** Dot cluster — fast oscillation for foreground depth. */
+  floatingDots1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.cos(y * 0.002) * 15}px, ${Math.sin(y * 0.0022) * 20}px)`;
+  });
+
+  // ─── Per-Section Parallax (scroll-responsive depth for ALL sections) ───
+  // Each section heading/content moves at slightly different speeds,
+  // creating depth layering as user scrolls through.
+
+  /** Helper: bounded oscillating parallax transform. */
+  private oscillateParallax(yFreq: number, yAmp: number, xFreq: number, xAmp: number): string {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const y = this.scrollService.scrollY();
+    return `translate(${Math.sin(y * xFreq) * xAmp}px, ${Math.cos(y * yFreq) * yAmp}px)`;
+  }
+
+  /** Agents section heading parallax. */
+  agentsParallax = computed(() => this.oscillateParallax(0.0012, 15, 0.0008, 8));
+  /** Providers section heading parallax. */
+  providersParallax = computed(() => this.oscillateParallax(0.0015, 18, 0.001, 10));
+  /** Multimodal section heading parallax. */
+  multimodalParallax = computed(() => this.oscillateParallax(0.001, 12, 0.0014, 7));
+  /** Azure section heading parallax. */
+  azureParallax = computed(() => this.oscillateParallax(0.0018, 16, 0.0012, 9));
+  /** Demo section heading parallax. */
+  demoParallax = computed(() => this.oscillateParallax(0.0014, 14, 0.001, 8));
+  /** Security section heading parallax. */
+  securityParallax = computed(() => this.oscillateParallax(0.0016, 18, 0.0008, 6));
+  /** Stats section heading parallax. */
+  statsParallax = computed(() => this.oscillateParallax(0.0013, 15, 0.0011, 9));
+  /** Tech section heading parallax. */
+  techParallax = computed(() => this.oscillateParallax(0.0017, 13, 0.0009, 7));
+
+  /** Card grid parallax — slower, opposite phase for depth contrast. */
+  cardsParallaxA = computed(() => this.oscillateParallax(0.0008, 8, 0.0006, 5));
+  cardsParallaxB = computed(() => this.oscillateParallax(0.001, 10, 0.0008, 6));
+
+  // ─── Scroll Progress & Indicators ───
+
+  /** Scroll indicator fades out after 80px of scroll. */
+  scrollIndicatorOpacity = computed(() => {
+    const y = this.scrollService.scrollY();
+    return Math.max(0, 1 - y / 80);
+  });
+
+  /** Scroll progress bar width. */
+  scrollProgressWidth = computed(() => `${this.scrollService.scrollProgress()}%`);
+
+  /** Background gradient position shifts as user scrolls. */
+  bgGradientPosition = computed(() => {
+    const progress = this.scrollService.scrollProgress();
+    return `${50 + progress * 0.3}% ${50 + progress * 0.5}%`;
+  });
+
+  // ─── Mousemove Parallax Computed Transforms ───
+
+  /** Mousemove parallax for hero orbs — creates 3D depth on cursor movement. */
+  heroMouseOrb1 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const mx = this.mouseX();
+    const my = this.mouseY();
+    return `translate(${mx * 20}px, ${my * 15}px)`;
+  });
+
+  heroMouseOrb2 = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const mx = this.mouseX();
+    const my = this.mouseY();
+    return `translate(${mx * -15}px, ${my * -10}px)`;
+  });
+
+  heroMouseContent = computed(() => {
+    if (this.scrollService.prefersReducedMotion()) return 'none';
+    const mx = this.mouseX();
+    const my = this.mouseY();
+    return `translate(${mx * 5}px, ${my * 3}px)`;
+  });
+
+  // ─── Typewriter State ───
+  typewriterText = signal('');
+  typewriterComplete = signal(false);
+  private typewriterTimers: ReturnType<typeof setTimeout>[] = [];
+  private readonly typewriterLines = [
+    '9 AI Agents.',
+    '7 LLM Providers.',
+    '1 Intelligent Platform.'
+  ];
+
+  // ─── Stats Counter Animation ───
+  animatedStatValues = signal<string[]>([]);
+  statsAnimated = signal(false);
+  private statsObserver: IntersectionObserver | null = null;
+  private counterFrames: number[] = [];
+
+  // ─── Mobile detection (for halved parallax multipliers) ───
+  private _isMobile = signal(false);
+  isMobile = this._isMobile.asReadonly();
+
+  // ─── Mousemove Parallax (cursor-based depth) ───
+  private mouseX = signal(0);
+  private mouseY = signal(0);
+  private readonly onMouseMove = (e: MouseEvent): void => {
+    // Normalize to -1 to 1 range (center = 0)
+    const x = (e.clientX / window.innerWidth - 0.5) * 2;
+    const y = (e.clientY / window.innerHeight - 0.5) * 2;
+    this.mouseX.set(x);
+    this.mouseY.set(y);
+  };
 
   // ─── Section 1: Agent Orchestration ───
 
@@ -379,6 +615,30 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.setupIntersectionObserver();
     this.startPiiAnimation();
     this.startModalityCycle();
+
+    // Parallax phase 1: typewriter, counters, mobile detection
+    if (this.isBrowser) {
+      this.detectMobile();
+      window.addEventListener('resize', this.onResize);
+      this.initAnimatedStats();
+      this.startTypewriter();
+      this.setupStatsObserver();
+      this.setupMousemoveParallax();
+    }
+  }
+
+  /** Resize listener to update mobile flag. */
+  private readonly onResize = (): void => {
+    this.detectMobile();
+  };
+
+  private detectMobile(): void {
+    this._isMobile.set(window.innerWidth <= 768);
+  }
+
+  private setupMousemoveParallax(): void {
+    if (this.scrollService.prefersReducedMotion()) return;
+    window.addEventListener('mousemove', this.onMouseMove, { passive: true });
   }
 
   ngOnDestroy(): void {
@@ -389,6 +649,16 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.stopModalityCycle();
     if (this.observer) {
       this.observer.disconnect();
+    }
+    // Parallax cleanup
+    this.typewriterTimers.forEach(t => clearTimeout(t));
+    this.counterFrames.forEach(id => cancelAnimationFrame(id));
+    if (this.statsObserver) {
+      this.statsObserver.disconnect();
+    }
+    if (this.isBrowser) {
+      window.removeEventListener('resize', this.onResize);
+      window.removeEventListener('mousemove', this.onMouseMove);
     }
   }
 
@@ -649,6 +919,193 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   togglePiiView(): void {
     this.piiShowRedacted.update(v => !v);
+  }
+
+  // ─── Typewriter Effect ───
+
+  /** Start the typewriter animation for the hero headline. */
+  startTypewriter(): void {
+    // If user prefers reduced motion, show all text immediately
+    if (this.scrollService.prefersReducedMotion()) {
+      this.typewriterText.set(this.typewriterLines.join('\n'));
+      this.typewriterComplete.set(true);
+      return;
+    }
+
+    const charDelay = this._isMobile() ? 40 : 60;
+    const linePause = 200;
+    let delay = 300; // initial delay
+
+    this.typewriterLines.forEach((line, lineIdx) => {
+      for (let i = 0; i <= line.length; i++) {
+        const timer = setTimeout(() => {
+          const completed = this.typewriterLines.slice(0, lineIdx).join('\n');
+          const current = line.substring(0, i);
+          this.typewriterText.set(completed + (lineIdx > 0 ? '\n' : '') + current);
+        }, delay);
+        this.typewriterTimers.push(timer);
+        delay += charDelay;
+      }
+      delay += linePause;
+    });
+
+    // Mark complete after all lines are typed
+    const doneTimer = setTimeout(() => {
+      this.typewriterComplete.set(true);
+    }, delay);
+    this.typewriterTimers.push(doneTimer);
+  }
+
+  /** Split typewriter text into lines for rendering. */
+  typewriterLines$ = computed(() => {
+    const text = this.typewriterText();
+    return text.split('\n');
+  });
+
+  // ─── Stats Counter Animation ───
+
+  /** Initialize animated stat values with '0' placeholders. */
+  private initAnimatedStats(): void {
+    this.animatedStatValues.set(this.stats.map(() => '0'));
+  }
+
+  /** Set up IntersectionObserver for the stats section to trigger counter animation. */
+  private setupStatsObserver(): void {
+    if (typeof IntersectionObserver === 'undefined') return;
+
+    this.statsObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting && !this.statsAnimated()) {
+            this.statsAnimated.set(true);
+            this.animateAllCounters();
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+
+    // Defer to allow DOM to render
+    setTimeout(() => {
+      const statsEl = document.getElementById('stats');
+      if (statsEl && this.statsObserver) {
+        this.statsObserver.observe(statsEl);
+      }
+    }, 200);
+  }
+
+  /** Animate all stat counters simultaneously. */
+  private animateAllCounters(): void {
+    const duration = 1200;
+
+    this.stats.forEach((stat, idx) => {
+      const target = this.parseStatValue(stat.value);
+      if (target === null) {
+        // Non-numeric stat (like "< 60s", "99.9%") — reveal after a short delay
+        const timer = setTimeout(() => {
+          this.animatedStatValues.update(vals => {
+            const next = [...vals];
+            next[idx] = stat.value;
+            return next;
+          });
+        }, duration * 0.6);
+        this.typewriterTimers.push(timer);
+        return;
+      }
+
+      const startTime = performance.now();
+      const prefix = stat.value.replace(/[\d.]+/, '').startsWith('<') ? '< ' : '';
+      const suffix = stat.value.replace(/^[^0-9]*[\d.]+/, '');
+      const isFloat = stat.value.includes('.');
+
+      const animate = (now: number) => {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // easeOutCubic: 1 - Math.pow(1 - progress, 3)
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = eased * target;
+
+        this.animatedStatValues.update(vals => {
+          const next = [...vals];
+          if (isFloat) {
+            next[idx] = prefix + current.toFixed(1) + suffix;
+          } else {
+            next[idx] = prefix + Math.round(current).toString() + suffix;
+          }
+          return next;
+        });
+
+        if (progress < 1) {
+          const frameId = requestAnimationFrame(animate);
+          this.counterFrames.push(frameId);
+        }
+      };
+
+      const frameId = requestAnimationFrame(animate);
+      this.counterFrames.push(frameId);
+    });
+  }
+
+  /** Extract numeric value from stat string. Returns null if non-numeric. */
+  private parseStatValue(value: string): number | null {
+    // Handle "< 60s" -> 60, "99.9%" -> 99.9, "1053+" -> 1053, "9" -> 9
+    const match = value.match(/([\d.]+)/);
+    if (!match) return null;
+    return parseFloat(match[1]);
+  }
+
+  // ─── 3D Tilt Card Effect ───
+  tiltTransform = signal<Record<string, string>>({});
+
+  onCardMouseMove(event: MouseEvent, cardId: string): void {
+    if (this.scrollService.prefersReducedMotion()) return;
+    const card = event.currentTarget as HTMLElement;
+    const rect = card.getBoundingClientRect();
+    const x = (event.clientX - rect.left) / rect.width - 0.5;
+    const y = (event.clientY - rect.top) / rect.height - 0.5;
+
+    this.tiltTransform.update(t => ({
+      ...t,
+      [cardId]: `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) scale(1.02)`
+    }));
+  }
+
+  onCardMouseLeave(cardId: string): void {
+    this.tiltTransform.update(t => ({
+      ...t,
+      [cardId]: 'perspective(800px) rotateY(0deg) rotateX(0deg) scale(1)'
+    }));
+  }
+
+  getCardTilt(cardId: string): string {
+    return this.tiltTransform()[cardId] || '';
+  }
+
+  // ─── Magnetic Button Effect ───
+  magneticTransform = signal<Record<string, string>>({});
+
+  onMagneticMove(event: MouseEvent, btnId: string): void {
+    if (this.scrollService.prefersReducedMotion()) return;
+    const btn = event.currentTarget as HTMLElement;
+    const rect = btn.getBoundingClientRect();
+    const x = event.clientX - rect.left - rect.width / 2;
+    const y = event.clientY - rect.top - rect.height / 2;
+
+    this.magneticTransform.update(t => ({
+      ...t,
+      [btnId]: `translate(${x * 0.15}px, ${y * 0.15}px)`
+    }));
+  }
+
+  onMagneticLeave(btnId: string): void {
+    this.magneticTransform.update(t => ({
+      ...t,
+      [btnId]: 'translate(0, 0)'
+    }));
+  }
+
+  getMagneticTransform(btnId: string): string {
+    return this.magneticTransform()[btnId] || '';
   }
 
   // ─── Scroll to section ───

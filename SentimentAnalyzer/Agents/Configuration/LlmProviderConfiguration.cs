@@ -62,6 +62,18 @@ public class AgentSystemSettings
 
     /// <summary>Azure AI Speech configuration (5 hrs STT/month free F0).</summary>
     public AzureSpeechSettings AzureSpeech { get; set; } = new();
+
+    /// <summary>Jina AI embeddings configuration (jina-embeddings-v3, 1024-dim, 1M tokens free).</summary>
+    public JinaSettings Jina { get; set; } = new();
+
+    /// <summary>Cohere embeddings configuration (embed-multilingual-v3.0, 1024-dim, 100 req/min free).</summary>
+    public CohereEmbeddingSettings CohereEmbedding { get; set; } = new();
+
+    /// <summary>Gemini embeddings configuration (text-embedding-004, 1024-dim via outputDimensionality).</summary>
+    public GeminiEmbeddingSettings GeminiEmbedding { get; set; } = new();
+
+    /// <summary>HuggingFace BGE-large embeddings configuration (BAAI/bge-large-en-v1.5, 1024-dim).</summary>
+    public HuggingFaceEmbeddingSettings HuggingFaceEmbedding { get; set; } = new();
 }
 
 /// <summary>
@@ -321,4 +333,66 @@ public class AzureSpeechSettings
 
     /// <summary>Azure region for the Speech resource (e.g., "eastus").</summary>
     public string Region { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Jina AI embeddings settings (jina-embeddings-v3, 1024-dim).
+/// Free tier: 1M tokens. No credit card required. OpenAI-compatible API.
+/// Insurance use case: multilingual embedding fallback for RAG document indexing.
+/// </summary>
+public class JinaSettings
+{
+    /// <summary>Jina AI API key.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Jina AI API endpoint.</summary>
+    public string Endpoint { get; set; } = "https://api.jina.ai/v1";
+
+    /// <summary>Embedding model to use (e.g., "jina-embeddings-v3").</summary>
+    public string Model { get; set; } = "jina-embeddings-v3";
+}
+
+/// <summary>
+/// Cohere embeddings settings (embed-multilingual-v3.0, 1024-dim).
+/// Free trial tier: 100 requests/min, 1,000 req/month. No credit card required.
+/// Insurance use case: multilingual claims embedding for RAG semantic retrieval.
+/// </summary>
+public class CohereEmbeddingSettings
+{
+    /// <summary>Cohere API key.</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Cohere API endpoint.</summary>
+    public string Endpoint { get; set; } = "https://api.cohere.com/v2";
+
+    /// <summary>Embedding model to use (e.g., "embed-multilingual-v3.0").</summary>
+    public string Model { get; set; } = "embed-multilingual-v3.0";
+}
+
+/// <summary>
+/// Google Gemini embeddings settings (text-embedding-004, 1024-dim via outputDimensionality).
+/// Free tier: 1,500 requests/day. Uses existing Gemini API key.
+/// Insurance use case: high-quality embedding fallback for RAG when Voyage/Jina/Cohere exhausted.
+/// </summary>
+public class GeminiEmbeddingSettings
+{
+    /// <summary>Gemini API key (can reuse the LLM Gemini key).</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Embedding model to use (e.g., "text-embedding-004").</summary>
+    public string Model { get; set; } = "text-embedding-004";
+}
+
+/// <summary>
+/// HuggingFace BGE-large embeddings settings (BAAI/bge-large-en-v1.5, 1024-dim).
+/// Free Inference API tier: rate-limited (300 requests/hour). Shares quota with NER.
+/// Insurance use case: open-source embedding fallback before Ollama local.
+/// </summary>
+public class HuggingFaceEmbeddingSettings
+{
+    /// <summary>HuggingFace API key (can reuse the NER HuggingFace key).</summary>
+    public string ApiKey { get; set; } = string.Empty;
+
+    /// <summary>Embedding model to use (e.g., "BAAI/bge-large-en-v1.5").</summary>
+    public string Model { get; set; } = "BAAI/bge-large-en-v1.5";
 }

@@ -105,6 +105,18 @@ import { DocumentQueryResult, DocumentSummary } from '../../models/document.mode
       @if (queryResult(); as res) {
         <div class="space-y-5 animate-fade-in-up" aria-live="polite">
 
+          <!-- Content Safety Warning -->
+          @if (res.answerSafety?.isSafe === false) {
+            <div class="glass-card-static p-5 border-l-4 border-rose-500 animate-fade-in" role="alert" aria-label="Content safety warning">
+              <div class="flex items-center gap-3">
+                <svg class="w-5 h-5 text-rose-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                </svg>
+                <p class="text-sm text-rose-400">Content Safety Warning: This response has been flagged for: {{ res.answerSafety?.flaggedCategories?.join(', ') || 'Unknown categories' }}</p>
+              </div>
+            </div>
+          }
+
           <!-- Answer Card -->
           <div class="glass-card-static p-6 sm:p-8">
             <div class="flex items-center gap-3 mb-4">
@@ -120,14 +132,14 @@ import { DocumentQueryResult, DocumentSummary } from '../../models/document.mode
               <div class="flex-1">
                 <div class="flex items-center justify-between mb-1">
                   <span class="text-xs font-semibold" [style.color]="'var(--text-muted)'">Retrieval Confidence</span>
-                  <span class="text-sm font-bold" [class]="getConfidenceColor(res.confidence)">{{ (res.confidence * 100).toFixed(0) }}%</span>
+                  <span class="text-sm font-bold" [class]="getConfidenceColor(res.confidence)">{{ res.confidence != null ? (res.confidence * 100).toFixed(0) + '%' : 'N/A' }}</span>
                 </div>
                 <div class="h-2 rounded-full overflow-hidden" [style.background]="'var(--bg-surface-hover)'">
                   <div class="h-full rounded-full transition-all duration-1000" [style.width.%]="res.confidence * 100" [style.background]="getConfidenceGradient(res.confidence)"></div>
                 </div>
               </div>
-              <span class="badge badge-neutral text-[9px]">{{ res.llmProvider }}</span>
-              <span class="text-[10px]" [style.color]="'var(--text-muted)'">{{ (res.elapsedMilliseconds / 1000).toFixed(1) }}s</span>
+              <span class="badge badge-neutral text-[9px]">{{ res.llmProvider || 'Unknown' }}</span>
+              <span class="text-[10px]" [style.color]="'var(--text-muted)'">{{ res.elapsedMilliseconds != null ? (res.elapsedMilliseconds / 1000).toFixed(1) + 's' : '' }}</span>
             </div>
           </div>
 

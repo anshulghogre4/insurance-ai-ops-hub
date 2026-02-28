@@ -10,7 +10,8 @@ namespace SentimentAnalyzer.API.Features.CustomerExperience.Commands;
 /// </summary>
 /// <param name="Message">The customer's message or question.</param>
 /// <param name="ClaimContext">Optional claim/policy context to ground the response.</param>
-public record ChatCommand(string Message, string? ClaimContext = null) : IRequest<CustomerExperienceResponse>;
+/// <param name="SessionId">Optional session ID for conversation memory continuity.</param>
+public record ChatCommand(string Message, string? ClaimContext = null, string? SessionId = null) : IRequest<CustomerExperienceResponse>;
 
 /// <summary>
 /// Handler that delegates to the Customer Experience service for single-turn chat.
@@ -42,7 +43,7 @@ public class ChatCommandHandler : IRequestHandler<ChatCommand, CustomerExperienc
         _logger.LogInformation("CX ChatCommand: {MessageLength} chars, hasContext={HasContext}",
             command.Message.Length, command.ClaimContext != null);
 
-        var result = await _cxService.ChatAsync(command.Message, command.ClaimContext, cancellationToken);
+        var result = await _cxService.ChatAsync(command.Message, command.ClaimContext, command.SessionId, cancellationToken);
 
         _logger.LogInformation("CX ChatCommand completed: provider={Provider}, tone={Tone}, escalation={Escalation}, elapsed={Elapsed}ms",
             result.LlmProvider, result.Tone, result.EscalationRecommended, result.ElapsedMilliseconds);

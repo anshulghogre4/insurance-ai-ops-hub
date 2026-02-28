@@ -21,12 +21,13 @@ test.describe('Login Page', () => {
       return;
     }
     // Branding panel is the left side with gradient bg
-    const brandingPanel = page.locator('.bg-gradient-to-br.from-indigo-600');
+    // Use a more specific selector to find the panel by its distinctive content
+    const brandingPanel = page.locator('div.bg-gradient-to-br').first();
     await expect(brandingPanel).toBeVisible();
     await expect(brandingPanel.getByText('InsureSense AI')).toBeVisible();
-    await expect(page.getByText('Insurance Intelligence')).toBeVisible();
-    await expect(page.getByText('Real-time Sentiment Analysis')).toBeVisible();
-    await expect(page.getByText('Churn Risk Detection')).toBeVisible();
+    // Verify features listed in the branding panel (current v4.0 content)
+    await expect(page.getByText('Claims Triage')).toBeVisible();
+    await expect(page.getByText('7-Provider Resilient Fallback')).toBeVisible();
     await expect(page.getByText('PII-Safe Processing')).toBeVisible();
   });
 

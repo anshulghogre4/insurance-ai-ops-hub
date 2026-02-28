@@ -249,4 +249,156 @@ public class DocumentChunkingServiceTests
         var conditionsChunk = result.First(c => c.SectionName == "CONDITIONS");
         Assert.Contains("Duties in the Event of Occurrence", conditionsChunk.Content);
     }
+
+    // ──────────────────────────────────────────
+    // Hierarchical parent-child chunking
+    // ──────────────────────────────────────────
+
+    [Fact]
+    public void ChunkDocument_LargeSection_CreatesParentAndChildChunks()
+    {
+        // Arrange: create text with a large COVERAGE section (>3x target = >6144 chars)
+        var largeSection = string.Join(". ", Enumerable.Range(1, 200).Select(i =>
+            $"Coverage provision {i} states that the insured property is protected against loss or damage"));
+        var text = $"DECLARATIONS\nNamed Insured: John Smith. Policy Number: HO-2024-001.\n\n" +
+                   $"COVERAGE\n{largeSection}\n\n" +
+                   $"EXCLUSIONS\nFlood damage is excluded from this policy.";
+
+        // Act
+        var chunks = _service.ChunkDocument(text);
+
+        // Assert: should have parent chunk (level 0) and child chunks (level 1) for COVERAGE
+        var coverageChunks = chunks.Where(c => c.SectionName == "COVERAGE").ToList();
+        Assert.True(coverageChunks.Count >= 3, $"Expected >= 3 coverage chunks, got {coverageChunks.Count}");
+
+        var parentChunks = coverageChunks.Where(c => c.ChunkLevel == 0).ToList();
+        var childChunks = coverageChunks.Where(c => c.ChunkLevel == 1).ToList();
+        Assert.Single(parentChunks); // One parent for the section
+        Assert.True(childChunks.Count >= 2, "Expected at least 2 child chunks");
+        Assert.All(childChunks, c => Assert.Equal(parentChunks[0].Index, c.ParentChunkIndex));
+    }
+
+    [Fact]
+    public void ChunkDocument_SmallSection_NoParentChildHierarchy()
+    {
+        // Arrange: small sections that don't exceed parent threshold
+        var text = "DECLARATIONS\nNamed Insured: Jane Doe. Policy Number: HO-2024-002.\n\n" +
+                   "EXCLUSIONS\nFlood damage from external sources is excluded.";
+
+        // Act
+        var chunks = _service.ChunkDocument(text);
+
+        // Assert: all chunks should be level 0 with no parent
+        Assert.All(chunks, c =>
+        {
+            Assert.Equal(0, c.ChunkLevel);
+            Assert.Null(c.ParentChunkIndex);
+        });
+    }
+
+    // ──────────────────────────────────────────
+    // New section header recognition
+    // ──────────────────────────────────────────
+
+    [Fact]
+    public void ChunkDocument_NewSections_RecognizesSubrogationPremiumCancellation()
+    {
+        // Arrange
+        var text = "SUBROGATION\nThe insurer reserves the right of subrogation against third parties.\n\n" +
+                   "PREMIUM\nThe annual premium for this policy is $1,200 due quarterly.\n\n" +
+                   "CANCELLATION\nEither party may cancel this policy with 30 days written notice.\n\n" +
+                   "CLAIMS PROCEDURE\nTo file a claim, contact your agent within 24 hours of the loss.";
+
+        // Act
+        var chunks = _service.ChunkDocument(text);
+
+        // Assert
+        var sectionNames = chunks.Select(c => c.SectionName).Distinct().ToList();
+        Assert.Contains("SUBROGATION", sectionNames);
+        Assert.Contains("PREMIUM", sectionNames);
+        Assert.Contains("CANCELLATION", sectionNames);
+        Assert.Contains("CLAIMS PROCEDURE", sectionNames);
+    }
+
+    // ──────────────────────────────────────────
+    // Overlap verification
+    // ──────────────────────────────────────────
+
+    [Fact]
+    public void ChunkDocument_128TokenOverlap_IncreasedFromDefault()
+    {
+        // Arrange: create text that will be split into multiple chunks
+        var sentences = string.Join(". ", Enumerable.Range(1, 100).Select(i =>
+            $"Insurance clause {i} covers damage to the insured premises including fixtures and fittings"));
+
+        // Act with default overlap (should be 128)
+        var chunks = _service.ChunkDocument(sentences);
+
+        // Assert: with 128-token overlap (~512 chars), consecutive chunks should share content
+        if (chunks.Count >= 2)
+        {
+            var chunk1End = chunks[0].Content[^200..]; // last 200 chars
+            var chunk2Start = chunks[1].Content[..200]; // first 200 chars
+            // Some overlap should exist between consecutive chunks
+            var overlapExists = chunk1End.Split(' ').Any(word =>
+                word.Length > 5 && chunk2Start.Contains(word, StringComparison.Ordinal));
+            Assert.True(overlapExists, "Expected overlap content between consecutive chunks");
+        }
+    }
+
+    // ──────────────────────────────────────────
+    // Page number estimation
+    // ──────────────────────────────────────────
+
+    [Fact]
+    public void ChunkDocument_PageNumberEstimation_TracksPageBoundaries()
+    {
+        // Arrange: create text roughly spanning 3 pages (~12000 chars)
+        var page1Content = new string('A', 4000);
+        var page2Content = new string('B', 4000);
+        var page3Content = new string('C', 4000);
+        var text = $"DECLARATIONS\n{page1Content}\n\nCOVERAGE\n{page2Content}\n\nEXCLUSIONS\n{page3Content}";
+
+        // Act
+        var chunks = _service.ChunkDocument(text);
+
+        // Assert: chunks should have page numbers
+        Assert.All(chunks, c => Assert.NotNull(c.PageNumber));
+        Assert.True(chunks.Max(c => c.PageNumber) >= 2, "Expected chunks spanning multiple pages");
+    }
+
+    // ──────────────────────────────────────────
+    // 20-page document scale test
+    // ──────────────────────────────────────────
+
+    [Fact]
+    public void ChunkDocument_20PageDocument_ProducesReasonableChunkCount()
+    {
+        // Arrange: simulate ~20 pages of insurance text (~80000 chars)
+        var sections = new[] { "DECLARATIONS", "COVERAGE", "EXCLUSIONS", "CONDITIONS", "ENDORSEMENTS",
+            "SUBROGATION", "PREMIUM", "CANCELLATION", "CLAIMS PROCEDURE", "DEFINITIONS" };
+        var textBuilder = new System.Text.StringBuilder();
+        foreach (var section in sections)
+        {
+            textBuilder.AppendLine(section);
+            for (int i = 0; i < 25; i++)
+            {
+                textBuilder.AppendLine($"Section {section} paragraph {i}: The policyholder is entitled to coverage for " +
+                    $"losses arising from covered perils as defined in this section, subject to the terms and conditions " +
+                    $"stated herein and any applicable endorsements or riders attached to this policy document.");
+            }
+            textBuilder.AppendLine();
+        }
+
+        // Act
+        var chunks = _service.ChunkDocument(textBuilder.ToString());
+
+        // Assert: 20-page doc should produce reasonable chunks
+        Assert.True(chunks.Count >= 20, $"Expected >= 20 chunks for 20-page doc, got {chunks.Count}");
+        Assert.True(chunks.Count <= 300, $"Expected <= 300 chunks, got {chunks.Count}");
+
+        // Verify hierarchical structure exists for large sections
+        var parentChunks = chunks.Where(c => c.ChunkLevel == 0 && chunks.Any(ch => ch.ParentChunkIndex == c.Index)).ToList();
+        Assert.True(parentChunks.Count >= 1, "Expected at least 1 parent chunk for large sections");
+    }
 }

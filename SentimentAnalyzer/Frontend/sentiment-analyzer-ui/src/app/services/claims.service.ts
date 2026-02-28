@@ -7,7 +7,8 @@ import {
   FraudAnalysisResponse,
   ProviderHealthResponse,
   PaginatedResponse,
-  ClaimsHistoryFilter
+  ClaimsHistoryFilter,
+  BatchClaimUploadResult
 } from '../models/claims.model';
 import { environment } from '../../environments/environment';
 
@@ -68,5 +69,12 @@ export class ClaimsService {
   /** Get health status of all LLM providers and multimodal services. */
   getProviderHealth(): Observable<ProviderHealthResponse> {
     return this.http.get<ProviderHealthResponse>(`${this.apiUrl}/health/providers`);
+  }
+
+  /** Upload a CSV file for batch claim triage processing. */
+  uploadBatch(file: File): Observable<BatchClaimUploadResult> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.http.post<BatchClaimUploadResult>(`${this.apiUrl}/claims/batch`, formData);
   }
 }

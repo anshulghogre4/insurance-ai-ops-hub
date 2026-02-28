@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ClaimsService } from '../../services/claims.service';
+import { ToastService } from '../../services/toast.service';
 import { ClaimTriageResponse } from '../../models/claims.model';
 import { EvidenceViewerComponent } from '../evidence-viewer/evidence-viewer';
 import { AiLoaderComponent } from '../ai-loader/ai-loader';
@@ -189,22 +190,32 @@ import {
         <div class="mt-6 flex items-center gap-3">
           <button
             (click)="submitTriage()"
-            [disabled]="!claimText.trim() || isLoading()"
-            class="btn-primary flex items-center gap-2"
+            [disabled]="!claimText.trim() || isLoading() || submitState() === 'complete'"
+            class="btn-primary btn-spring flex items-center gap-2"
             [class.animate-pulse-glow]="isLoading()"
+            [class.animate-submit-complete]="submitState() === 'complete'"
             aria-label="Submit claim for triage"
           >
-            @if (isLoading()) {
-              <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-              Triaging...
-            } @else {
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-              </svg>
-              Triage Claim
+            @switch (submitState()) {
+              @case ('loading') {
+                <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                Analyzing...
+              }
+              @case ('complete') {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+                Complete
+              }
+              @default {
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                </svg>
+                Triage Claim
+              }
             }
           </button>
           @if (claimText.trim()) {
@@ -235,7 +246,7 @@ import {
 
       <!-- Result Display -->
       @if (result(); as res) {
-        <div class="space-y-5 animate-fade-in-up" aria-live="polite">
+        <div class="space-y-5 animate-result-slide-up" aria-live="polite">
 
           <!-- Triage Summary -->
           <div class="glass-card-static p-6 sm:p-8">
@@ -291,7 +302,8 @@ import {
                 </div>
               </div>
               <div class="h-3 rounded-full overflow-hidden" [style.background]="'var(--bg-surface-hover)'">
-                <div class="h-full rounded-full transition-all duration-1000 ease-out"
+                <div class="h-full rounded-full fraud-meter-animated"
+                     [class.fraud-pulse-high]="getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel) > 60"
                      [style.width.%]="getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel)"
                      [style.background]="getFraudGaugeGradient(getEffectiveFraudScore(res.fraudScore, res.fraudRiskLevel))">
                 </div>
@@ -413,6 +425,7 @@ import {
 export class ClaimsTriageComponent implements OnDestroy {
   private destroyRef = inject(DestroyRef);
   private claimsService = inject(ClaimsService);
+  private toastService = inject(ToastService);
 
   Math = Math;
 
@@ -424,12 +437,14 @@ export class ClaimsTriageComponent implements OnDestroy {
   fileWarning = signal<string | null>(null);
   isDragOver = signal(false);
   isLoading = signal(false);
+  submitState = signal<'idle' | 'loading' | 'complete'>('idle');
   result = signal<ClaimTriageResponse | null>(null);
   error = signal<string | null>(null);
   elapsedSeconds = signal(0);
   expandedActions = signal<number[]>([]);
 
   private elapsedTimer: ReturnType<typeof setInterval> | null = null;
+  private completeTimer: ReturnType<typeof setTimeout> | null = null;
 
   templates = [
     { key: 'water', label: 'Water Damage', icon: 'water' },
@@ -459,6 +474,10 @@ export class ClaimsTriageComponent implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopTimer();
+    if (this.completeTimer) {
+      clearTimeout(this.completeTimer);
+      this.completeTimer = null;
+    }
   }
 
   useSample(key: string): void {
@@ -475,6 +494,7 @@ export class ClaimsTriageComponent implements OnDestroy {
     if (!this.claimText.trim() || this.isLoading()) return;
 
     this.isLoading.set(true);
+    this.submitState.set('loading');
     this.error.set(null);
     this.result.set(null);
     this.startTimer();
@@ -490,12 +510,16 @@ export class ClaimsTriageComponent implements OnDestroy {
             this.result.set(response);
             this.isLoading.set(false);
             this.stopTimer();
+            this.showCompleteBriefly();
+            this.toastService.success('Claim triaged successfully');
           }
         },
         error: (err) => {
           this.error.set(err.error?.error || 'Failed to triage claim. Please try again.');
           this.isLoading.set(false);
+          this.submitState.set('idle');
           this.stopTimer();
+          this.toastService.error('Failed to triage claim');
         }
       });
   }
@@ -509,11 +533,15 @@ export class ClaimsTriageComponent implements OnDestroy {
             this.result.set(fullResult);
             this.isLoading.set(false);
             this.stopTimer();
+            this.showCompleteBriefly();
+            this.toastService.success('Claim triaged successfully');
           },
           error: () => {
             this.error.set('Claim submitted but failed to load result. Check claims history.');
             this.isLoading.set(false);
+            this.submitState.set('idle');
             this.stopTimer();
+            this.toastService.warning('Claim submitted but failed to load result');
           }
         });
       return;
@@ -527,6 +555,14 @@ export class ClaimsTriageComponent implements OnDestroy {
       });
   }
 
+  private showCompleteBriefly(): void {
+    this.submitState.set('complete');
+    this.completeTimer = setTimeout(() => {
+      this.submitState.set('idle');
+      this.completeTimer = null;
+    }, 1500);
+  }
+
   clearForm(): void {
     this.claimText = '';
     this.interactionType = 'Complaint';
@@ -534,6 +570,11 @@ export class ClaimsTriageComponent implements OnDestroy {
     this.result.set(null);
     this.error.set(null);
     this.expandedActions.set([]);
+    this.submitState.set('idle');
+    if (this.completeTimer) {
+      clearTimeout(this.completeTimer);
+      this.completeTimer = null;
+    }
   }
 
   toggleAction(index: number): void {

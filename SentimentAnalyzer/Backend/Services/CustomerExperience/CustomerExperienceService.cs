@@ -23,8 +23,14 @@ public class CustomerExperienceService : ICustomerExperienceService
     private readonly IResilientKernelProvider _kernelProvider;
     private readonly IPIIRedactor _piiRedactor;
     private readonly ICxInteractionRepository _auditRepo;
+    private readonly ICxConversationRepository? _conversationRepo;
     private readonly ILogger<CustomerExperienceService> _logger;
     private readonly IContentSafetyService? _contentSafety;
+
+    /// <summary>
+    /// Maximum number of messages retained in the sliding conversation window.
+    /// </summary>
+    public const int MaxConversationTurns = 10;
 
     /// <summary>
     /// Standard regulatory disclaimer appended to all CX Copilot responses.
@@ -87,28 +93,31 @@ public class CustomerExperienceService : ICustomerExperienceService
     /// <param name="piiRedactor">PII redaction service — mandatory before external AI calls.</param>
     /// <param name="auditRepo">Repository for CX interaction audit trail (regulatory compliance).</param>
     /// <param name="logger">Structured logger for this service.</param>
+    /// <param name="conversationRepo">Optional repository for conversation session persistence. Null disables conversation memory.</param>
     /// <param name="contentSafety">Optional content safety screening service for policyholder protection.</param>
     public CustomerExperienceService(
         IResilientKernelProvider kernelProvider,
         IPIIRedactor piiRedactor,
         ICxInteractionRepository auditRepo,
         ILogger<CustomerExperienceService> logger,
+        ICxConversationRepository? conversationRepo = null,
         IContentSafetyService? contentSafety = null)
     {
         _kernelProvider = kernelProvider ?? throw new ArgumentNullException(nameof(kernelProvider));
         _piiRedactor = piiRedactor ?? throw new ArgumentNullException(nameof(piiRedactor));
         _auditRepo = auditRepo ?? throw new ArgumentNullException(nameof(auditRepo));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _conversationRepo = conversationRepo;
         _contentSafety = contentSafety;
     }
 
     /// <inheritdoc />
     public async Task<CustomerExperienceResponse> ChatAsync(
-        string message, string? claimContext = null, CancellationToken ct = default)
+        string message, string? claimContext = null, string? sessionId = null, CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        _logger.LogInformation("CX Copilot chat: {MessageLength} chars, hasClaimContext={HasContext}",
-            message.Length, claimContext != null);
+        _logger.LogInformation("CX Copilot chat: {MessageLength} chars, hasClaimContext={HasContext}, hasSession={HasSession}",
+            message.Length, claimContext != null, sessionId != null);
 
         try
         {
@@ -122,6 +131,13 @@ public class CustomerExperienceService : ICustomerExperienceService
             var chatService = kernel.GetRequiredService<IChatCompletionService>();
             var chatHistory = new ChatHistory();
             chatHistory.AddSystemMessage(SystemPrompt);
+
+            // Load conversation history if session is provided
+            if (!string.IsNullOrWhiteSpace(sessionId) && _conversationRepo != null)
+            {
+                await LoadConversationHistoryAsync(chatHistory, sessionId);
+            }
+
             chatHistory.AddUserMessage(userPrompt);
 
             var response = await chatService.GetChatMessageContentAsync(chatHistory, cancellationToken: ct);
@@ -161,6 +177,12 @@ public class CustomerExperienceService : ICustomerExperienceService
             await SaveAuditRecordAsync(message, redactedResponse, tone, escalationRecommended, escalationReason,
                 providerName, sw.ElapsedMilliseconds, claimContext != null, wasStreamed: false);
 
+            // Persist conversation turns if session is active
+            if (!string.IsNullOrWhiteSpace(sessionId) && _conversationRepo != null)
+            {
+                await SaveConversationTurnsAsync(sessionId, redactedMessage, redactedResponse);
+            }
+
             return new CustomerExperienceResponse
             {
                 Response = redactedResponse,
@@ -194,11 +216,11 @@ public class CustomerExperienceService : ICustomerExperienceService
 
     /// <inheritdoc />
     public async IAsyncEnumerable<CustomerExperienceStreamChunk> StreamChatAsync(
-        string message, string? claimContext = null, [EnumeratorCancellation] CancellationToken ct = default)
+        string message, string? claimContext = null, string? sessionId = null, [EnumeratorCancellation] CancellationToken ct = default)
     {
         var sw = Stopwatch.StartNew();
-        _logger.LogInformation("CX Copilot stream: {MessageLength} chars, hasClaimContext={HasContext}",
-            message.Length, claimContext != null);
+        _logger.LogInformation("CX Copilot stream: {MessageLength} chars, hasClaimContext={HasContext}, hasSession={HasSession}",
+            message.Length, claimContext != null, sessionId != null);
 
         // PII redaction before external AI call (mandatory per CLAUDE.md)
         var redactedMessage = _piiRedactor.Redact(message);
@@ -219,6 +241,13 @@ public class CustomerExperienceService : ICustomerExperienceService
             chatService = kernel.GetRequiredService<IChatCompletionService>();
             chatHistory = new ChatHistory();
             chatHistory.AddSystemMessage(SystemPrompt);
+
+            // Load conversation history if session is provided
+            if (!string.IsNullOrWhiteSpace(sessionId) && _conversationRepo != null)
+            {
+                await LoadConversationHistoryAsync(chatHistory, sessionId);
+            }
+
             chatHistory.AddUserMessage(userPrompt);
         }
         catch (Exception ex)
@@ -376,6 +405,12 @@ public class CustomerExperienceService : ICustomerExperienceService
         await SaveAuditRecordAsync(message, redactedResponse, tone, escalationRecommended, escalationReason,
             providerName, sw.ElapsedMilliseconds, claimContext != null, wasStreamed: true);
 
+        // Persist conversation turns if session is active
+        if (!string.IsNullOrWhiteSpace(sessionId) && _conversationRepo != null)
+        {
+            await SaveConversationTurnsAsync(sessionId, redactedMessage, redactedResponse);
+        }
+
         // Send metadata chunk with tone analysis and timing
         yield return new CustomerExperienceStreamChunk
         {
@@ -399,6 +434,62 @@ public class CustomerExperienceService : ICustomerExperienceService
             Type = "done",
             Content = string.Empty
         };
+    }
+
+    /// <summary>
+    /// Loads conversation history from the session repository into the ChatHistory.
+    /// Prior turns are added as alternating user/assistant messages to provide context.
+    /// </summary>
+    /// <param name="chatHistory">The ChatHistory to populate with prior turns.</param>
+    /// <param name="sessionId">The session identifier to load history for.</param>
+    private async Task LoadConversationHistoryAsync(ChatHistory chatHistory, string sessionId)
+    {
+        try
+        {
+            var priorTurns = await _conversationRepo!.GetRecentTurnsAsync(sessionId, MaxConversationTurns);
+
+            foreach (var turn in priorTurns)
+            {
+                if (string.Equals(turn.Role, "user", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatHistory.AddUserMessage(turn.Content);
+                }
+                else if (string.Equals(turn.Role, "assistant", StringComparison.OrdinalIgnoreCase))
+                {
+                    chatHistory.AddAssistantMessage(turn.Content);
+                }
+            }
+
+            _logger.LogInformation("Loaded {TurnCount} prior turns for CX session {SessionId}",
+                priorTurns.Count, sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load conversation history for session {SessionId} — proceeding without context", sessionId);
+        }
+    }
+
+    /// <summary>
+    /// Saves both user and assistant messages to the conversation session.
+    /// PII must already be redacted before calling this method.
+    /// Failures are logged but never propagated — persistence must not block the response.
+    /// </summary>
+    /// <param name="sessionId">The session identifier.</param>
+    /// <param name="redactedUserMessage">The PII-redacted user message.</param>
+    /// <param name="redactedAssistantResponse">The PII-redacted assistant response.</param>
+    private async Task SaveConversationTurnsAsync(string sessionId, string redactedUserMessage, string redactedAssistantResponse)
+    {
+        try
+        {
+            await _conversationRepo!.AppendTurnAsync(sessionId, "user", redactedUserMessage, MaxConversationTurns);
+            await _conversationRepo.AppendTurnAsync(sessionId, "assistant", redactedAssistantResponse, MaxConversationTurns);
+
+            _logger.LogInformation("Saved conversation turns for CX session {SessionId}", sessionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to save conversation turns for session {SessionId} — response already sent to user", sessionId);
+        }
     }
 
     /// <summary>

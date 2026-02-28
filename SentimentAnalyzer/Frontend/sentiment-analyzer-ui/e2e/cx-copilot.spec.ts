@@ -91,7 +91,9 @@ test.describe('CX Copilot', () => {
   });
 
   test('should handle API error', async ({ page }) => {
-    await page.route('**/api/insurance/cx/stream', (route) => {
+    // Override the SSE stream endpoint with a 500 error
+    // Must use wildcard pattern to ensure it overrides the mockAllApis route
+    await page.route('**/api/insurance/cx/stream*', (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
           status: 500,
@@ -106,7 +108,8 @@ test.describe('CX Copilot', () => {
     await textarea.fill('Help me with my claim.');
     await page.getByLabel('Send message').click();
 
-    const errorBanner = page.locator('[role="alert"]');
-    await expect(errorBanner).toBeVisible({ timeout: 10_000 });
+    // Component shows error via inline error banner (role="alert") and/or toast notification
+    const errorIndicator = page.locator('[role="alert"]');
+    await expect(errorIndicator.first()).toBeVisible({ timeout: 10_000 });
   });
 });

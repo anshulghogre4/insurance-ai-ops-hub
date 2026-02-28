@@ -79,6 +79,10 @@ export class DashboardComponent implements OnInit {
     responsive: true,
     maintainAspectRatio: false,
     cutout: '65%',
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart' as const
+    },
     plugins: {
       legend: {
         position: 'bottom' as const,
@@ -135,6 +139,10 @@ export class DashboardComponent implements OnInit {
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 1000,
+      easing: 'easeInOutQuart' as const
+    },
     scales: {
       x: {
         grid: { color: 'rgba(148, 163, 184, 0.08)' },

@@ -3,6 +3,7 @@ using MediatR;
 using SentimentAnalyzer.API.Features.Documents.Commands;
 using SentimentAnalyzer.API.Features.Documents.Queries;
 using SentimentAnalyzer.API.Models;
+using SentimentAnalyzer.API.Services.Documents;
 
 namespace SentimentAnalyzer.API.Endpoints;
 
@@ -25,6 +26,12 @@ public static class DocumentEndpoints
             .DisableAntiforgery()
             .RequireRateLimiting("upload");
 
+        var streamUploadEndpoint = group.MapPost("/upload/stream", StreamUploadDocumentAsync)
+            .WithName("StreamUploadDocument")
+            .WithDescription("Upload and process a document with real-time SSE progress events.")
+            .DisableAntiforgery()
+            .RequireRateLimiting("upload");
+
         var queryEndpoint = group.MapPost("/query", QueryDocumentAsync)
             .WithName("QueryDocument")
             .WithDescription("Query indexed documents using natural language (RAG Q&A).")
@@ -42,13 +49,35 @@ public static class DocumentEndpoints
             .WithName("DeleteDocument")
             .WithDescription("Delete a document and its indexed chunks.");
 
+        var generateQaEndpoint = group.MapPost("/{id:int}/generate-qa", async (int id, ISyntheticQAService qaService, CancellationToken ct) =>
+        {
+            var result = await qaService.GenerateQAPairsAsync(id, ct);
+            // Return 200 even on partial success (some pairs generated despite some chunk failures)
+            return result.TotalPairsGenerated > 0 || result.ErrorMessage == null
+                ? Results.Ok(result)
+                : Results.BadRequest(result);
+        }).WithName("GenerateQAPairs")
+          .WithDescription("Generate synthetic Q&A pairs from a document's chunks for fine-tuning preparation.")
+          .WithOpenApi();
+
+        var getQaPairsEndpoint = group.MapGet("/{id:int}/qa-pairs", async (int id, ISyntheticQAService qaService) =>
+        {
+            var result = await qaService.GetQAPairsAsync(id);
+            return result.ErrorMessage != null ? Results.NotFound(result) : Results.Ok(result);
+        }).WithName("GetQAPairs")
+          .WithDescription("Retrieve previously generated synthetic Q&A pairs for a document.")
+          .WithOpenApi();
+
         if (requireAuth)
         {
             uploadEndpoint.RequireAuthorization();
+            streamUploadEndpoint.RequireAuthorization();
             queryEndpoint.RequireAuthorization();
             getByIdEndpoint.RequireAuthorization();
             historyEndpoint.RequireAuthorization();
             deleteEndpoint.RequireAuthorization();
+            generateQaEndpoint.RequireAuthorization();
+            getQaPairsEndpoint.RequireAuthorization();
         }
 
         return group;
@@ -61,7 +90,7 @@ public static class DocumentEndpoints
         var maxDocs = config.GetValue("DocumentLimits:MaxDocuments", 20);
         var maxFileSize = config.GetValue("DocumentLimits:MaxFileSizeBytes", 5 * 1024 * 1024);
         var maxChunksTotal = config.GetValue("DocumentLimits:MaxChunksTotal", 500);
-        var maxPages = config.GetValue("DocumentLimits:MaxPagesPerDocument", 10);
+        var maxPages = config.GetValue("DocumentLimits:MaxPagesPerDocument", 20);
 
         if (file.Length == 0)
             return Results.BadRequest(new { error = "File is empty.", status = 400 });
@@ -122,6 +151,62 @@ public static class DocumentEndpoints
             }, statusCode: 422);
 
         return Results.Created($"/api/insurance/documents/{result.DocumentId}", result);
+    }
+
+    private static async Task<IResult> StreamUploadDocumentAsync(
+        IFormFile file, IDocumentIntelligenceService documentService, IConfiguration config, string category = "Other")
+    {
+        // Same validation as UploadDocumentAsync
+        var maxFileSize = config.GetValue("DocumentLimits:MaxFileSizeBytes", 5 * 1024 * 1024);
+        var maxPages = config.GetValue("DocumentLimits:MaxPagesPerDocument", 20);
+
+        if (file.Length == 0)
+            return Results.BadRequest(new { error = "File is empty.", status = 400 });
+
+        if (file.Length > maxFileSize)
+            return Results.BadRequest(new { error = $"File size cannot exceed {maxFileSize / (1024 * 1024)} MB.", status = 400 });
+
+        var allowedTypes = new[] { "application/pdf", "image/png", "image/jpeg", "image/tiff" };
+        if (!allowedTypes.Contains(file.ContentType, StringComparer.OrdinalIgnoreCase))
+            return Results.BadRequest(new { error = $"Unsupported file type. Allowed: {string.Join(", ", allowedTypes)}", status = 400 });
+
+        if (!ValidCategories.Contains(category, StringComparer.OrdinalIgnoreCase))
+            return Results.BadRequest(new { error = $"Invalid category.", status = 400 });
+
+        var sanitizedFileName = SanitizeFileName(file.FileName);
+
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+        var fileData = ms.ToArray();
+
+        return Results.Stream(async stream =>
+        {
+            var writer = new StreamWriter(stream) { AutoFlush = true };
+            try
+            {
+                await foreach (var progressEvent in documentService.UploadWithProgressAsync(
+                    fileData, file.ContentType, sanitizedFileName, category))
+                {
+                    var json = System.Text.Json.JsonSerializer.Serialize(progressEvent,
+                        new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+                    await writer.WriteAsync($"data: {json}\n\n");
+                    await writer.FlushAsync();
+                }
+                await writer.WriteAsync("data: [DONE]\n\n");
+            }
+            catch (Exception ex)
+            {
+                var errorEvent = new DocumentProgressEvent
+                {
+                    Phase = "Error", Progress = 0,
+                    Message = "Processing failed.", ErrorMessage = ex.Message
+                };
+                var errorJson = System.Text.Json.JsonSerializer.Serialize(errorEvent,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+                await writer.WriteAsync($"data: {errorJson}\n\n");
+                await writer.WriteAsync("data: [DONE]\n\n");
+            }
+        }, contentType: "text/event-stream");
     }
 
     private static async Task<IResult> QueryDocumentAsync(

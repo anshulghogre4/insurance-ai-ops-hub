@@ -4,7 +4,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Observable } from 'rxjs';
 import { CustomerExperienceService } from './customer-experience.service';
-import { CustomerExperienceResponse } from '../models/document.model';
+import { CustomerExperienceResponse, CxSessionResponse, CxMessageHistoryResponse } from '../models/document.model';
 
 describe('CustomerExperienceService', () => {
   let service: CustomerExperienceService;
@@ -30,6 +30,20 @@ describe('CustomerExperienceService', () => {
     llmProvider: 'Mistral',
     elapsedMilliseconds: 1103,
     disclaimer: 'This response is AI-generated. For binding coverage decisions, please contact your licensed agent.'
+  };
+
+  const mockSessionResponse: CxSessionResponse = {
+    sessionId: 'e7a1b2c3-d4e5-6f78-9a0b-cdef12345678'
+  };
+
+  const mockHistoryResponse: CxMessageHistoryResponse = {
+    sessionId: 'e7a1b2c3-d4e5-6f78-9a0b-cdef12345678',
+    messages: [
+      { role: 'user', content: 'What does my homeowners policy cover for water damage?', timestamp: '2026-02-28T10:00:00Z' },
+      { role: 'assistant', content: 'Your homeowners policy covers sudden and accidental water damage from burst pipes. Gradual damage and flooding from external sources require separate flood insurance.', timestamp: '2026-02-28T10:00:03Z' },
+      { role: 'user', content: 'What is my deductible for this type of claim?', timestamp: '2026-02-28T10:01:00Z' },
+      { role: 'assistant', content: 'Your water damage deductible is $1,000 per occurrence as stated in your policy declarations page.', timestamp: '2026-02-28T10:01:04Z' }
+    ]
   };
 
   beforeEach(() => {
@@ -78,6 +92,20 @@ describe('CustomerExperienceService', () => {
     req.flush(mockEscalationResponse);
   });
 
+  it('should send chat POST with sessionId', () => {
+    const message = 'What is the status of my water damage claim?';
+    const sessionId = 'e7a1b2c3-d4e5-6f78-9a0b-cdef12345678';
+
+    service.chat(message, undefined, sessionId).subscribe(res => {
+      expect(res.tone).toBe('Empathetic');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/chat`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ message, sessionId });
+    req.flush(mockChatResponse);
+  });
+
   it('should handle chat error response', () => {
     service.chat('What is my policy coverage limit?').subscribe({
       next: () => { throw new Error('should have failed'); },
@@ -104,5 +132,76 @@ describe('CustomerExperienceService', () => {
       'Claim WC-2026-55301: Lower back injury, filed 48 hours after policy effective date'
     );
     expect(result).toBeInstanceOf(Observable);
+  });
+
+  it('should pass sessionId to streamChat', () => {
+    const result = service.streamChat(
+      'What is the status of my claim?',
+      undefined,
+      'e7a1b2c3-d4e5-6f78-9a0b-cdef12345678'
+    );
+    expect(result).toBeInstanceOf(Observable);
+  });
+
+  // ────────────────────────────────────────────────────────────
+  // Session Management Tests
+  // ────────────────────────────────────────────────────────────
+
+  it('should create a new session via POST', () => {
+    service.createSession().subscribe(res => {
+      expect(res.sessionId).toBe('e7a1b2c3-d4e5-6f78-9a0b-cdef12345678');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/sessions`);
+    expect(req.request.method).toBe('POST');
+    req.flush(mockSessionResponse);
+  });
+
+  it('should get session history via GET', () => {
+    const sessionId = 'e7a1b2c3-d4e5-6f78-9a0b-cdef12345678';
+
+    service.getSessionHistory(sessionId).subscribe(res => {
+      expect(res.sessionId).toBe(sessionId);
+      expect(res.messages.length).toBe(4);
+      expect(res.messages[0].role).toBe('user');
+      expect(res.messages[0].content).toContain('water damage');
+      expect(res.messages[1].role).toBe('assistant');
+      expect(res.messages[2].role).toBe('user');
+      expect(res.messages[3].role).toBe('assistant');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/sessions/${sessionId}/history`);
+    expect(req.request.method).toBe('GET');
+    req.flush(mockHistoryResponse);
+  });
+
+  it('should handle session creation failure', () => {
+    service.createSession().subscribe({
+      next: () => { throw new Error('should have failed'); },
+      error: (error) => {
+        expect(error.status).toBe(500);
+      }
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/sessions`);
+    req.flush(
+      { error: 'Internal server error' },
+      { status: 500, statusText: 'Internal Server Error' }
+    );
+  });
+
+  it('should handle session not found on history request', () => {
+    service.getSessionHistory('nonexistent-session-id').subscribe({
+      next: () => { throw new Error('should have failed'); },
+      error: (error) => {
+        expect(error.status).toBe(404);
+      }
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/sessions/nonexistent-session-id/history`);
+    req.flush(
+      { error: 'Session not found' },
+      { status: 404, statusText: 'Not Found' }
+    );
   });
 });

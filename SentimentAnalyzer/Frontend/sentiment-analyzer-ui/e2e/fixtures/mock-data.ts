@@ -226,8 +226,8 @@ export const MOCK_DOCUMENT_UPLOAD_RESULT = {
   documentId: 501,
   fileName: 'homeowners-policy-2024.pdf',
   status: 'Processed',
-  pageCount: 4,
-  chunkCount: 12,
+  pageCount: 18,
+  chunkCount: 42,
   embeddingProvider: 'Voyage AI',
   errorMessage: null
 };
@@ -254,7 +254,8 @@ export const MOCK_DOCUMENT_QUERY_RESULT = {
     }
   ],
   llmProvider: 'Groq',
-  elapsedMilliseconds: 1842
+  elapsedMilliseconds: 1842,
+  answerSafety: null
 };
 
 export const MOCK_DOCUMENT_DETAIL = {
@@ -263,26 +264,52 @@ export const MOCK_DOCUMENT_DETAIL = {
   mimeType: 'application/pdf',
   category: 'Policy',
   status: 'Processed',
-  pageCount: 4,
-  chunkCount: 4,
+  pageCount: 18,
+  chunkCount: 7,
   embeddingProvider: 'Voyage AI',
   chunks: [
-    { chunkIndex: 0, sectionName: 'DECLARATIONS', tokenCount: 256, contentPreview: 'Named Insured: John Smith. Policy Number: HO-2024-789456. Policy Period: 01/01/2024 to 01/01/2025. Dwelling Coverage: $450,000...' },
-    { chunkIndex: 1, sectionName: 'COVERAGE A - DWELLING', tokenCount: 512, contentPreview: 'We cover the dwelling on the residence premises including structures attached to the dwelling. Coverage includes sudden and accidental...' },
-    { chunkIndex: 2, sectionName: 'COVERAGE B - OTHER STRUCTURES', tokenCount: 384, contentPreview: 'We cover other structures on the residence premises set apart from the dwelling by clear space. This includes detached garages...' },
-    { chunkIndex: 3, sectionName: 'EXCLUSIONS', tokenCount: 448, contentPreview: 'We do not cover loss caused by: ordinance or law; earth movement; water damage from external flooding; power failure...' }
+    { chunkIndex: 0, sectionName: 'DECLARATIONS', tokenCount: 256, contentPreview: 'Named Insured: Robert Thompson. Policy Number: HO-2024-78432. Property Address: 742 Evergreen Terrace...', pageNumber: 1, parentChunkId: null, chunkLevel: 0, isSafe: true, safetyFlags: null },
+    { chunkIndex: 1, sectionName: 'COVERAGE', tokenCount: 512, contentPreview: 'Coverage A - Dwelling: Your policy covers the dwelling on the residence premises shown in the declarations...', pageNumber: 2, parentChunkId: null, chunkLevel: 0, isSafe: true, safetyFlags: null },
+    { chunkIndex: 2, sectionName: 'COVERAGE', tokenCount: 384, contentPreview: 'Coverage B - Other Structures: This coverage applies to other structures on the residence premises...', pageNumber: 3, parentChunkId: 1, chunkLevel: 1, isSafe: true, safetyFlags: null },
+    { chunkIndex: 3, sectionName: 'EXCLUSIONS', tokenCount: 448, contentPreview: 'We do not insure for loss caused directly or indirectly by: flood, surface water, waves, tidal water...', pageNumber: 5, parentChunkId: null, chunkLevel: 0, isSafe: true, safetyFlags: null },
+    { chunkIndex: 4, sectionName: 'SUBROGATION', tokenCount: 320, contentPreview: 'If an insured has rights to recover from a responsible party for a loss we have paid, those rights...', pageNumber: 12, parentChunkId: null, chunkLevel: 0, isSafe: true, safetyFlags: null },
+    { chunkIndex: 5, sectionName: 'CANCELLATION', tokenCount: 280, contentPreview: 'Either the named insured or we may cancel this policy. Cancellation by us requires 30 days written...', pageNumber: 15, parentChunkId: null, chunkLevel: 0, isSafe: true, safetyFlags: null },
+    { chunkIndex: 6, sectionName: 'DISPUTE RESOLUTION', tokenCount: 350, contentPreview: 'In the event of a dispute regarding claim settlement amounts, the insured may invoke the appraisal process...', pageNumber: 16, parentChunkId: null, chunkLevel: 0, isSafe: false, safetyFlags: 'Violence|SelfHarm' }
   ],
   createdAt: '2026-02-25T09:30:00Z'
 };
 
 export const MOCK_DOCUMENT_HISTORY_RESPONSE = {
   items: [
-    { id: 501, fileName: 'homeowners-policy-2024.pdf', mimeType: 'application/pdf', category: 'Policy', status: 'Processed', pageCount: 4, chunkCount: 12, createdAt: '2026-02-25T09:30:00Z' },
+    { id: 501, fileName: 'homeowners-policy-2024.pdf', mimeType: 'application/pdf', category: 'Policy', status: 'Processed', pageCount: 18, chunkCount: 42, createdAt: '2026-02-25T09:30:00Z' },
     { id: 502, fileName: 'auto-claim-CLM-2024-001.pdf', mimeType: 'application/pdf', category: 'Claim', status: 'Processed', pageCount: 2, chunkCount: 6, createdAt: '2026-02-24T14:15:00Z' },
     { id: 503, fileName: 'endorsement-amendment-003.pdf', mimeType: 'application/pdf', category: 'Endorsement', status: 'Processed', pageCount: 1, chunkCount: 3, createdAt: '2026-02-23T11:00:00Z' }
   ],
   totalCount: 3, page: 1, pageSize: 20, totalPages: 1
 };
+
+/** Pre-composed SSE event stream for document upload progress mock. */
+export const MOCK_UPLOAD_PROGRESS_SSE = [
+  'data: {"phase":"Uploading","progress":5,"message":"Receiving homeowners-policy-2024.pdf (245 KB)...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Uploading","progress":10,"message":"Document registered. Starting OCR extraction...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"OCR","progress":15,"message":"Extracting text with OCR...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"OCR","progress":30,"message":"Extracted text from 18 pages.","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Chunking","progress":35,"message":"Splitting into insurance sections...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Chunking","progress":45,"message":"Created 42 chunks (4 sections, 12 sub-chunks).","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Embedding","progress":50,"message":"Generating vector embeddings for 42 chunks...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Embedding","progress":75,"message":"Embeddings generated via Voyage AI (1024-dim).","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Safety","progress":80,"message":"Storing document index...","result":null,"errorMessage":null}\n\n',
+  'data: {"phase":"Done","progress":100,"message":"Document ready for queries.","result":' + JSON.stringify({
+    documentId: 501,
+    fileName: 'homeowners-policy-2024.pdf',
+    status: 'Processed',
+    pageCount: 18,
+    chunkCount: 42,
+    embeddingProvider: 'Voyage AI',
+    errorMessage: null
+  }) + ',"errorMessage":null}\n\n',
+  'data: [DONE]\n\n'
+].join('');
 
 // ===================== Customer Experience Copilot =====================
 
@@ -316,6 +343,38 @@ export const MOCK_CX_STREAM_EVENTS = [
   `data: {"type":"metadata","content":"","metadata":${JSON.stringify(MOCK_CX_CHAT_RESPONSE)}}\n\n`,
   'data: [DONE]\n\n'
 ].join('');
+
+// ===================== CX Copilot Conversation Memory =====================
+
+export const MOCK_CX_SESSION_RESPONSE = {
+  sessionId: 'e2e-session-abc-12345678-90ab-cdef'
+};
+
+export const MOCK_CX_SESSION_HISTORY_RESPONSE = {
+  sessionId: 'e2e-session-abc-12345678-90ab-cdef',
+  messages: [
+    {
+      role: 'user',
+      content: 'What does my homeowners policy cover for water damage?',
+      timestamp: '2026-02-28T10:00:00Z'
+    },
+    {
+      role: 'assistant',
+      content: 'Your homeowners policy covers sudden and accidental water damage from burst pipes and appliance overflow. Gradual damage and external flooding require separate flood insurance. Your deductible is $1,000 per occurrence.',
+      timestamp: '2026-02-28T10:00:05Z'
+    },
+    {
+      role: 'user',
+      content: 'How do I file a water damage claim?',
+      timestamp: '2026-02-28T10:01:00Z'
+    },
+    {
+      role: 'assistant',
+      content: 'To file a water damage claim, call our claims hotline at the number on your policy declarations page. Have your policy number ready. An adjuster will be assigned within 24-48 hours to inspect the damage.',
+      timestamp: '2026-02-28T10:01:04Z'
+    }
+  ]
+};
 
 // ===================== Fraud Correlation =====================
 
@@ -372,4 +431,93 @@ export const MOCK_CORRELATIONS_PAGINATED = {
   page: 1,
   pageSize: 20,
   totalPages: 1
+};
+
+// ===================== Fine-Tuning Synthetic Q&A =====================
+
+export const MOCK_QA_PAIRS = {
+  documentId: 1,
+  documentName: 'auto-insurance-policy.pdf',
+  totalPairsGenerated: 6,
+  pairs: [
+    {
+      id: 1,
+      chunkId: 1,
+      question: 'What is the deductible for comprehensive coverage under this auto insurance policy?',
+      answer: 'The comprehensive coverage deductible is $500 per occurrence, as specified in Section 4.2 of the policy declarations page.',
+      category: 'factual',
+      confidence: 0.95,
+      sectionName: 'Coverage Details'
+    },
+    {
+      id: 2,
+      chunkId: 1,
+      question: 'How would a total loss claim be processed under this policy?',
+      answer: 'A total loss claim would trigger the actual cash value provision, where the insurer pays the market value of the vehicle minus the deductible, based on the valuation method described in Section 7.',
+      category: 'inferential',
+      confidence: 0.88,
+      sectionName: 'Coverage Details'
+    },
+    {
+      id: 3,
+      chunkId: 2,
+      question: 'What steps should a policyholder take to file a claim after an accident?',
+      answer: 'The policyholder must: 1) Report the incident within 72 hours via the claims hotline, 2) Provide a police report number, 3) Submit photos of damage, 4) Complete the sworn proof of loss form within 30 days.',
+      category: 'procedural',
+      confidence: 0.92,
+      sectionName: 'Claims Procedure'
+    },
+    {
+      id: 4,
+      chunkId: 3,
+      question: 'What are the conditions for policy cancellation by the insurer?',
+      answer: 'The insurer may cancel the policy for: non-payment of premium (10-day notice), material misrepresentation on the application (30-day notice), or substantial increase in hazard (30-day notice per state regulations).',
+      category: 'factual',
+      confidence: 0.91,
+      sectionName: 'Cancellation and Nonrenewal'
+    },
+    {
+      id: 5,
+      chunkId: 4,
+      question: 'Under what circumstances would subrogation rights apply?',
+      answer: 'Subrogation rights apply when a third party is at fault for the loss. The insurer, after paying the claim, assumes the policyholder\'s right to recover damages from the responsible party.',
+      category: 'inferential',
+      confidence: 0.87,
+      sectionName: 'Subrogation'
+    },
+    {
+      id: 6,
+      chunkId: 4,
+      question: 'How should the insured cooperate during a subrogation recovery?',
+      answer: 'The insured must: 1) Not settle with the at-fault party without insurer consent, 2) Provide all requested documentation, 3) Testify if required, 4) Assign recovery rights to the insurer as specified in the policy terms.',
+      category: 'procedural',
+      confidence: 0.89,
+      sectionName: 'Subrogation'
+    }
+  ],
+  llmProvider: 'Groq',
+  elapsedMilliseconds: 4523,
+  errorMessage: null
+};
+
+// ===================== Batch Claims CSV Upload =====================
+
+export const MOCK_BATCH_CLAIM_UPLOAD_RESULT = {
+  batchId: 'BATCH-20260228-A1B2C3D4',
+  totalCount: 7,
+  processedCount: 7,
+  successCount: 5,
+  errorCount: 2,
+  status: 'Completed',
+  results: [
+    { rowNumber: 2, claimId: 'CLM-2024-001', severity: 'High', fraudScore: 42, status: 'Triaged' },
+    { rowNumber: 3, claimId: 'CLM-2024-002', severity: 'Medium', fraudScore: 25, status: 'Triaged' },
+    { rowNumber: 4, claimId: 'CLM-2024-003', severity: 'Critical', fraudScore: 78, status: 'Triaged' },
+    { rowNumber: 5, claimId: 'CLM-2024-004', severity: 'Low', fraudScore: 12, status: 'Triaged' },
+    { rowNumber: 8, claimId: 'CLM-2024-007', severity: 'High', fraudScore: 65, status: 'Triaged' }
+  ],
+  errors: [
+    { rowNumber: 6, field: 'ClaimId', errorMessage: 'ClaimId is required and cannot be empty.' },
+    { rowNumber: 7, field: 'EstimatedAmount', errorMessage: "EstimatedAmount 'not-a-number' is not a valid positive number." }
+  ]
 };

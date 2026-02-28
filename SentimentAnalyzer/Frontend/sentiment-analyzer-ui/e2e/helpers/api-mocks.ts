@@ -14,10 +14,15 @@ import {
   MOCK_DOCUMENT_QUERY_RESULT,
   MOCK_DOCUMENT_DETAIL,
   MOCK_DOCUMENT_HISTORY_RESPONSE,
+  MOCK_UPLOAD_PROGRESS_SSE,
   MOCK_CX_CHAT_RESPONSE,
   MOCK_CX_STREAM_EVENTS,
+  MOCK_CX_SESSION_RESPONSE,
+  MOCK_CX_SESSION_HISTORY_RESPONSE,
   MOCK_CORRELATE_RESULT,
   MOCK_CORRELATIONS_PAGINATED,
+  MOCK_BATCH_CLAIM_UPLOAD_RESULT,
+  MOCK_QA_PAIRS,
 } from '../fixtures/mock-data';
 
 /** Set up all API mock routes so e2e tests don't need a running backend. */
@@ -88,6 +93,14 @@ export async function mockAllApis(page: Page): Promise<void> {
     return route.continue();
   });
 
+  // Batch claims CSV upload endpoint
+  await page.route('**/api/insurance/claims/batch*', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_BATCH_CLAIM_UPLOAD_RESULT) });
+    }
+    return route.continue();
+  });
+
   // Claims upload endpoint
   await page.route('**/api/insurance/claims/upload*', (route) => {
     if (route.request().method() === 'POST') {
@@ -128,7 +141,7 @@ export async function mockAllApis(page: Page): Promise<void> {
   // Use route.fallback() so more-specific handlers (history, triage, upload) get priority
   await page.route('**/api/insurance/claims/*', (route) => {
     const url = route.request().url();
-    if (url.includes('/history') || url.includes('/triage') || url.includes('/upload')) {
+    if (url.includes('/history') || url.includes('/triage') || url.includes('/upload') || url.includes('/batch')) {
       return route.fallback();
     }
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CLAIM_TRIAGE_RESPONSE) });
@@ -136,8 +149,29 @@ export async function mockAllApis(page: Page): Promise<void> {
 
   // ===================== Document Intelligence RAG =====================
 
+  // SSE streaming upload (must be before the regular upload route — more specific first)
+  await page.route('**/api/insurance/documents/upload/stream*', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        },
+        body: MOCK_UPLOAD_PROGRESS_SSE
+      });
+    }
+    return route.continue();
+  });
+
   // Document upload endpoint (include query params like ?category=Policy)
   await page.route('**/api/insurance/documents/upload*', (route) => {
+    const url = route.request().url();
+    // Let the more specific /upload/stream route handle streaming requests
+    if (url.includes('/upload/stream')) {
+      return route.fallback();
+    }
     if (route.request().method() === 'POST') {
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_UPLOAD_RESULT) });
     }
@@ -157,10 +191,26 @@ export async function mockAllApis(page: Page): Promise<void> {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_DOCUMENT_HISTORY_RESPONSE) })
   );
 
-  // Document by ID endpoint (must be after upload/query/history)
+  // Document Q&A generation endpoint (POST)
+  await page.route('**/api/insurance/documents/*/generate-qa*', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_QA_PAIRS) });
+    }
+    return route.continue();
+  });
+
+  // Document Q&A pairs retrieval endpoint (GET)
+  await page.route('**/api/insurance/documents/*/qa-pairs*', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_QA_PAIRS) });
+    }
+    return route.continue();
+  });
+
+  // Document by ID endpoint (must be after upload/query/history/generate-qa/qa-pairs)
   await page.route('**/api/insurance/documents/*', (route) => {
     const url = route.request().url();
-    if (url.includes('/upload') || url.includes('/query') || url.includes('/history')) {
+    if (url.includes('/upload') || url.includes('/query') || url.includes('/history') || url.includes('/generate-qa') || url.includes('/qa-pairs')) {
       return route.fallback();
     }
     if (route.request().method() === 'DELETE') {
@@ -187,6 +237,22 @@ export async function mockAllApis(page: Page): Promise<void> {
         headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' },
         body: MOCK_CX_STREAM_EVENTS
       });
+    }
+    return route.continue();
+  });
+
+  // CX session creation endpoint
+  await page.route('**/api/insurance/cx/sessions', (route) => {
+    if (route.request().method() === 'POST') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CX_SESSION_RESPONSE) });
+    }
+    return route.continue();
+  });
+
+  // CX session history endpoint (must be after /sessions POST)
+  await page.route('**/api/insurance/cx/sessions/*/history', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_CX_SESSION_HISTORY_RESPONSE) });
     }
     return route.continue();
   });

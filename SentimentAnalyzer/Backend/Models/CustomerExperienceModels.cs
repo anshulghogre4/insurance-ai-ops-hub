@@ -10,6 +10,45 @@ public class CustomerExperienceRequest
 
     /// <summary>Optional claim or policy context to ground the response (e.g., "Claim CLM-2024-78901, water damage, pending 3 weeks").</summary>
     public string? ClaimContext { get; set; }
+
+    /// <summary>Optional session ID for conversation continuity. If null, a stateless single-turn chat is performed.</summary>
+    public string? SessionId { get; set; }
+}
+
+/// <summary>
+/// Response returned when creating a new CX Copilot conversation session.
+/// </summary>
+public class CxSessionResponse
+{
+    /// <summary>The unique session identifier (GUID) for this conversation.</summary>
+    public string SessionId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response containing the full message history for a conversation session.
+/// </summary>
+public class CxMessageHistoryResponse
+{
+    /// <summary>The session identifier.</summary>
+    public string SessionId { get; set; } = string.Empty;
+
+    /// <summary>Ordered list of messages in the conversation (oldest first).</summary>
+    public List<CxMessageRecord> Messages { get; set; } = [];
+}
+
+/// <summary>
+/// A single message in a CX Copilot conversation history.
+/// </summary>
+public class CxMessageRecord
+{
+    /// <summary>The role of the message author: "user" or "assistant".</summary>
+    public string Role { get; set; } = string.Empty;
+
+    /// <summary>The PII-redacted message content.</summary>
+    public string Content { get; set; } = string.Empty;
+
+    /// <summary>UTC timestamp of when the message was recorded.</summary>
+    public DateTime Timestamp { get; set; }
 }
 
 /// <summary>

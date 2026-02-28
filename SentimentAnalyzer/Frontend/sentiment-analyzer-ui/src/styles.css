@@ -87,6 +87,8 @@ body {
   }
   .glass-card:hover {
     background: var(--bg-surface-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
   .glass-card-static {
     background: var(--bg-surface);
@@ -94,6 +96,11 @@ body {
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid var(--border-primary);
     border-radius: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .glass-card-static:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
   }
   .elevated-card {
     background: var(--bg-elevated);
@@ -217,6 +224,11 @@ body {
 .animate-fade-in-up { animation: fade-in-up 0.5s ease-out forwards; }
 .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
 .animate-slide-in-right { animation: slide-in-right 0.4s ease-out forwards; }
+@keyframes slide-out-right {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(20px); }
+}
+.animate-slide-out-right { animation: slide-out-right 0.3s ease-in forwards; }
 .animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
 
 .stagger-1 { animation-delay: 0.05s; opacity: 0; }
@@ -230,6 +242,140 @@ body {
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;
   border-radius: 0.5rem;
+}
+.skeleton-text {
+  height: 0.875rem;
+  width: 80%;
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-hover) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.25rem;
+}
+.skeleton-card {
+  height: 8rem;
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-surface-hover) 50%, var(--bg-surface) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 1rem;
+  border: 1px solid var(--border-secondary);
+}
+
+/* ============================================
+   Nav Dropdown Animations
+   ============================================ */
+@keyframes dropdown-enter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes dropdown-exit {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
+.animate-dropdown-enter {
+  animation: dropdown-enter 150ms ease-out forwards;
+}
+
+/* Mobile menu slide transition */
+.mobile-menu-enter {
+  overflow: hidden;
+  animation: mobile-menu-expand 200ms ease-out forwards;
+}
+@keyframes mobile-menu-expand {
+  from { max-height: 0; opacity: 0; }
+  to { max-height: 100vh; opacity: 1; }
+}
+
+/* ============================================
+   Button Spring & Submit States
+   ============================================ */
+.btn-spring:active {
+  transform: scale(0.97);
+  transition: transform 80ms ease-in;
+}
+.btn-spring {
+  transition: transform 200ms var(--ease-spring);
+}
+
+/* Submit button completion flash */
+@keyframes submit-complete {
+  0% { background: linear-gradient(135deg, #10b981, #059669); }
+  100% { background: linear-gradient(135deg, var(--accent-primary), #8b5cf6); }
+}
+.animate-submit-complete {
+  animation: submit-complete 800ms ease-out forwards;
+}
+
+/* Result slide up */
+@keyframes result-slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-result-slide-up {
+  animation: result-slide-up 400ms ease-out forwards;
+}
+
+/* ============================================
+   Fraud Score Meter Animation
+   ============================================ */
+@keyframes fraud-meter-fill {
+  from { width: 0%; }
+}
+.fraud-meter-animated {
+  animation: fraud-meter-fill 800ms cubic-bezier(0.33, 1, 0.68, 1) forwards;
+}
+.fraud-pulse-high {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* ============================================
+   Thinking Dots (CX Copilot)
+   ============================================ */
+@keyframes thinking-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+.thinking-dots span {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 2px;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  animation: thinking-bounce 1.4s ease-in-out infinite;
+}
+.thinking-dots span:nth-child(1) { animation-delay: 0ms; }
+.thinking-dots span:nth-child(2) { animation-delay: 200ms; }
+.thinking-dots span:nth-child(3) { animation-delay: 400ms; }
+
+/* ============================================
+   Toast Progress Bar
+   ============================================ */
+@keyframes toast-progress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+.toast-progress-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 0 0 0 1rem;
+  animation: toast-progress linear forwards;
+}
+.toast-progress-success { background: #10b981; }
+.toast-progress-error { background: #f43f5e; }
+.toast-progress-warning { background: #f59e0b; }
+.toast-progress-info { background: #06b6d4; }
+
+/* ============================================
+   Page Transition Fade
+   ============================================ */
+@keyframes page-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.route-transition {
+  animation: page-fade-in 150ms ease-out;
 }
 
 /* ============================================
@@ -518,10 +664,84 @@ body {
 *:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
 ::selection { background: var(--accent-primary); color: white; }
 
+/* Document Processing Progress Animations */
+@keyframes shieldPulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.1); opacity: 1; }
+}
+
+@keyframes chunkSplit {
+  0% { transform: scaleY(1); }
+  50% { transform: scaleY(0.5); }
+  100% { transform: scaleY(1); }
+}
+
+.animate-shield-pulse {
+  animation: shieldPulse 2s ease-in-out infinite;
+}
+
+.animate-chunk-split {
+  animation: chunkSplit 1.5s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+  .stagger-1, .stagger-2, .stagger-3, .stagger-4, .stagger-5 {
+    opacity: 1 !important;
+    animation: none !important;
+  }
+  .skeleton, .skeleton-text, .skeleton-card {
+    animation: none !important;
+  }
+  .btn-spring:active {
+    transform: none !important;
+  }
+  .thinking-dots span {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .fraud-meter-animated {
+    animation: none !important;
+  }
+  .toast-progress-bar {
+    animation: none !important;
+    width: 0% !important;
+  }
+  .animate-dropdown-enter {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+  .mobile-menu-enter {
+    animation: none !important;
+    max-height: none !important;
+    opacity: 1 !important;
+  }
+  .glass-card:hover, .glass-card-static:hover {
+    transform: none !important;
+  }
+  .route-transition {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* ============================================
+   Parallax Design Tokens
+   ============================================ */
+:root {
+  --parallax-grid: 0.15;
+  --parallax-orb-slow: 0.3;
+  --parallax-orb-mid: 0.4;
+  --parallax-pills: 0.6;
+  --duration-instant: 80ms;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 600ms;
+  --duration-xslow: 1200ms;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }

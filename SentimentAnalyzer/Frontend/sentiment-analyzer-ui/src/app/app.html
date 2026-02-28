@@ -1,4 +1,5 @@
 <app-nav></app-nav>
+<app-breadcrumb></app-breadcrumb>
 <main class="min-h-screen">
   @if (authService.authEnabled() && authService.loading()) {
     <div class="flex items-center justify-center min-h-[calc(100vh-4rem)]"
@@ -12,6 +13,10 @@
       </div>
     </div>
   } @else {
-    <router-outlet></router-outlet>
+    <div class="route-transition">
+      <router-outlet></router-outlet>
+    </div>
   }
 </main>
+<app-toast></app-toast>
+<app-command-palette></app-command-palette>

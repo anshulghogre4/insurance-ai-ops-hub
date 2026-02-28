@@ -2,6 +2,7 @@ import { Component, ElementRef, HostListener, inject, signal } from '@angular/co
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 import { ThemeService, ThemeMode } from '../../services/theme.service';
+import { CommandRegistryService } from '../../services/command-registry.service';
 
 @Component({
   selector: 'app-nav',
@@ -47,7 +48,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                 </button>
                 @if (showAnalyzeMenu()) {
                   <div class="absolute left-0 top-full w-56 pt-2 z-50">
-                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <a routerLink="/sentiment" (click)="showAnalyzeMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -92,7 +93,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                 </button>
                 @if (showClaimsMenu()) {
                   <div class="absolute left-0 top-full w-48 pt-2 z-50">
-                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <a routerLink="/claims/triage" (click)="showClaimsMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -101,6 +102,14 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                       </svg>
                       New Triage
+                    </a>
+                    <a routerLink="/claims/batch" (click)="showClaimsMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                      </svg>
+                      Batch Upload
                     </a>
                     <a routerLink="/claims/history" (click)="showClaimsMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -131,7 +140,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                 </button>
                 @if (showWorkspaceMenu()) {
                   <div class="absolute left-0 top-full w-56 pt-2 z-50">
-                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <p class="text-[10px] font-bold uppercase tracking-wider px-3 pt-1 pb-1" [style.color]="'var(--text-muted)'">Documents</p>
                     <a routerLink="/documents/upload" (click)="showWorkspaceMenu.set(false)"
@@ -181,7 +190,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                 </button>
                 @if (showDashMenu()) {
                   <div class="absolute left-0 top-full w-48 pt-2 z-50">
-                  <div class="rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
+                  <div class="rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <a routerLink="/dashboard" (click)="showDashMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
@@ -214,8 +223,24 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
             }
           </div>
 
-          <!-- Right side: Theme toggle + Auth -->
+          <!-- Right side: Command Palette + Theme toggle + Auth -->
           <div class="flex items-center gap-2">
+            <!-- Command Palette Trigger (desktop only) -->
+            <button (click)="openCommandPalette()"
+                    title="Command palette (Ctrl+K)"
+                    aria-label="Open command palette"
+                    class="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all duration-200 text-xs"
+                    [style.color]="'var(--text-muted)'"
+                    [style.background]="'var(--bg-surface)'"
+                    [style.border]="'1px solid var(--border-primary)'"
+                    data-testid="nav-command-palette-btn">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+              </svg>
+              <span class="hidden lg:inline">Ctrl+K</span>
+            </button>
+
             <!-- Theme Toggle -->
             <button (click)="themeService.cycleTheme()" [title]="getThemeLabel()" [attr.aria-label]="getThemeLabel()"
                     class="p-2 rounded-lg transition-all duration-200 hover:scale-105"
@@ -240,44 +265,45 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
               }
             </button>
 
-            @if (authService.authEnabled()) {
-              <div class="hidden md:flex items-center gap-2 ml-2 pl-3 border-l" [style.border-color]="'var(--border-primary)'">
-                @if (authService.isAuthenticated()) {
-                  <div class="relative">
-                    <button (click)="toggleUserMenu()" class="flex items-center gap-2 p-1.5 rounded-lg transition-all duration-200"
-                            [style.background]="'var(--bg-surface)'" [style.color]="'var(--text-secondary)'"
-                            aria-haspopup="true" [attr.aria-expanded]="showUserMenu()" aria-label="User menu">
-                      <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
-                        {{ getUserInitial() }}
+            <div class="hidden md:flex items-center gap-2 ml-2 pl-3 border-l" [style.border-color]="'var(--border-primary)'">
+              @if (authService.authEnabled() && authService.isAuthenticated()) {
+                <div class="relative">
+                  <button (click)="toggleUserMenu()" class="flex items-center gap-2 p-1.5 rounded-lg transition-all duration-200"
+                          [style.background]="'var(--bg-surface)'" [style.color]="'var(--text-secondary)'"
+                          aria-haspopup="true" [attr.aria-expanded]="showUserMenu()" aria-label="User menu">
+                    <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold">
+                      {{ getUserInitial() }}
+                    </div>
+                    <span class="text-sm max-w-[140px] truncate hidden lg:block">{{ authService.user()?.email }}</span>
+                    <svg class="w-3.5 h-3.5 transition-transform" [class.rotate-180]="showUserMenu()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                  </button>
+                  @if (showUserMenu()) {
+                    <div class="absolute right-0 top-full mt-2 w-56 rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
+                         [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+                      <div class="px-3 py-2 mb-1 border-b" [style.border-color]="'var(--border-secondary)'">
+                        <p class="text-xs font-medium" [style.color]="'var(--text-muted)'">Signed in as</p>
+                        <p class="text-sm truncate" [style.color]="'var(--text-primary)'">{{ authService.user()?.email }}</p>
                       </div>
-                      <span class="text-sm max-w-[140px] truncate hidden lg:block">{{ authService.user()?.email }}</span>
-                      <svg class="w-3.5 h-3.5 transition-transform" [class.rotate-180]="showUserMenu()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                      </svg>
-                    </button>
-                    @if (showUserMenu()) {
-                      <div class="absolute right-0 top-full mt-2 w-56 rounded-xl shadow-xl border p-1.5 animate-fade-in-up"
-                           [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
-                        <div class="px-3 py-2 mb-1 border-b" [style.border-color]="'var(--border-secondary)'">
-                          <p class="text-xs font-medium" [style.color]="'var(--text-muted)'">Signed in as</p>
-                          <p class="text-sm truncate" [style.color]="'var(--text-primary)'">{{ authService.user()?.email }}</p>
-                        </div>
-                        <button (click)="logout()" class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 hover:bg-rose-500/10 text-rose-400">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                          </svg>
-                          Sign Out
-                        </button>
-                      </div>
-                    }
-                  </div>
-                } @else {
-                  <a routerLink="/login" class="btn-primary text-sm !px-4 !py-2 flex items-center gap-2">
-                    Sign In
-                  </a>
-                }
-              </div>
-            }
+                      <button (click)="logout()" class="w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center gap-2 hover:bg-rose-500/10 text-rose-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                        Sign Out
+                      </button>
+                    </div>
+                  }
+                </div>
+              } @else {
+                <a routerLink="/login" class="btn-primary text-sm !px-4 !py-2 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                  </svg>
+                  Sign In
+                </a>
+              }
+            </div>
 
             <!-- Mobile hamburger -->
             <button (click)="toggleMobileMenu()" aria-label="Toggle navigation menu" class="md:hidden p-2 rounded-lg transition-all"
@@ -298,7 +324,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
 
       <!-- Mobile Menu -->
       @if (showMobileMenu()) {
-        <div class="md:hidden border-t animate-fade-in" [style.border-color]="'var(--border-primary)'" [style.background]="'var(--nav-bg)'">
+        <div class="md:hidden border-t mobile-menu-enter" [style.border-color]="'var(--border-primary)'" [style.background]="'var(--nav-bg)'">
           <div class="px-4 py-3 space-y-1">
             @if (!authService.authEnabled() || authService.isAuthenticated()) {
               <!-- Analyze section -->
@@ -333,6 +359,13 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                   </svg>
                   New Triage
+                </a>
+                <a routerLink="/claims/batch" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                  </svg>
+                  Batch Upload
                 </a>
                 <a routerLink="/claims/history" routerLinkActive="nav-link-active"
                    (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
@@ -395,27 +428,25 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
                 </a>
               </div>
             }
-            @if (authService.authEnabled()) {
-              <div class="pt-2 mt-2 border-t" [style.border-color]="'var(--border-secondary)'">
-                @if (authService.isAuthenticated()) {
-                  <button (click)="logout(); showMobileMenu.set(false)"
-                          class="nav-link w-full py-3 text-rose-400 flex items-center gap-3">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                    </svg>
-                    Sign Out
-                  </button>
-                } @else {
-                  <a routerLink="/login" (click)="showMobileMenu.set(false)"
-                     class="nav-link w-full py-3 text-indigo-400 flex items-center gap-3">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
-                    </svg>
-                    Sign In
-                  </a>
-                }
-              </div>
-            }
+            <div class="pt-2 mt-2 border-t" [style.border-color]="'var(--border-secondary)'">
+              @if (authService.authEnabled() && authService.isAuthenticated()) {
+                <button (click)="logout(); showMobileMenu.set(false)"
+                        class="nav-link w-full py-3 text-rose-400 flex items-center gap-3">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                  </svg>
+                  Sign Out
+                </button>
+              } @else {
+                <a routerLink="/login" (click)="showMobileMenu.set(false)"
+                   class="nav-link w-full py-3 text-indigo-400 flex items-center gap-3">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                  </svg>
+                  Sign In
+                </a>
+              }
+            </div>
           </div>
         </div>
       }
@@ -425,6 +456,7 @@ import { ThemeService, ThemeMode } from '../../services/theme.service';
 export class Nav {
   authService = inject(AuthService);
   themeService = inject(ThemeService);
+  private commandRegistry = inject(CommandRegistryService);
   private router = inject(Router);
   private el = inject(ElementRef);
 
@@ -503,6 +535,11 @@ export class Nav {
 
   isDashRoute(): boolean {
     return this.router.url.startsWith('/dashboard');
+  }
+
+  /** Opens the command palette via the registry service. */
+  openCommandPalette(): void {
+    this.commandRegistry.requestOpen();
   }
 
   async logout(): Promise<void> {

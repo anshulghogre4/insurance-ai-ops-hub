@@ -3,80 +3,96 @@ using SentimentAnalyzer.Agents.Orchestration;
 namespace SentimentAnalyzer.API.Services.Embeddings;
 
 /// <summary>
-/// Resilient embedding provider with automatic fallback: Voyage AI -> Ollama.
+/// Resilient embedding provider with automatic 6-provider fallback chain:
+/// Voyage AI -> Jina v3 -> Cohere Embed v3 -> Gemini -> HuggingFace BGE-large -> Ollama.
 /// Follows the Chain of Responsibility pattern (consistent with IResilientKernelProvider for LLMs).
 ///
 /// Responsibilities:
 /// 1. PII redaction before sending text to ANY provider (mandatory per insurance domain rules).
-/// 2. Automatic fallback when Voyage AI fails (rate limit, network error, API key missing).
-/// 3. Dimension mismatch logging when fallback produces different-dimension embeddings.
-/// 4. Exponential backoff cooldown for Voyage AI on repeated failures.
+/// 2. Automatic fallback when a provider fails (rate limit, network error, API key missing).
+/// 3. Per-provider exponential backoff cooldown (30s->60s->120s->240s->300s cap).
+/// 4. Dimension mismatch logging when fallback produces different-dimension embeddings.
 ///
-/// Insurance use case: ensures RAG document indexing always succeeds, even when the
-/// Voyage AI free tier (50M tokens) is exhausted, by falling back to local Ollama.
+/// Insurance use case: ensures RAG document indexing always succeeds by cascading through
+/// 6 embedding providers, from finance-optimized (Voyage AI) to local fallback (Ollama).
+/// Most providers produce 1024-dim embeddings; Gemini produces 768-dim (dimension mismatch logged).
 /// </summary>
 public class ResilientEmbeddingProvider : IEmbeddingService
 {
-    private readonly IEmbeddingService _voyageService;
-    private readonly IEmbeddingService _ollamaService;
+    private readonly (string Name, IEmbeddingService Service)[] _providers;
     private readonly IPIIRedactor _piiRedactor;
     private readonly ILogger<ResilientEmbeddingProvider> _logger;
 
     private readonly object _lock = new();
-    private DateTime? _voyageCooldownExpiresUtc;
-    private int _voyageConsecutiveFailures;
+    private readonly Dictionary<string, DateTime?> _cooldownExpiry = new();
+    private readonly Dictionary<string, int> _consecutiveFailures = new();
 
     private static readonly TimeSpan _baseCooldown = TimeSpan.FromSeconds(30);
     private static readonly TimeSpan _maxCooldown = TimeSpan.FromSeconds(300);
 
     /// <summary>
-    /// Initializes the resilient embedding provider with Voyage AI (primary) and Ollama (fallback).
+    /// Tracks the name of the last provider that successfully generated embeddings.
+    /// Access must be under <see cref="_lock"/> for thread safety.
+    /// </summary>
+    private volatile string _lastSuccessfulProvider = "VoyageAI";
+
+    /// <summary>
+    /// Initializes the resilient embedding provider with 6 providers in fallback order:
+    /// Voyage AI -> Jina -> Cohere -> Gemini -> HuggingFace BGE -> Ollama.
     /// </summary>
     /// <param name="voyageService">Voyage AI embedding service (keyed as "VoyageAI").</param>
+    /// <param name="jinaService">Jina AI embedding service (keyed as "Jina").</param>
+    /// <param name="cohereService">Cohere embedding service (keyed as "Cohere").</param>
+    /// <param name="geminiService">Gemini embedding service (keyed as "GeminiEmbed").</param>
+    /// <param name="huggingFaceService">HuggingFace BGE embedding service (keyed as "HuggingFaceEmbed").</param>
     /// <param name="ollamaService">Ollama embedding service (keyed as "Ollama").</param>
     /// <param name="piiRedactor">PII redaction service (mandatory before external API calls).</param>
     /// <param name="logger">Logger instance.</param>
     public ResilientEmbeddingProvider(
         [Microsoft.Extensions.DependencyInjection.FromKeyedServices("VoyageAI")] IEmbeddingService voyageService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("Jina")] IEmbeddingService jinaService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("Cohere")] IEmbeddingService cohereService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("GeminiEmbed")] IEmbeddingService geminiService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("HuggingFaceEmbed")] IEmbeddingService huggingFaceService,
         [Microsoft.Extensions.DependencyInjection.FromKeyedServices("Ollama")] IEmbeddingService ollamaService,
         IPIIRedactor piiRedactor,
         ILogger<ResilientEmbeddingProvider> logger)
     {
-        _voyageService = voyageService ?? throw new ArgumentNullException(nameof(voyageService));
-        _ollamaService = ollamaService ?? throw new ArgumentNullException(nameof(ollamaService));
+        _providers =
+        [
+            ("VoyageAI", voyageService ?? throw new ArgumentNullException(nameof(voyageService))),
+            ("Jina", jinaService ?? throw new ArgumentNullException(nameof(jinaService))),
+            ("Cohere", cohereService ?? throw new ArgumentNullException(nameof(cohereService))),
+            ("GeminiEmbed", geminiService ?? throw new ArgumentNullException(nameof(geminiService))),
+            ("HuggingFaceEmbed", huggingFaceService ?? throw new ArgumentNullException(nameof(huggingFaceService))),
+            ("Ollama", ollamaService ?? throw new ArgumentNullException(nameof(ollamaService)))
+        ];
+
         _piiRedactor = piiRedactor ?? throw new ArgumentNullException(nameof(piiRedactor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        // Initialize per-provider tracking
+        foreach (var (name, _) in _providers)
+        {
+            _cooldownExpiry[name] = null;
+            _consecutiveFailures[name] = 0;
+        }
+
+        _logger.LogInformation(
+            "Resilient embedding provider initialized with {Count}-provider chain: {Chain}",
+            _providers.Length,
+            string.Join(" -> ", _providers.Select(p => p.Name)));
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// Returns the dimension of the currently active provider.
-    /// When Voyage AI is active: 1024. When Ollama fallback: 1024 (mxbai-embed-large).
+    /// Returns the dimension of the currently active (first non-cooldown) provider.
+    /// All providers in the chain target 1024-dim for index compatibility.
     /// </remarks>
-    public int EmbeddingDimension => ActiveProvider.EmbeddingDimension;
+    public int EmbeddingDimension => GetFirstAvailableProvider()?.Service.EmbeddingDimension ?? 1024;
 
     /// <inheritdoc />
-    public string ProviderName => $"Resilient({ActiveProvider.ProviderName})";
-
-    /// <summary>
-    /// Returns the currently active (non-cooldown) embedding service.
-    /// </summary>
-    private IEmbeddingService ActiveProvider
-    {
-        get
-        {
-            lock (_lock)
-            {
-                if (_voyageCooldownExpiresUtc.HasValue && DateTime.UtcNow >= _voyageCooldownExpiresUtc.Value)
-                {
-                    _voyageCooldownExpiresUtc = null;
-                    _logger.LogInformation("Voyage AI cooldown expired, marking as available");
-                }
-
-                return _voyageCooldownExpiresUtc.HasValue ? _ollamaService : _voyageService;
-            }
-        }
-    }
+    public string ProviderName => $"Resilient({_lastSuccessfulProvider})";
 
     /// <inheritdoc />
     public async Task<EmbeddingResult> GenerateEmbeddingAsync(
@@ -92,31 +108,43 @@ public class ResilientEmbeddingProvider : IEmbeddingService
             _logger.LogInformation("PII redacted from embedding input before provider call");
         }
 
-        // Try primary provider (Voyage AI)
-        if (!IsVoyageInCooldown())
+        // Iterate providers in fallback order, skip those in cooldown
+        foreach (var (name, service) in _providers)
         {
-            var result = await _voyageService.GenerateEmbeddingAsync(redactedText, inputType, cancellationToken);
+            if (IsProviderInCooldown(name))
+            {
+                _logger.LogDebug("Skipping {Provider} (in cooldown)", name);
+                continue;
+            }
+
+            var result = await service.GenerateEmbeddingAsync(redactedText, inputType, cancellationToken);
 
             if (result.IsSuccess)
             {
-                ResetVoyageFailures();
+                ResetProviderFailures(name);
+                _lastSuccessfulProvider = name;
+
+                // Log dimension mismatch warning if fallback provider has different dimensions
+                if (name != _providers[0].Name)
+                {
+                    LogDimensionMismatchWarning(name, result.Dimension);
+                }
+
                 return result;
             }
 
-            // Voyage AI failed — apply cooldown and fall through to Ollama
-            ReportVoyageFailure(result.ErrorMessage);
+            // Provider failed — apply cooldown and try next
+            ReportProviderFailure(name, result.ErrorMessage);
         }
 
-        // Fallback to Ollama
-        _logger.LogWarning("Falling back to Ollama for embedding generation");
-        var fallbackResult = await _ollamaService.GenerateEmbeddingAsync(redactedText, inputType, cancellationToken);
-
-        if (fallbackResult.IsSuccess)
+        // All providers exhausted
+        _logger.LogError("All {Count} embedding providers failed. No embeddings generated.", _providers.Length);
+        return new EmbeddingResult
         {
-            LogDimensionMismatchWarning(fallbackResult.Dimension);
-        }
-
-        return fallbackResult;
+            IsSuccess = false,
+            Provider = "Resilient(AllFailed)",
+            ErrorMessage = $"All {_providers.Length} embedding providers failed. Check provider API keys and connectivity."
+        };
     }
 
     /// <inheritdoc />
@@ -140,47 +168,74 @@ public class ResilientEmbeddingProvider : IEmbeddingService
             _logger.LogInformation("PII redacted from {Count} batch embedding inputs before provider call", texts.Length);
         }
 
-        // Try primary provider (Voyage AI)
-        if (!IsVoyageInCooldown())
+        // Iterate providers in fallback order, skip those in cooldown
+        foreach (var (name, service) in _providers)
         {
-            var result = await _voyageService.GenerateBatchEmbeddingsAsync(redactedTexts, inputType, cancellationToken);
+            if (IsProviderInCooldown(name))
+            {
+                _logger.LogDebug("Skipping {Provider} for batch (in cooldown)", name);
+                continue;
+            }
+
+            var result = await service.GenerateBatchEmbeddingsAsync(redactedTexts, inputType, cancellationToken);
 
             if (result.IsSuccess)
             {
-                ResetVoyageFailures();
+                ResetProviderFailures(name);
+                _lastSuccessfulProvider = name;
+
+                // Log dimension mismatch warning if fallback provider has different dimensions
+                if (name != _providers[0].Name && result.Count > 0)
+                {
+                    LogDimensionMismatchWarning(name, result.Dimension);
+                }
+
                 return result;
             }
 
-            // Voyage AI failed — apply cooldown and fall through to Ollama
-            ReportVoyageFailure(result.ErrorMessage);
+            // Provider failed — apply cooldown and try next
+            ReportProviderFailure(name, result.ErrorMessage);
         }
 
-        // Fallback to Ollama
-        _logger.LogWarning("Falling back to Ollama for batch embedding generation ({Count} texts)", texts.Length);
-        var fallbackResult = await _ollamaService.GenerateBatchEmbeddingsAsync(redactedTexts, inputType, cancellationToken);
-
-        if (fallbackResult.IsSuccess && fallbackResult.Count > 0)
+        // All providers exhausted
+        _logger.LogError("All {Count} embedding providers failed for batch ({BatchSize} texts).",
+            _providers.Length, texts.Length);
+        return new BatchEmbeddingResult
         {
-            LogDimensionMismatchWarning(fallbackResult.Dimension);
-        }
-
-        return fallbackResult;
+            IsSuccess = false,
+            Provider = "Resilient(AllFailed)",
+            ErrorMessage = $"All {_providers.Length} embedding providers failed. Check provider API keys and connectivity."
+        };
     }
 
     /// <summary>
-    /// Checks whether Voyage AI is currently in cooldown.
+    /// Gets the first provider not currently in cooldown, or null if all are in cooldown.
     /// </summary>
-    private bool IsVoyageInCooldown()
+    private (string Name, IEmbeddingService Service)? GetFirstAvailableProvider()
+    {
+        foreach (var provider in _providers)
+        {
+            if (!IsProviderInCooldown(provider.Name))
+                return provider;
+        }
+        return _providers.Length > 0 ? _providers[^1] : null;
+    }
+
+    /// <summary>
+    /// Checks whether a provider is currently in cooldown.
+    /// Automatically clears expired cooldowns.
+    /// </summary>
+    private bool IsProviderInCooldown(string providerName)
     {
         lock (_lock)
         {
-            if (!_voyageCooldownExpiresUtc.HasValue)
+            if (!_cooldownExpiry.TryGetValue(providerName, out var expiry) || !expiry.HasValue)
                 return false;
 
-            if (DateTime.UtcNow >= _voyageCooldownExpiresUtc.Value)
+            if (DateTime.UtcNow >= expiry.Value)
             {
-                _voyageCooldownExpiresUtc = null;
-                _logger.LogInformation("Voyage AI cooldown expired, marking as available");
+                _cooldownExpiry[providerName] = null;
+                _logger.LogInformation("{Provider} cooldown expired, marking as available", providerName);
                 return false;
             }
 
@@ -189,63 +244,71 @@ public class ResilientEmbeddingProvider : IEmbeddingService
     }
 
     /// <summary>
-    /// Reports a Voyage AI failure and applies exponential backoff cooldown.
+    /// Reports a provider failure and applies exponential backoff cooldown.
     /// Cooldown schedule: 30s, 60s, 120s, 240s, capped at 300s.
     /// </summary>
-    private void ReportVoyageFailure(string? errorMessage)
+    private void ReportProviderFailure(string providerName, string? errorMessage)
     {
         lock (_lock)
         {
-            _voyageConsecutiveFailures++;
+            _consecutiveFailures[providerName] = _consecutiveFailures.GetValueOrDefault(providerName) + 1;
+            var failures = _consecutiveFailures[providerName];
 
             var backoffMultiplier = Math.Min(
-                Math.Pow(2, _voyageConsecutiveFailures - 1),
+                Math.Pow(2, failures - 1),
                 _maxCooldown.TotalSeconds / _baseCooldown.TotalSeconds);
 
             var cooldownSeconds = Math.Min(
                 _baseCooldown.TotalSeconds * backoffMultiplier,
                 _maxCooldown.TotalSeconds);
 
-            _voyageCooldownExpiresUtc = DateTime.UtcNow.AddSeconds(cooldownSeconds);
+            _cooldownExpiry[providerName] = DateTime.UtcNow.AddSeconds(cooldownSeconds);
 
             _logger.LogWarning(
-                "Voyage AI embedding failed (attempt #{Failures}). Cooldown: {Cooldown}s. Error: {Error}",
-                _voyageConsecutiveFailures, cooldownSeconds, errorMessage ?? "Unknown");
+                "{Provider} embedding failed (attempt #{Failures}). Cooldown: {Cooldown}s. Error: {Error}",
+                providerName, failures, cooldownSeconds, errorMessage ?? "Unknown");
         }
     }
 
     /// <summary>
-    /// Resets the Voyage AI failure counter after a successful request.
+    /// Resets a provider's failure counter after a successful request.
     /// </summary>
-    private void ResetVoyageFailures()
+    private void ResetProviderFailures(string providerName)
     {
         lock (_lock)
         {
-            if (_voyageConsecutiveFailures > 0)
+            var previousFailures = _consecutiveFailures.GetValueOrDefault(providerName);
+            if (previousFailures > 0)
             {
-                _logger.LogInformation("Voyage AI recovered after {Failures} consecutive failures",
-                    _voyageConsecutiveFailures);
+                _logger.LogInformation("{Provider} recovered after {Failures} consecutive failures",
+                    providerName, previousFailures);
             }
-            _voyageConsecutiveFailures = 0;
-            _voyageCooldownExpiresUtc = null;
+            _consecutiveFailures[providerName] = 0;
+            _cooldownExpiry[providerName] = null;
         }
     }
 
     /// <summary>
-    /// Logs a warning if the fallback provider returns embeddings with a different
+    /// Logs a warning if a fallback provider returns embeddings with a different
     /// dimension than the primary provider. This is critical for RAG because existing
     /// indexed embeddings may have a different dimension.
     /// </summary>
-    private void LogDimensionMismatchWarning(int actualDimension)
+    private void LogDimensionMismatchWarning(string providerName, int actualDimension)
     {
-        var expectedDimension = _voyageService.EmbeddingDimension;
+        var expectedDimension = _providers[0].Service.EmbeddingDimension;
         if (actualDimension != expectedDimension)
         {
             _logger.LogWarning(
-                "DIMENSION MISMATCH: Voyage AI produces {Expected}-dim embeddings, " +
-                "but Ollama fallback returned {Actual}-dim. Cosine similarity will truncate to min dimension. " +
-                "Rebuild the vector index when switching back to Voyage AI.",
-                expectedDimension, actualDimension);
+                "DIMENSION MISMATCH: Primary provider ({Primary}) produces {Expected}-dim embeddings, " +
+                "but {Fallback} returned {Actual}-dim. Cosine similarity will truncate to min dimension. " +
+                "Rebuild the vector index when switching back to the primary provider.",
+                _providers[0].Name, expectedDimension, providerName, actualDimension);
+        }
+        else
+        {
+            _logger.LogInformation(
+                "Fallback to {Provider} succeeded with matching {Dim}-dim embeddings",
+                providerName, actualDimension);
         }
     }
 }

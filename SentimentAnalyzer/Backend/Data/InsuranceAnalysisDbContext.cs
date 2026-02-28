@@ -18,6 +18,8 @@ public class InsuranceAnalysisDbContext : DbContext
     public DbSet<DocumentChunkRecord> DocumentChunks => Set<DocumentChunkRecord>();
     public DbSet<FraudCorrelationRecord> FraudCorrelations => Set<FraudCorrelationRecord>();
     public DbSet<CxInteractionRecord> CxInteractions => Set<CxInteractionRecord>();
+    public DbSet<CxConversationRecord> CxConversations => Set<CxConversationRecord>();
+    public DbSet<DocumentQAPairRecord> DocumentQAPairs => Set<DocumentQAPairRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,6 +70,12 @@ public class InsuranceAnalysisDbContext : DbContext
             entity.HasIndex(e => e.EscalationRecommended);
         });
 
+        modelBuilder.Entity<CxConversationRecord>(entity =>
+        {
+            entity.HasIndex(e => e.SessionId).IsUnique();
+            entity.HasIndex(e => e.LastActivityUtc);
+        });
+
         modelBuilder.Entity<DocumentRecord>(entity =>
         {
             entity.HasIndex(e => e.CreatedAt);
@@ -80,6 +88,16 @@ public class InsuranceAnalysisDbContext : DbContext
         {
             entity.HasIndex(e => e.DocumentId);
             entity.HasIndex(e => e.SectionName);
+            entity.HasIndex(e => e.IsSafe);
+        });
+
+        modelBuilder.Entity<DocumentQAPairRecord>(entity =>
+        {
+            entity.HasIndex(e => e.DocumentId);
+            entity.HasIndex(e => e.ChunkId);
+            entity.HasIndex(e => e.Category);
+            entity.HasOne(e => e.Document).WithMany().HasForeignKey(e => e.DocumentId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Chunk).WithMany().HasForeignKey(e => e.ChunkId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

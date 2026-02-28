@@ -13,6 +13,15 @@ export interface DocumentUploadResult {
   errorMessage: string | null;
 }
 
+/** SSE progress event during document upload processing. */
+export interface DocumentProgressEvent {
+  phase: string;
+  progress: number;
+  message: string;
+  result: DocumentUploadResult | null;
+  errorMessage: string | null;
+}
+
 /** Request body for querying documents. */
 export interface DocumentQueryRequest {
   question: string;
@@ -26,6 +35,7 @@ export interface DocumentQueryResult {
   citations: DocumentCitation[];
   llmProvider: string;
   elapsedMilliseconds: number;
+  answerSafety: ContentSafetyInfo | null;
 }
 
 /** Citation pointing to a document chunk. */
@@ -58,6 +68,18 @@ export interface ChunkSummary {
   sectionName: string;
   tokenCount: number;
   contentPreview: string;
+  pageNumber: number | null;
+  parentChunkId: number | null;
+  chunkLevel: number;
+  isSafe: boolean;
+  safetyFlags: string | null;
+}
+
+/** Content safety screening result. */
+export interface ContentSafetyInfo {
+  isSafe: boolean;
+  flaggedCategories: string[];
+  provider: string;
 }
 
 /** Document list summary (for history). */
@@ -82,12 +104,55 @@ export interface DocumentHistoryFilter {
   page?: number;
 }
 
+// ==================== Fine-Tuning Preparation (Synthetic Q&A) ====================
+
+/** Result from generating synthetic Q&A pairs for fine-tuning. */
+export interface SyntheticQAResult {
+  documentId: number;
+  documentName: string;
+  totalPairsGenerated: number;
+  pairs: QAPair[];
+  llmProvider: string;
+  elapsedMilliseconds: number;
+  errorMessage: string | null;
+}
+
+/** A single question-answer pair generated from a document chunk. */
+export interface QAPair {
+  id: number;
+  chunkId: number;
+  question: string;
+  answer: string;
+  category: string;
+  confidence: number;
+  sectionName: string;
+}
+
 // ==================== Customer Experience Copilot ====================
 
 /** Request body for CX Copilot chat. */
 export interface CustomerExperienceRequest {
   message: string;
   claimContext?: string;
+  sessionId?: string;
+}
+
+/** Response from creating a new CX conversation session. */
+export interface CxSessionResponse {
+  sessionId: string;
+}
+
+/** Response containing the full message history for a conversation session. */
+export interface CxMessageHistoryResponse {
+  sessionId: string;
+  messages: CxMessageRecord[];
+}
+
+/** A single message in a CX Copilot conversation history. */
+export interface CxMessageRecord {
+  role: string;
+  content: string;
+  timestamp: string;
 }
 
 /** Non-streaming CX Copilot response. */

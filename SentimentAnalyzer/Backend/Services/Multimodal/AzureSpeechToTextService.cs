@@ -205,8 +205,11 @@ public class AzureSpeechToTextService : ISpeechToTextService
     {
         "audio/wav" or "audio/x-wav" => "audio/wav",
         "audio/mpeg" or "audio/mp3" => "audio/mpeg",
+        "audio/mp4" or "audio/x-m4a" or "audio/m4a" => "audio/mp4",
+        "audio/aac" or "audio/x-aac" => "audio/aac",
         "audio/webm" => "audio/webm",
         "audio/ogg" => "audio/ogg",
+        "audio/flac" or "audio/x-flac" => "audio/flac",
         _ => "audio/wav" // Default to WAV for unknown types
     };
 

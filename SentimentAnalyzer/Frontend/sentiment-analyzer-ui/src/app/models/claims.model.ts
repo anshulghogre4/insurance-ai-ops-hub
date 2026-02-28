@@ -97,3 +97,31 @@ export interface ClaimsHistoryFilter {
   pageSize?: number;
   page?: number;
 }
+
+/** Result of a batch CSV claim upload operation. */
+export interface BatchClaimUploadResult {
+  batchId: string;
+  totalCount: number;
+  processedCount: number;
+  successCount: number;
+  errorCount: number;
+  status: string;
+  results: BatchClaimItemResult[];
+  errors: BatchClaimError[];
+}
+
+/** Triage result for a single claim row within a batch upload. */
+export interface BatchClaimItemResult {
+  rowNumber: number;
+  claimId: string;
+  severity: string;
+  fraudScore: number;
+  status: string;
+}
+
+/** Validation error for a specific CSV row. */
+export interface BatchClaimError {
+  rowNumber: number;
+  field: string;
+  errorMessage: string;
+}

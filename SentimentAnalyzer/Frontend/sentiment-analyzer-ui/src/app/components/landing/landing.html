@@ -7,6 +7,16 @@
 
 <div class="landing-page">
 
+  <!-- Scroll Progress Bar -->
+  <div class="scroll-progress-bar"
+       [style.width]="scrollProgressWidth()"
+       role="progressbar"
+       [attr.aria-valuenow]="scrollService.scrollProgress() | number:'1.0-0'"
+       aria-valuemin="0"
+       aria-valuemax="100"
+       aria-label="Page reading progress">
+  </div>
+
   <!-- ══════════════════════════════════════════════
        FLOATING SECTION NAVIGATION
        ══════════════════════════════════════════════ -->
@@ -25,48 +35,115 @@
        SECTION 0: HERO
        ══════════════════════════════════════════════ -->
   <section id="hero" class="relative overflow-hidden py-20 sm:py-28 lg:py-36">
-    <!-- Background gradient orbs -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
-      <div class="hero-orb hero-orb-1"></div>
-      <div class="hero-orb hero-orb-2"></div>
-      <div class="hero-orb hero-orb-3"></div>
-      <div class="hero-grid"></div>
+    <!-- Floating geometric shapes — hero only -->
+    <div class="floating-shapes-container" aria-hidden="true">
+      <div class="floating-shape floating-ring floating-ring-1"
+           [style.transform]="floatingRing1()"></div>
+      <div class="floating-shape floating-circle floating-circle-1"
+           [style.transform]="floatingCircle1()"></div>
+      <div class="floating-shape floating-diamond floating-diamond-1"
+           [style.transform]="floatingDiamond1()"></div>
+      <div class="floating-shape floating-dots floating-dots-1"
+           [style.transform]="floatingDots1()">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="floating-shape floating-glow floating-glow-1"
+           [style.transform]="floatingLine1()"></div>
+      <div class="floating-shape floating-cross floating-cross-1"
+           [style.transform]="floatingRing1()"></div>
+      <div class="floating-shape floating-circle floating-circle-2"
+           [style.transform]="floatingDiamond1()"></div>
+      <div class="floating-shape floating-ring floating-ring-3"
+           [style.transform]="floatingDiamond1()"></div>
+      <div class="floating-shape floating-line floating-line-1"
+           [style.transform]="floatingLine1()"></div>
+      <div class="floating-shape floating-diamond floating-diamond-2"
+           [style.transform]="floatingCircle1()"></div>
+      <div class="floating-shape floating-dots floating-dots-2"
+           [style.transform]="floatingRing2()">
+        <span></span><span></span><span></span>
+      </div>
+      <div class="floating-shape floating-ring floating-ring-2"
+           [style.transform]="floatingRing2()"></div>
+      <div class="floating-shape floating-triangle floating-triangle-1"
+           [style.transform]="floatingCircle1()"></div>
+      <div class="floating-shape floating-cross floating-cross-2"
+           [style.transform]="floatingDots1()"></div>
+      <div class="floating-shape floating-glow floating-glow-2"
+           [style.transform]="floatingRing2()"></div>
+      <div class="floating-shape floating-circle floating-circle-3"
+           [style.transform]="floatingLine1()"></div>
+      <div class="floating-shape floating-ring floating-ring-4"
+           [style.transform]="floatingRing1()"></div>
+      <div class="floating-shape floating-diamond floating-diamond-3"
+           [style.transform]="floatingDiamond1()"></div>
+      <div class="floating-shape floating-line floating-line-2"
+           [style.transform]="floatingDots1()"></div>
     </div>
 
-    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+    <!-- Background gradient orbs — parallax layers -->
+    <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true" style="z-index: 2;">
+      <div class="hero-orb hero-orb-1 parallax-layer" [style.transform]="heroOrb1Transform()"></div>
+      <div class="hero-orb hero-orb-2 parallax-layer" [style.transform]="heroOrb2Transform()"></div>
+      <div class="hero-orb hero-orb-3 parallax-layer" [style.transform]="heroOrb3Transform()"></div>
+      <div class="hero-grid parallax-layer" [style.transform]="heroGridTransform()"></div>
+    </div>
+
+    <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center hero-content-mousemove"
+         style="z-index: 3;"
+         [style.transform]="heroMouseContent()">
       <!-- Version badge -->
-      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 animate-fade-in-up"
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 animate-fade-in-up hero-badge-float"
            style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
         <span class="text-xs font-semibold" style="color: var(--text-secondary);">v4.0 - Insurance AI Operations Hub</span>
       </div>
 
-      <!-- Main headline -->
-      <h1 class="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up stagger-1">
-        <span style="color: var(--text-primary);">9 AI Agents.</span><br>
-        <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-          7 LLM Providers.
-        </span><br>
-        <span style="color: var(--text-primary);">1 Intelligent Platform.</span>
+      <!-- Main headline — Typewriter Effect + Parallax (rises faster than page) -->
+      <h1 class="text-4xl sm:text-5xl lg:text-7xl font-extrabold tracking-tight mb-6 animate-fade-in-up stagger-1 hero-text-parallax"
+          [style.transform]="heroTextParallax()"
+          [style.opacity]="heroTextOpacity()"
+          aria-label="9 AI Agents. 7 LLM Providers. 1 Intelligent Platform.">
+        @for (line of typewriterLines$(); track $index; let i = $index) {
+          @if (i === 1) {
+            <span class="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">{{ line }}</span>
+          } @else {
+            <span style="color: var(--text-primary);">{{ line }}</span>
+          }
+          @if (i < typewriterLines$().length - 1 && line.length > 0) {
+            <br>
+          }
+        }
+        @if (!typewriterComplete()) {
+          <span class="typewriter-cursor" aria-hidden="true"></span>
+        }
       </h1>
 
-      <!-- Subtitle -->
-      <p class="text-lg sm:text-xl max-w-3xl mx-auto mb-10 animate-fade-in-up stagger-2"
+      <!-- Subtitle — parallax: slower than headline for depth layering -->
+      <p class="text-lg sm:text-xl max-w-3xl mx-auto mb-10 animate-fade-in-up stagger-2 hero-text-parallax"
+         [style.transform]="heroSubtitleParallax()"
          style="color: var(--text-secondary);">
         Multi-agent AI orchestration for insurance claims triage, fraud detection,
         and sentiment analysis -- powered by a resilient 7-provider fallback chain,
         6 Azure AI services, and full PII protection.
       </p>
 
-      <!-- CTA Buttons -->
-      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up stagger-3">
-        <a routerLink="/claims/triage" class="btn-primary text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25">
+      <!-- CTA Buttons — slowest parallax layer for maximum depth effect -->
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-in-up stagger-3 hero-text-parallax"
+           [style.transform]="heroCtaParallax()">
+        <a routerLink="/claims/triage" class="btn-primary btn-magnetic text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
+           (mousemove)="onMagneticMove($event, 'cta-primary')"
+           (mouseleave)="onMagneticLeave('cta-primary')"
+           [style.transform]="getMagneticTransform('cta-primary')">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
           </svg>
           Try Claims Triage
         </a>
-        <button (click)="scrollToSection('agents')" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+        <button (click)="scrollToSection('agents')" class="btn-ghost btn-magnetic text-base !px-8 !py-3 flex items-center gap-2"
+                (mousemove)="onMagneticMove($event, 'cta-secondary')"
+                (mouseleave)="onMagneticLeave('cta-secondary')"
+                [style.transform]="getMagneticTransform('cta-secondary')">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
           </svg>
@@ -74,8 +151,9 @@
         </button>
       </div>
 
-      <!-- Quick stat pills -->
-      <div class="flex flex-wrap justify-center gap-3 mt-12 animate-fade-in-up stagger-4">
+      <!-- Quick stat pills — parallax layer -->
+      <div class="flex flex-wrap justify-center gap-3 mt-12 animate-fade-in-up stagger-4 parallax-layer"
+           [style.transform]="heroPillsTransform()">
         <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
              style="background: var(--bg-surface); border: 1px solid var(--border-secondary); color: var(--text-secondary);">
           <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span> 9 Specialized Agents
@@ -169,23 +247,44 @@
           </div>
         </div>
       </div>
+
+      <!-- Scroll indicator — fades out after 80px scroll -->
+      <div class="scroll-indicator flex flex-col items-center mt-10"
+           [style.opacity]="scrollIndicatorOpacity()"
+           aria-hidden="true">
+        <span class="text-[10px] uppercase tracking-widest mb-2" style="color: var(--text-muted);">Scroll</span>
+        <svg class="w-5 h-5 animate-bounce" style="color: var(--text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7-7-7"/>
+        </svg>
+      </div>
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 1: AGENT ORCHESTRATION VISUALIZATION
        ══════════════════════════════════════════════ -->
-  <section id="agents" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('agents')">
+  <section id="agents" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('agents')">
+    <!-- Section-specific floating objects: Neural network nodes -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-node deco-node-1"></div>
+      <div class="deco-node deco-node-2"></div>
+      <div class="deco-node deco-node-3"></div>
+      <div class="deco-pulse deco-pulse-1"></div>
+      <div class="deco-connection deco-conn-1"></div>
+      <div class="deco-connection deco-conn-2"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="agentsParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Multi-Agent System</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           9 AI Agents Working in Concert
         </h2>
@@ -195,15 +294,18 @@
         </p>
       </div>
 
-      <!-- Agent Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <!-- Agent Grid — card parallax -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 parallax-layer" [style.transform]="cardsParallaxA()">
         @for (agent of agents; track agent.id; let i = $index) {
-          <div class="relative p-5 rounded-xl transition-all duration-500 border"
+          <div class="relative p-5 rounded-xl transition-all duration-500 border tilt-card"
                [class]="agent.bgColor + ' ' + agent.borderColor"
                [class.agent-active]="isAgentActive(i)"
                [class.agent-completed]="isAgentCompleted(i)"
                [class.ring-2]="isAgentActive(i)"
                [class.ring-offset-2]="isAgentActive(i)"
+               (mousemove)="onCardMouseMove($event, agent.id)"
+               (mouseleave)="onCardMouseLeave(agent.id)"
+               [style.transform]="getCardTilt(agent.id)"
                style="--ring-color: var(--accent-primary); --ring-offset-color: var(--bg-primary);">
             <!-- Active indicator -->
             @if (isAgentActive(i)) {
@@ -312,21 +414,31 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 2: PROVIDER FALLBACK CHAIN
        ══════════════════════════════════════════════ -->
-  <section id="providers" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('providers')"
+  <section id="providers" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('providers')"
            style="background: var(--bg-secondary);">
+    <!-- Section-specific floating objects: Lightning / signal waves -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-bolt deco-bolt-1"></div>
+      <div class="deco-bolt deco-bolt-2"></div>
+      <div class="deco-signal deco-signal-1"></div>
+      <div class="deco-signal deco-signal-2"></div>
+      <div class="deco-hexagon deco-hex-1"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="providersParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Resilient Infrastructure</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           7-Provider Fallback Chain
         </h2>
@@ -340,8 +452,11 @@
       <!-- Provider cards: 2 rows on large screens (4 top + 3 bottom centered) -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
         @for (provider of providers.slice(0, 4); track provider.name; let i = $index) {
-          <div class="relative">
-            <div class="glass-card-static p-4 h-full transition-all duration-500 relative overflow-hidden"
+          <div class="relative tilt-card"
+               (mousemove)="onCardMouseMove($event, 'provider-' + i)"
+               (mouseleave)="onCardMouseLeave('provider-' + i)"
+               [style.transform]="getCardTilt('provider-' + i)">
+            <div class="glass-card-static shimmer-card p-4 h-full transition-all duration-500 relative overflow-hidden"
                  [class.ring-2]="getProviderStatus(i) === 'trying'"
                  [class.ring-indigo-400]="getProviderStatus(i) === 'trying'"
                  [class.ring-emerald-400]="getProviderStatus(i) === 'success'"
@@ -399,8 +514,11 @@
       <!-- Second row: 3 providers centered -->
       <div class="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-3 gap-3 max-w-3xl mx-auto mb-8">
         @for (provider of providers.slice(4); track provider.name; let i = $index) {
-          <div class="relative">
-            <div class="glass-card-static p-4 h-full transition-all duration-500 relative overflow-hidden"
+          <div class="relative tilt-card"
+               (mousemove)="onCardMouseMove($event, 'provider-' + (i + 4))"
+               (mouseleave)="onCardMouseLeave('provider-' + (i + 4))"
+               [style.transform]="getCardTilt('provider-' + (i + 4))">
+            <div class="glass-card-static shimmer-card p-4 h-full transition-all duration-500 relative overflow-hidden"
                  [class.ring-2]="getProviderStatus(i + 4) === 'trying'"
                  [class.ring-indigo-400]="getProviderStatus(i + 4) === 'trying'"
                  [class.ring-emerald-400]="getProviderStatus(i + 4) === 'success'"
@@ -448,7 +566,10 @@
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
         <button (click)="startFailover()"
                 [disabled]="failoverActive()"
-                class="btn-primary text-sm !px-6 !py-2.5 flex items-center gap-2">
+                class="btn-primary btn-magnetic text-sm !px-6 !py-2.5 flex items-center gap-2"
+                (mousemove)="onMagneticMove($event, 'btn-failover')"
+                (mouseleave)="onMagneticLeave('btn-failover')"
+                [style.transform]="getMagneticTransform('btn-failover')">
           @if (failoverActive()) {
             <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -497,20 +618,30 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 3: MULTIMODAL PIPELINE SHOWCASE
        ══════════════════════════════════════════════ -->
-  <section id="multimodal" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('multimodal')">
+  <section id="multimodal" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('multimodal')">
+    <!-- Section-specific floating objects: Waveforms / data streams -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-wave deco-wave-1"></div>
+      <div class="deco-wave deco-wave-2"></div>
+      <div class="deco-datastream deco-stream-1"></div>
+      <div class="deco-circle-ring deco-cring-1"></div>
+      <div class="deco-circle-ring deco-cring-2"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="multimodalParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Multimodal Processing</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           4 Modalities, Resilient Pipelines
         </h2>
@@ -564,7 +695,10 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 transition-all duration-500"
              [class.animate-fade-in]="modalityAnimating()">
           <!-- Input Side -->
-          <div class="glass-card-static p-6">
+          <div class="glass-card-static shimmer-card tilt-card p-6"
+               (mousemove)="onCardMouseMove($event, 'modal-input')"
+               (mouseleave)="onCardMouseLeave('modal-input')"
+               [style.transform]="getCardTilt('modal-input')">
             <div class="flex items-center gap-2 mb-4">
               <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">Input</span>
               <span class="badge badge-neutral text-[10px]">{{ m.inputLabel }}</span>
@@ -582,7 +716,10 @@
           </div>
 
           <!-- Output Side -->
-          <div class="glass-card-static p-6">
+          <div class="glass-card-static shimmer-card tilt-card p-6"
+               (mousemove)="onCardMouseMove($event, 'modal-output')"
+               (mouseleave)="onCardMouseLeave('modal-output')"
+               [style.transform]="getCardTilt('modal-output')">
             <div class="flex items-center gap-2 mb-4">
               <span class="text-xs font-bold uppercase tracking-wider" style="color: var(--text-muted);">Output</span>
               <span class="badge badge-success text-[10px]">{{ m.outputLabel }}</span>
@@ -615,16 +752,25 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 3b: AZURE AI & OCR PIPELINE
        ══════════════════════════════════════════════ -->
-  <section id="azure" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('azure')"
+  <section id="azure" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('azure')"
            style="background: var(--bg-secondary);">
+    <!-- Section-specific floating objects: Cloud / hexagonal grid -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-cloud deco-cloud-1"></div>
+      <div class="deco-cloud deco-cloud-2"></div>
+      <div class="deco-hex-grid deco-hgrid-1"></div>
+      <div class="deco-hex-grid deco-hgrid-2"></div>
+      <div class="deco-scan-line deco-scan-1"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="azureParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary); color: var(--text-secondary)">
           <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -632,6 +778,7 @@
           </svg>
           Azure AI & Data Pipeline
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl lg:text-4xl font-bold mb-4" style="color: var(--text-primary)">
           6 Azure AI Services + 4-Tier OCR Chain
         </h2>
@@ -649,7 +796,7 @@
         <!-- Mobile: stacked cards -->
         <div class="grid grid-cols-1 gap-3 lg:hidden">
           @for (tier of ocrTiers; track tier.name; let last = $last) {
-            <div class="glass-card-static p-4">
+            <div class="glass-card-static shimmer-card p-4">
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
                       [class]="tier.bgColor + ' ' + tier.color">
@@ -675,7 +822,7 @@
         <!-- Desktop: cards with arrows inline -->
         <div class="hidden lg:flex items-center gap-2">
           @for (tier of ocrTiers; track tier.name; let last = $last) {
-            <div class="flex-1 glass-card-static p-4 min-w-0">
+            <div class="flex-1 glass-card-static shimmer-card p-4 min-w-0">
               <div class="flex items-center gap-2 mb-2">
                 <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
                       [class]="tier.bgColor + ' ' + tier.color">
@@ -707,8 +854,11 @@
           <span class="text-xs font-normal ml-2 text-emerald-400">All on F0 Free Tier</span>
         </h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          @for (service of azureServices; track service.name) {
-            <div class="glass-card-static p-4 hover:border-blue-500/30 transition-all duration-300">
+          @for (service of azureServices; track service.name; let i = $index) {
+            <div class="glass-card-static shimmer-card tilt-card p-4 hover:border-blue-500/30 transition-all duration-300"
+                 (mousemove)="onCardMouseMove($event, 'azure-' + i)"
+                 (mouseleave)="onCardMouseLeave('azure-' + i)"
+                 [style.transform]="getCardTilt('azure-' + i)">
               <div class="flex items-center gap-3 mb-3">
                 <div class="w-8 h-8 rounded-lg flex items-center justify-center" [class]="service.bgColor">
                   @switch (service.icon) {
@@ -797,21 +947,31 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 4: INTERACTIVE DEMO
        ══════════════════════════════════════════════ -->
-  <section id="demo" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('demo')"
+  <section id="demo" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('demo')"
            style="background: var(--bg-secondary);">
+    <!-- Section-specific floating objects: Terminal / play controls -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-terminal deco-term-1"></div>
+      <div class="deco-play deco-play-1"></div>
+      <div class="deco-cursor deco-cursor-1"></div>
+      <div class="deco-bracket deco-bracket-1"></div>
+      <div class="deco-bracket deco-bracket-2"></div>
+    </div>
     <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="demoParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Interactive Demo</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           See It In Action
         </h2>
@@ -827,8 +987,11 @@
           <label for="demo-input" class="text-sm font-semibold" style="color: var(--text-secondary);">
             Claim Text
           </label>
-          <button (click)="loadSampleText()" class="btn-ghost text-xs !px-3 !py-1.5"
-                  [disabled]="demoRunning()">
+          <button (click)="loadSampleText()" class="btn-ghost btn-magnetic text-xs !px-3 !py-1.5"
+                  [disabled]="demoRunning()"
+                  (mousemove)="onMagneticMove($event, 'btn-sample')"
+                  (mouseleave)="onMagneticLeave('btn-sample')"
+                  [style.transform]="getMagneticTransform('btn-sample')">
             Load Sample
           </button>
         </div>
@@ -845,7 +1008,10 @@
         <div class="flex items-center gap-3 mt-3">
           <button (click)="runDemo()"
                   [disabled]="!demoText().trim() || demoRunning()"
-                  class="btn-primary text-sm !px-5 !py-2 flex items-center gap-2">
+                  class="btn-primary btn-magnetic text-sm !px-5 !py-2 flex items-center gap-2"
+                  (mousemove)="onMagneticMove($event, 'btn-demo')"
+                  (mouseleave)="onMagneticLeave('btn-demo')"
+                  [style.transform]="getMagneticTransform('btn-demo')">
             @if (demoRunning()) {
               <svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
@@ -967,20 +1133,30 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 5: SECURITY & PII PROTECTION
        ══════════════════════════════════════════════ -->
-  <section id="security" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('security')">
+  <section id="security" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('security')">
+    <!-- Section-specific floating objects: Lock / shield / binary -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-lock deco-lock-1"></div>
+      <div class="deco-shield deco-shield-1"></div>
+      <div class="deco-binary deco-binary-1"></div>
+      <div class="deco-binary deco-binary-2"></div>
+      <div class="deco-keyhole deco-keyhole-1"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="securityParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Security & Compliance</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           PII Protection at Every Layer
         </h2>
@@ -990,9 +1166,12 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 parallax-layer" [style.transform]="cardsParallaxA()">
         <!-- Before/After Redaction -->
-        <div class="glass-card-static p-6">
+        <div class="glass-card-static shimmer-card tilt-card p-6"
+             (mousemove)="onCardMouseMove($event, 'security-redaction')"
+             (mouseleave)="onCardMouseLeave('security-redaction')"
+             [style.transform]="getCardTilt('security-redaction')">
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-bold" style="color: var(--text-secondary);">
               {{ piiShowRedacted() ? 'After Redaction' : 'Before Redaction' }}
@@ -1025,7 +1204,10 @@
         <!-- Trust Indicators -->
         <div class="space-y-4">
           <!-- Data Flow Diagram -->
-          <div class="glass-card-static p-6">
+          <div class="glass-card-static shimmer-card tilt-card p-6"
+               (mousemove)="onCardMouseMove($event, 'security-dataflow')"
+               (mouseleave)="onCardMouseLeave('security-dataflow')"
+               [style.transform]="getCardTilt('security-dataflow')">
             <h3 class="text-sm font-bold mb-4" style="color: var(--text-secondary);">Data Flow Architecture</h3>
             <div class="space-y-3">
               <div class="flex items-center gap-3 p-3 rounded-xl" style="background: var(--bg-surface); border: 1px solid var(--border-secondary);">
@@ -1118,30 +1300,45 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 6: STATS & METRICS
        ══════════════════════════════════════════════ -->
-  <section id="stats" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('stats')"
+  <section id="stats" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('stats')"
            style="background: var(--bg-secondary);">
+    <!-- Section-specific floating objects: Chart bars / arrows / sparklines -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-bar deco-bar-1"></div>
+      <div class="deco-bar deco-bar-2"></div>
+      <div class="deco-bar deco-bar-3"></div>
+      <div class="deco-arrow-up deco-arrowup-1"></div>
+      <div class="deco-sparkline deco-spark-1"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="statsParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Platform Metrics</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           By the Numbers
         </h2>
       </div>
 
-      <!-- Stats Grid -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <!-- Stats Grid — animated counters with alternating entry + parallax -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 stats-grid-parallax parallax-layer" [style.transform]="cardsParallaxB()">
         @for (stat of stats; track stat.label; let i = $index) {
-          <div class="glass-card-static p-5 text-center hover:scale-[1.02] transition-transform duration-300">
+          <div class="glass-card-static shimmer-card tilt-card p-5 text-center hover:scale-[1.02] transition-transform duration-300"
+               [class]="(i % 2 === 0 ? 'stat-enter-left' : 'stat-enter-right') + (statsAnimated() ? ' stat-visible' : '')"
+               [style.transition-delay]="(i * 80) + 'ms'"
+               (mousemove)="onCardMouseMove($event, 'stat-' + i)"
+               (mouseleave)="onCardMouseLeave('stat-' + i)"
+               [style.transform]="getCardTilt('stat-' + i)">
             <div class="mb-3 flex justify-center">
               <div class="w-10 h-10 rounded-xl flex items-center justify-center"
                    style="background: var(--bg-surface);">
@@ -1189,7 +1386,7 @@
                 }
               </div>
             </div>
-            <p class="text-2xl sm:text-3xl font-extrabold" [class]="stat.color">{{ stat.value }}</p>
+            <p class="text-2xl sm:text-3xl font-extrabold stat-number" [class]="stat.color">{{ animatedStatValues()[i] || stat.value }}</p>
             <p class="text-sm font-semibold mt-1" style="color: var(--text-primary);">{{ stat.label }}</p>
             <p class="text-[10px] mt-0.5" style="color: var(--text-muted);">{{ stat.subtext }}</p>
           </div>
@@ -1230,20 +1427,30 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        SECTION 7: TECHNOLOGY BADGE GRID
        ══════════════════════════════════════════════ -->
-  <section id="tech" class="py-20 lg:py-28" [class.section-visible]="isSectionVisible('tech')">
+  <section id="tech" class="py-20 lg:py-28 section-deco" [class.section-visible]="isSectionVisible('tech')">
+    <!-- Section-specific floating objects: Gear / code brackets / chips -->
+    <div class="section-deco-shapes" aria-hidden="true">
+      <div class="deco-gear deco-gear-1"></div>
+      <div class="deco-gear deco-gear-2"></div>
+      <div class="deco-chip deco-chip-1"></div>
+      <div class="deco-code-tag deco-ctag-1"></div>
+      <div class="deco-code-tag deco-ctag-2"></div>
+    </div>
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
-      <!-- Section Header -->
-      <div class="text-center mb-12">
+      <!-- Section Header — parallax depth -->
+      <div class="text-center mb-12 parallax-layer" [style.transform]="techParallax()">
         <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
              style="background: var(--bg-surface); border: 1px solid var(--border-primary);">
           <span class="w-1.5 h-1.5 rounded-full bg-teal-400"></span>
           <span class="text-xs font-semibold uppercase tracking-wider" style="color: var(--text-muted);">Technology Stack</span>
         </div>
+        <span class="section-reveal-line" aria-hidden="true"></span>
         <h2 class="text-3xl sm:text-4xl font-bold mb-4" style="color: var(--text-primary);">
           Built With the Best
         </h2>
@@ -1254,8 +1461,11 @@
 
       <!-- Tech Categories -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-        @for (category of techCategories; track category.label) {
-          <div class="glass-card-static p-6">
+        @for (category of techCategories; track category.label; let i = $index) {
+          <div class="glass-card-static shimmer-card tilt-card p-6"
+               (mousemove)="onCardMouseMove($event, 'tech-' + i)"
+               (mouseleave)="onCardMouseLeave('tech-' + i)"
+               [style.transform]="getCardTilt('tech-' + i)">
             <h3 class="text-sm font-bold mb-4 flex items-center gap-2" [class]="category.color">
               {{ category.label }}
             </h3>
@@ -1520,6 +1730,7 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        USE CASES - INSURANCE SCENARIOS
@@ -1537,7 +1748,10 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <!-- Use Case 1: Claims Processing -->
-        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+        <div class="glass-card-static shimmer-card tilt-card p-5 group hover:scale-[1.02] transition-all duration-300"
+             (mousemove)="onCardMouseMove($event, 'usecase-0')"
+             (mouseleave)="onCardMouseLeave('usecase-0')"
+             [style.transform]="getCardTilt('usecase-0')">
           <div class="flex items-center gap-3 mb-3">
             <div class="w-10 h-10 rounded-xl bg-orange-500/15 flex items-center justify-center">
               <svg class="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -1560,7 +1774,10 @@
         </div>
 
         <!-- Use Case 2: Fraud Detection -->
-        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+        <div class="glass-card-static shimmer-card tilt-card p-5 group hover:scale-[1.02] transition-all duration-300"
+             (mousemove)="onCardMouseMove($event, 'usecase-1')"
+             (mouseleave)="onCardMouseLeave('usecase-1')"
+             [style.transform]="getCardTilt('usecase-1')">
           <div class="flex items-center gap-3 mb-3">
             <div class="w-10 h-10 rounded-xl bg-rose-500/15 flex items-center justify-center">
               <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -1584,7 +1801,10 @@
         </div>
 
         <!-- Use Case 3: Sentiment Analysis -->
-        <div class="glass-card-static p-5 group hover:scale-[1.02] transition-all duration-300">
+        <div class="glass-card-static shimmer-card tilt-card p-5 group hover:scale-[1.02] transition-all duration-300"
+             (mousemove)="onCardMouseMove($event, 'usecase-2')"
+             (mouseleave)="onCardMouseLeave('usecase-2')"
+             [style.transform]="getCardTilt('usecase-2')">
           <div class="flex items-center gap-3 mb-3">
             <div class="w-10 h-10 rounded-xl bg-indigo-500/15 flex items-center justify-center">
               <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
@@ -1609,6 +1829,7 @@
     </div>
   </section>
 
+  <div class="gradient-morph-divider" aria-hidden="true"></div>
 
   <!-- ══════════════════════════════════════════════
        FOOTER CTA
@@ -1631,19 +1852,28 @@
         with multi-agent AI -- all powered by free-tier providers.
       </p>
       <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
-        <a routerLink="/claims/triage" class="btn-primary text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25">
+        <a routerLink="/claims/triage" class="btn-primary btn-magnetic text-base !px-8 !py-3 flex items-center gap-2 shadow-lg shadow-indigo-500/25"
+           (mousemove)="onMagneticMove($event, 'btn-cta-1')"
+           (mouseleave)="onMagneticLeave('btn-cta-1')"
+           [style.transform]="getMagneticTransform('btn-cta-1')">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
           </svg>
           Claims Triage
         </a>
-        <a routerLink="/insurance" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+        <a routerLink="/insurance" class="btn-ghost btn-magnetic text-base !px-8 !py-3 flex items-center gap-2"
+           (mousemove)="onMagneticMove($event, 'btn-cta-2')"
+           (mouseleave)="onMagneticLeave('btn-cta-2')"
+           [style.transform]="getMagneticTransform('btn-cta-2')">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
           </svg>
           Sentiment Analysis
         </a>
-        <a routerLink="/dashboard" class="btn-ghost text-base !px-8 !py-3 flex items-center gap-2">
+        <a routerLink="/dashboard" class="btn-ghost btn-magnetic text-base !px-8 !py-3 flex items-center gap-2"
+           (mousemove)="onMagneticMove($event, 'btn-cta-3')"
+           (mouseleave)="onMagneticLeave('btn-cta-3')"
+           [style.transform]="getMagneticTransform('btn-cta-3')">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
           </svg>

@@ -145,6 +145,15 @@ Sprint 5 planned: Supabase, GitHub, Context7, Sequential Thinking, Sentry, Grafa
 - Error banners: rose/red for failures, amber/yellow for partial success/warnings
 - Backend `errorMessage` fields must always be surfaced to the user when non-null
 
+### MCP UX/Design Agent Rules
+- **ALWAYS fetch and study reference URLs** provided by the user before designing UI. Never skip this step.
+- **Use Playwright MCP** (`browser_navigate` + `browser_take_screenshot`) to visually verify ALL UI changes in the browser before marking complete. No UI task is done until visually confirmed.
+- **Use Stitch MCP** for design-to-code generation when available — feed it reference URLs and design descriptions.
+- **Parallax/animation effects must be VISUALLY DRAMATIC** and IMMEDIATELY NOTICEABLE on scroll. Subtle, invisible effects are worse than no effects.
+- **Never claim "awwwards-level" quality** without actually studying the reference sites and implementing comparable techniques (sticky sections, multi-speed depth layers, text reveals, gradient transitions, card stagger animations).
+- **Production-level design checklist**: sticky hero with content-over-background scroll, visible multi-layer depth parallax, section entrance animations with scale + translate, staggered card animations, scroll-linked gradient transitions, responsive + reduced-motion support.
+- **Reference sites for parallax patterns**: Study sites like hadaka.jp, heavn-one.webflow.io, telescope.fyi for translate3d transforms, SplitType text reveals, scroll-triggered mask animations, and strategic whitespace pacing.
+
 ## Detailed Reference Docs
 - [docs/architecture.md](docs/architecture.md) — Agent system, orchestration flows, providers, multimodal services, MCP servers
 - [docs/design-patterns.md](docs/design-patterns.md) — All 9 design patterns with decision matrix

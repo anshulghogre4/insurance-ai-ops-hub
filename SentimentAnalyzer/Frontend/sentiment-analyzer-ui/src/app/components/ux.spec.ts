@@ -163,8 +163,8 @@ describe('UX: Login Component', () => {
 
   it('should show feature highlights in branding panel', () => {
     const el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Real-time Sentiment Analysis');
-    expect(el.textContent).toContain('Churn Risk Detection');
+    expect(el.textContent).toContain('Claims Triage & Fraud Detection');
+    expect(el.textContent).toContain('7-Provider Resilient Fallback');
     expect(el.textContent).toContain('PII-Safe Processing');
   });
 

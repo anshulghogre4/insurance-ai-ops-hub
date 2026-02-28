@@ -120,11 +120,23 @@ builder.Services.AddKeyedSingleton<IImageAnalysisService>("CloudflareVision", (s
     sp.GetRequiredService<CloudflareVisionService>());
 
 // ==========================================
-// Embedding Services (RAG - Voyage AI / Ollama)
+// Embedding Services (RAG - 6-provider fallback: Voyage AI -> Jina -> Cohere -> Gemini -> HuggingFace BGE -> Ollama)
 // ==========================================
 builder.Services.AddHttpClient<VoyageAIEmbeddingService>();
 builder.Services.AddKeyedSingleton<IEmbeddingService>("VoyageAI", (sp, _) =>
     sp.GetRequiredService<VoyageAIEmbeddingService>());
+builder.Services.AddHttpClient<JinaEmbeddingService>();
+builder.Services.AddKeyedSingleton<IEmbeddingService>("Jina", (sp, _) =>
+    sp.GetRequiredService<JinaEmbeddingService>());
+builder.Services.AddHttpClient<CohereEmbeddingService>();
+builder.Services.AddKeyedSingleton<IEmbeddingService>("Cohere", (sp, _) =>
+    sp.GetRequiredService<CohereEmbeddingService>());
+builder.Services.AddHttpClient<GeminiEmbeddingService>();
+builder.Services.AddKeyedSingleton<IEmbeddingService>("GeminiEmbed", (sp, _) =>
+    sp.GetRequiredService<GeminiEmbeddingService>());
+builder.Services.AddHttpClient<HuggingFaceEmbeddingService>();
+builder.Services.AddKeyedSingleton<IEmbeddingService>("HuggingFaceEmbed", (sp, _) =>
+    sp.GetRequiredService<HuggingFaceEmbeddingService>());
 builder.Services.AddHttpClient<OllamaEmbeddingService>();
 builder.Services.AddKeyedSingleton<IEmbeddingService>("Ollama", (sp, _) =>
     sp.GetRequiredService<OllamaEmbeddingService>());
@@ -159,14 +171,22 @@ builder.Services.AddScoped<IFraudAnalysisService, FraudAnalysisService>();
 builder.Services.AddScoped<IFraudCorrelationRepository, SqliteFraudCorrelationRepository>();
 builder.Services.AddScoped<IFraudCorrelationService, FraudCorrelationService>();
 
-// Customer Experience Copilot (v4.0 - SSE streaming chat)
+// Batch claims CSV upload (simulated triage — no LLM quota usage)
+builder.Services.AddScoped<IBatchClaimService, BatchClaimService>();
+
+// Customer Experience Copilot (v4.0 - SSE streaming chat, v5.0 - conversation memory)
 builder.Services.AddScoped<ICustomerExperienceService, CustomerExperienceService>();
 builder.Services.AddScoped<ICxInteractionRepository, SqliteCxInteractionRepository>();
+builder.Services.AddScoped<ICxConversationRepository, SqliteCxConversationRepository>();
 
 // Document Intelligence (RAG) services
 builder.Services.AddScoped<IDocumentRepository, SqliteDocumentRepository>();
 builder.Services.AddScoped<IDocumentChunkingService, InsuranceDocumentChunkingService>();
+builder.Services.AddSingleton<IHybridRetrievalService, HybridRetrievalService>();
 builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceService>();
+
+// Feature 4: Synthetic Q&A Pipeline (fine-tuning preparation)
+builder.Services.AddScoped<ISyntheticQAService, SyntheticQAService>();
 
 // Supabase JWT Authentication (optional - requires BOTH Url AND JwtSecret)
 // Supabase access tokens use HS256 (symmetric), so JWKS/OIDC discovery cannot validate them.
@@ -348,6 +368,39 @@ using (var scope = app.Services.CreateScope())
         {
             db.Database.ExecuteSqlRaw("ALTER TABLE ClaimEvidence ADD COLUMN EntitiesJson TEXT NOT NULL DEFAULT '[]';");
         }
+
+        // Feature 3: Content Safety columns on DocumentChunks
+        if (!ColumnExists("DocumentChunks", "IsSafe"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN IsSafe INTEGER NOT NULL DEFAULT 1;");
+        }
+        if (!ColumnExists("DocumentChunks", "SafetyFlags"))
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN SafetyFlags TEXT;");
+        }
+
+        // Feature 4: DocumentQAPairs table (may not exist if DB was created before Feature 4)
+        try
+        {
+            cmd.CommandText = "SELECT 1 FROM DocumentQAPairs LIMIT 1;";
+            cmd.ExecuteNonQuery();
+        }
+        catch
+        {
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS DocumentQAPairs (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                DocumentId INTEGER NOT NULL,
+                ChunkId INTEGER NOT NULL,
+                Question TEXT NOT NULL DEFAULT '',
+                Answer TEXT NOT NULL DEFAULT '',
+                Category TEXT NOT NULL DEFAULT 'factual',
+                Confidence REAL NOT NULL DEFAULT 0.0,
+                LlmProvider TEXT NOT NULL DEFAULT '',
+                CreatedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00',
+                FOREIGN KEY (DocumentId) REFERENCES Documents(Id),
+                FOREIGN KEY (ChunkId) REFERENCES DocumentChunks(Id)
+            );");
+        }
     }
 }
 
@@ -386,6 +439,7 @@ app.MapInsuranceEndpoints(requireAuth: supabaseAuthEnabled);
 
 // v2 Claims & Fraud pipeline endpoints
 app.MapClaimsEndpoints(requireAuth: supabaseAuthEnabled);
+app.MapBatchClaimEndpoints(requireAuth: supabaseAuthEnabled);
 app.MapFraudEndpoints(requireAuth: supabaseAuthEnabled);
 app.MapProviderHealthEndpoints();
 

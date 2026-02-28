@@ -17,40 +17,100 @@ public partial class InsuranceDocumentChunkingService : IDocumentChunkingService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public List<DocumentChunk> ChunkDocument(string text, int targetTokens = 512, int overlapTokens = 64)
+    public List<DocumentChunk> ChunkDocument(string text, int targetTokens = 512, int overlapTokens = 128)
     {
         if (string.IsNullOrWhiteSpace(text))
             return [];
 
         var targetChars = targetTokens * 4; // ~4 chars per token heuristic
         var overlapChars = overlapTokens * 4;
+        var parentThreshold = targetChars * 3; // Sections larger than 3x target get parent-child hierarchy
 
         // Phase 1: Split by insurance section headers
         var sections = SplitBySections(text);
         _logger.LogInformation("Document split into {Count} sections: {Sections}",
             sections.Count, string.Join(", ", sections.Select(s => s.Name)));
 
-        // Phase 2: Split oversized sections at sentence boundaries
+        // Phase 2: Create hierarchical chunks
         var chunks = new List<DocumentChunk>();
         var chunkIndex = 0;
+        // Estimate page numbers: ~4000 chars per page (1000 tokens)
+        var runningCharCount = 0;
 
         foreach (var section in sections)
         {
-            var sectionChunks = SplitSectionIntoChunks(section.Content, targetChars, overlapChars);
-            foreach (var chunkText in sectionChunks)
+            var sectionStartChar = text.IndexOf(section.Content, StringComparison.Ordinal);
+            if (sectionStartChar < 0) sectionStartChar = runningCharCount;
+
+            if (section.Content.Length > parentThreshold)
             {
-                chunks.Add(new DocumentChunk
+                // Large section: create parent chunk (level 0) + child chunks (level 1)
+                var parentPageNumber = (sectionStartChar / 4000) + 1;
+                var parentChunk = new DocumentChunk
                 {
                     Index = chunkIndex++,
                     SectionName = section.Name,
-                    Content = chunkText.Trim(),
-                    ApproximateTokens = chunkText.Length / 4
-                });
+                    Content = section.Content.Length > 800
+                        ? section.Content[..800].Trim() + "..."
+                        : section.Content,
+                    ApproximateTokens = Math.Min(section.Content.Length, 800) / 4,
+                    PageNumber = parentPageNumber,
+                    ParentChunkIndex = null,
+                    ChunkLevel = 0
+                };
+                chunks.Add(parentChunk);
+                var parentIndex = parentChunk.Index;
+
+                // Create child chunks from the full section content
+                var childTexts = SplitSectionIntoChunks(section.Content, targetChars, overlapChars);
+                var childCharOffset = sectionStartChar;
+                foreach (var childText in childTexts)
+                {
+                    var childPageNumber = (childCharOffset / 4000) + 1;
+                    chunks.Add(new DocumentChunk
+                    {
+                        Index = chunkIndex++,
+                        SectionName = section.Name,
+                        Content = childText.Trim(),
+                        ApproximateTokens = childText.Length / 4,
+                        PageNumber = childPageNumber,
+                        ParentChunkIndex = parentIndex,
+                        ChunkLevel = 1
+                    });
+                    childCharOffset += childText.Length - overlapChars;
+                }
             }
+            else
+            {
+                // Small section: flat chunk (level 0, no children)
+                var sectionChunks = SplitSectionIntoChunks(section.Content, targetChars, overlapChars);
+                var childCharOffset = sectionStartChar;
+                foreach (var chunkText in sectionChunks)
+                {
+                    var pageNumber = (childCharOffset / 4000) + 1;
+                    chunks.Add(new DocumentChunk
+                    {
+                        Index = chunkIndex++,
+                        SectionName = section.Name,
+                        Content = chunkText.Trim(),
+                        ApproximateTokens = chunkText.Length / 4,
+                        PageNumber = pageNumber,
+                        ParentChunkIndex = null,
+                        ChunkLevel = 0
+                    });
+                    childCharOffset += chunkText.Length - overlapChars;
+                }
+            }
+
+            runningCharCount += section.Content.Length;
         }
 
-        _logger.LogInformation("Document chunked into {Count} chunks (target: {Target} tokens, overlap: {Overlap} tokens)",
-            chunks.Count, targetTokens, overlapTokens);
+        _logger.LogInformation(
+            "Document chunked into {Count} chunks ({Parents} parents, {Children} children, target: {Target} tokens, overlap: {Overlap} tokens)",
+            chunks.Count,
+            chunks.Count(c => c.ChunkLevel == 0 && chunks.Any(ch => ch.ParentChunkIndex == c.Index)),
+            chunks.Count(c => c.ChunkLevel == 1),
+            targetTokens, overlapTokens);
 
         return chunks;
     }
@@ -142,6 +202,10 @@ public partial class InsuranceDocumentChunkingService : IDocumentChunkingService
             _ when upper.Contains("CONDITION") => "CONDITIONS",
             _ when upper.Contains("ENDORSEMENT") || upper.Contains("RIDER") || upper.Contains("AMENDMENT") || upper.Contains("SCHEDULE") => "ENDORSEMENTS",
             _ when upper.Contains("DEFINITION") => "DEFINITIONS",
+            _ when upper.Contains("SUBROGATION") => "SUBROGATION",
+            _ when upper.Contains("PREMIUM") || upper.Contains("PAYMENT") || upper.Contains("BILLING") => "PREMIUM",
+            _ when upper.Contains("CANCELLATION") || upper.Contains("NONRENEWAL") || upper.Contains("NON-RENEWAL") => "CANCELLATION",
+            _ when upper.Contains("CLAIMS") && (upper.Contains("PROCEDURE") || upper.Contains("FILE")) => "CLAIMS PROCEDURE",
             _ => upper.Length > 50 ? upper[..50] : upper
         };
     }
@@ -154,7 +218,11 @@ public partial class InsuranceDocumentChunkingService : IDocumentChunkingService
         @"EXCLUSIONS?|WHAT\s+IS\s+NOT\s+COVERED|LIMITATIONS?|" +
         @"CONDITIONS?|GENERAL\s+CONDITIONS?|POLICY\s+CONDITIONS?|" +
         @"ENDORSEMENTS?|RIDERS?|AMENDMENTS?|SCHEDULES?|" +
-        @"DEFINITIONS?" +
+        @"DEFINITIONS?|" +
+        @"SUBROGATION|" +
+        @"PREMIUMS?|PAYMENTS?|BILLING|" +
+        @"CANCELLATIONS?|NON-?RENEWALS?|" +
+        @"CLAIMS?\s+PROCEDURES?|HOW\s+TO\s+FILE(?:\s+A\s+CLAIM)?" +
         @")\s*(?:[:\-]|\n)",
         RegexOptions.IgnoreCase)]
     private static partial Regex SectionHeaderRegex();

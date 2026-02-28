@@ -1,7 +1,12 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { CustomerExperienceResponse, CustomerExperienceStreamChunk } from '../models/document.model';
+import {
+  CustomerExperienceResponse,
+  CustomerExperienceStreamChunk,
+  CxSessionResponse,
+  CxMessageHistoryResponse
+} from '../models/document.model';
 import { AuthService } from './auth.service';
 import { environment } from '../../environments/environment';
 
@@ -14,9 +19,10 @@ export class CustomerExperienceService {
   private apiUrl = `${environment.apiUrl}/api/insurance/cx`;
 
   /** Non-streaming CX Copilot chat. */
-  chat(message: string, claimContext?: string): Observable<CustomerExperienceResponse> {
-    const body: { message: string; claimContext?: string } = { message };
+  chat(message: string, claimContext?: string, sessionId?: string): Observable<CustomerExperienceResponse> {
+    const body: { message: string; claimContext?: string; sessionId?: string } = { message };
     if (claimContext) body.claimContext = claimContext;
+    if (sessionId) body.sessionId = sessionId;
     return this.http.post<CustomerExperienceResponse>(`${this.apiUrl}/chat`, body);
   }
 
@@ -25,11 +31,12 @@ export class CustomerExperienceService {
    * Uses fetch() + ReadableStream because Angular HttpClient doesn't support SSE from POST.
    * Emits CustomerExperienceStreamChunk for each SSE event, completes on [DONE].
    */
-  streamChat(message: string, claimContext?: string): Observable<CustomerExperienceStreamChunk> {
+  streamChat(message: string, claimContext?: string, sessionId?: string): Observable<CustomerExperienceStreamChunk> {
     return new Observable(subscriber => {
       const controller = new AbortController();
-      const body: { message: string; claimContext?: string } = { message };
+      const body: { message: string; claimContext?: string; sessionId?: string } = { message };
       if (claimContext) body.claimContext = claimContext;
+      if (sessionId) body.sessionId = sessionId;
 
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       const token = this.authService.session()?.access_token;
@@ -88,5 +95,15 @@ export class CustomerExperienceService {
 
       return () => controller.abort();
     });
+  }
+
+  /** Creates a new conversation session. Returns the session ID. */
+  createSession(): Observable<CxSessionResponse> {
+    return this.http.post<CxSessionResponse>(`${this.apiUrl}/sessions`, {});
+  }
+
+  /** Retrieves the PII-redacted message history for a conversation session. */
+  getSessionHistory(sessionId: string): Observable<CxMessageHistoryResponse> {
+    return this.http.get<CxMessageHistoryResponse>(`${this.apiUrl}/sessions/${sessionId}/history`);
   }
 }

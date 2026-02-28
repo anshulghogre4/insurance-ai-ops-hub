@@ -25,7 +25,8 @@ describe('DocumentQueryComponent', () => {
       }
     ],
     llmProvider: 'Groq',
-    elapsedMilliseconds: 1830
+    elapsedMilliseconds: 1830,
+    answerSafety: null
   };
 
   const mockDocumentService = {
@@ -103,5 +104,60 @@ describe('DocumentQueryComponent', () => {
     component.toggleCitation(0);
     expect(component.expandedCitations()).not.toContain(0);
     expect(component.expandedCitations()).toContain(2);
+  });
+
+  it('should NOT show content safety warning when answerSafety is null', () => {
+    mockDocumentService.queryDocuments.mockReturnValue(of(mockQueryResult));
+
+    component.question = 'What are the policy exclusions?';
+    component.submitQuery();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const warningBanner = el.querySelector('[aria-label="Content safety warning"]');
+    expect(warningBanner).toBeNull();
+  });
+
+  it('should show content safety warning banner when answer is flagged', () => {
+    const flaggedResult: DocumentQueryResult = {
+      ...mockQueryResult,
+      answerSafety: {
+        isSafe: false,
+        flaggedCategories: ['Hate', 'Violence'],
+        provider: 'Azure Content Safety'
+      }
+    };
+    mockDocumentService.queryDocuments.mockReturnValue(of(flaggedResult));
+
+    component.question = 'What are the policy exclusions?';
+    component.submitQuery();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const warningBanner = el.querySelector('[aria-label="Content safety warning"]');
+    expect(warningBanner).toBeTruthy();
+    expect(warningBanner?.textContent).toContain('Content Safety Warning');
+    expect(warningBanner?.textContent).toContain('Hate, Violence');
+  });
+
+  it('should show safety warning with correct flagged categories', () => {
+    const flaggedResult: DocumentQueryResult = {
+      ...mockQueryResult,
+      answerSafety: {
+        isSafe: false,
+        flaggedCategories: ['SelfHarm', 'Sexual'],
+        provider: 'Azure Content Safety'
+      }
+    };
+    mockDocumentService.queryDocuments.mockReturnValue(of(flaggedResult));
+
+    component.question = 'What are the property claim procedures?';
+    component.submitQuery();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    const warningBanner = el.querySelector('[aria-label="Content safety warning"]');
+    expect(warningBanner).toBeTruthy();
+    expect(warningBanner?.textContent).toContain('SelfHarm, Sexual');
   });
 });
