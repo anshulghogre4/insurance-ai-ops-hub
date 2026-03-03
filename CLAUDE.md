@@ -3,8 +3,8 @@
 ## Project Overview
 AI-powered sentiment analysis for the insurance industry. Analyzes policyholder communications, claims notes, agent reviews, and regulatory correspondence.
 
-- **v3.0 (Current)**: 5-provider fallback chain, 5 multimodal services, claims triage + fraud detection agents, orchestration profiles, PII redaction. See `SPRINT-ROADMAP.md`.
-- **v4.0 (COMPLETE)**: Document Intelligence RAG, CX Copilot (SSE streaming), cross-claim fraud correlation (4-strategy), v1 PII decorator fix, MCP server integration. 18 Angular components, 15 routes, 1053 total tests (461 backend + 235 frontend + 357 E2E).
+- **v4.0 (Previous)**: Document Intelligence RAG, CX Copilot (SSE streaming), cross-claim fraud correlation (4-strategy), v1 PII decorator fix, MCP server integration.
+- **v5.0 (Current — Sprint 5 IN PROGRESS)**: Parallax landing page revamp, batch claims processing, hybrid RAG (BM25 + vector), CX conversation memory, 4 new embedding providers (Cohere/Gemini/HuggingFace/Jina), synthetic QA, command palette, breadcrumbs, toast notifications, GitHub Actions CI/CD. 22 Angular components, 16 routes, ~1,423 total tests (~530 backend + ~443 frontend + ~450 E2E).
 
 ## Non-Negotiable Rules
 
@@ -48,7 +48,7 @@ Before ANY external AI call, redact SSN, policy numbers, claim numbers, phone, e
 
 **STT (Speech-to-Text):** Deepgram ($200 credit) -> Azure AI Speech (5 hrs/month). Never skip the chain. Managed by `ResilientSpeechToTextProvider`.
 
-**Embeddings:** Voyage AI -> Ollama. Managed by `ResilientEmbeddingProvider`.
+**Embeddings:** Voyage AI -> Cohere -> Gemini -> HuggingFace -> Jina -> Ollama. Managed by `ResilientEmbeddingProvider`.
 
 **Content Safety:** Azure AI Content Safety (5K text + 5K image/month). Screens CX Copilot responses before sending to policyholders. Managed by `IContentSafetyService`.
 
@@ -106,12 +106,13 @@ npm test                   # Vitest
 npm run e2e                # Playwright
 ```
 
-## MCP Servers (Sprint 4 Week 4+)
+## MCP Servers (Sprint 4+)
 Active in `.mcp.json`:
 - **Playwright MCP** (`@playwright/mcp`) — Headless browser automation, E2E test generation from browser sessions
-- **Stitch MCP** (`@_davideast/stitch-mcp`) — Google Stitch AI design-to-code pipeline for UI components
+- **Context7 MCP** — Up-to-date library documentation for .NET 10, Angular 21, Semantic Kernel
+- **Sequential Thinking MCP** — Structured reasoning for architecture decisions
 
-Sprint 5 planned: Supabase, GitHub, Context7, Sequential Thinking, Sentry, Grafana, Snyk, Upstash, Tavily. See [docs/architecture.md](docs/architecture.md).
+Sprint 5 added: Context7, Sequential Thinking. See [docs/architecture.md](docs/architecture.md).
 
 ## Quality Checklist (Mandatory for All Agents)
 

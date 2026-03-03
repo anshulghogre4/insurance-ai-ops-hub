@@ -8,7 +8,8 @@ An AI-powered insurance domain sentiment analysis platform that analyzes policyh
 - **v1.0**: General-purpose sentiment analyzer. .NET 10 API + Angular 21 SPA + OpenAI GPT-4o-mini. Single endpoint: `POST /api/sentiment/analyze`.
 - **v2.0**: Insurance-domain multi-agent system with free AI providers (Groq, Gemini, Ollama), Semantic Kernel orchestration, CQRS + Minimal API, SQLite/Supabase persistence, PII redaction, and analytics dashboard.
 - **v3.0**: Insurance AI Operations Hub. 5-provider resilient fallback chain, 5 multimodal services, claims triage + fraud detection pipeline, interactive landing page, Chart.js dashboard, 13 Angular components across 10 routes, comprehensive E2E test suite.
-- **v4.0 (Current — Sprint 4 COMPLETE)**: Document Intelligence RAG (Voyage AI `voyage-finance-2` embeddings + SQLite vector store), Customer Experience Copilot (SSE streaming, dual-pass PII, tone classification, escalation detection), cross-claim fraud correlation (4-strategy: DateProximity/SimilarNarrative/SharedFlags/SameSeverity), v1 PII decorator fix, orchestrator test coverage, per-endpoint rate limiting, MCP server integration, 5 new Angular components (document-upload, document-query, document-result, cx-copilot, fraud-correlation), 3 new services, 4 new E2E spec files. 461 backend + 235 frontend + 357 E2E = **1,053 total tests, 0 failures**.
+- **v4.0 (Sprint 4 COMPLETE)**: Document Intelligence RAG (Voyage AI `voyage-finance-2` embeddings + SQLite vector store), Customer Experience Copilot (SSE streaming, dual-pass PII, tone classification, escalation detection), cross-claim fraud correlation (4-strategy: DateProximity/SimilarNarrative/SharedFlags/SameSeverity), v1 PII decorator fix, orchestrator test coverage, per-endpoint rate limiting, MCP server integration, 5 new Angular components (document-upload, document-query, document-result, cx-copilot, fraud-correlation), 3 new services, 4 new E2E spec files. 461 backend + 235 frontend + 357 E2E = **1,053 total tests, 0 failures**.
+- **v5.0 (Current — Sprint 5 IN PROGRESS)**: Batch claims CSV upload, CX conversation memory/persistence, hybrid RAG retrieval (BM25 keyword + vector semantic, alpha=0.7/beta=0.3), 4 new embedding providers (Cohere, Gemini, HuggingFace, Jina — 6-provider chain), GitHub Actions CI/CD, 4 new Angular components (batch-upload, breadcrumb, command-palette, toast), breadcrumb navigation, Ctrl+K command palette, toast notification system, parallax landing enhancements. 22 Angular components, 16 routes. ~530 backend + ~443 frontend + ~450 E2E = **~1,423 total tests**.
 
 ---
 
@@ -30,7 +31,8 @@ Angular 21 SPA (Port 4200)
     ├── /documents/query     → Document Q&A (authGuard) [Sprint 4 Week 4]
     ├── /documents/:id       → Document Detail (authGuard) [Sprint 4 Week 4]
     ├── /cx/copilot          → CX Copilot Chat (authGuard) [Sprint 4 Week 4]
-    └── /fraud/correlations/:claimId → Fraud Correlations (authGuard) [Sprint 4 Week 4]
+    ├── /fraud/correlations/:claimId → Fraud Correlations (authGuard) [Sprint 4 Week 4]
+    └── /claims/batch        → Batch Claims CSV Upload (authGuard) [Sprint 5]
          |
 .NET 10 Web API (Port 5143)
     |
@@ -59,7 +61,11 @@ Angular 21 SPA (Port 4200)
     │   ├── POST /api/insurance/fraud/correlate  → CorrelateClaimsCommand
     │   ├── GET  /api/insurance/fraud/correlations/{claimId} → GetCorrelationsQuery
     │   ├── PATCH /api/insurance/fraud/correlations/{id}/review → ReviewCorrelationCommand
-    │   └── DELETE /api/insurance/fraud/correlations/{claimId} → DeleteCorrelationsCommand
+    │   ├── DELETE /api/insurance/fraud/correlations/{claimId} → DeleteCorrelationsCommand
+    │   │   --- Sprint 5 (IN PROGRESS) ---
+    │   ├── POST /api/insurance/claims/batch      → BatchClaimUploadCommand (CSV)
+    │   ├── POST /api/insurance/documents/synthetic-qa → SyntheticQACommand
+    │   └── GET  /api/insurance/cx/history         → GetCxHistoryQuery
     │
     ├── PII Redaction Service (before external AI calls + DB storage)
     ├── Global Exception Handler (IExceptionHandler)
@@ -76,11 +82,13 @@ Angular 21 SPA (Port 4200)
          ├── Fraud Detection Agent (fraud scoring, SIU referral)
          └── Document Query Agent (RAG-based Q&A) [Sprint 4 Week 2]
               |
-         IResilientKernelProvider (5-Provider Fallback)
+         IResilientKernelProvider (7-Provider Fallback)
          ├── Groq (primary - Llama 3.3 70B, 250 req/day free)
-         ├── Mistral (secondary - 500K tokens/month free)
-         ├── Gemini (tertiary - 60 req/min free)
+         ├── Cerebras (secondary - fast inference)
+         ├── Mistral (tertiary - 500K tokens/month free)
+         ├── Gemini (quaternary - 60 req/min free)
          ├── OpenRouter ($1 free credit)
+         ├── OpenAI (paid fallback)
          └── Ollama (local fallback - unlimited, PII-safe)
               |
          Multimodal Services
@@ -90,8 +98,12 @@ Angular 21 SPA (Port 4200)
          ├── OCR.space (document OCR)
          └── HuggingFace NER (entity extraction)
               |
-         Embedding Services [Sprint 4 Week 2]
+         Embedding Services [Sprint 4 Week 2, expanded Sprint 5]
          ├── Voyage AI (voyage-finance-2, 1024-dim, finance-optimized)
+         ├── Cohere (embed-english-v3.0) [Sprint 5]
+         ├── Gemini (text-embedding-004) [Sprint 5]
+         ├── HuggingFace (sentence-transformers) [Sprint 5]
+         ├── Jina (jina-embeddings-v3) [Sprint 5]
          └── Ollama nomic-embed-text (local fallback)
               |
          SQLite (development) / Supabase PostgreSQL (production)
@@ -112,11 +124,11 @@ Angular 21 SPA (Port 4200)
 | **Backend** | .NET 10, C# 13, ASP.NET Core | Minimal API + Controllers hybrid |
 | **CQRS** | MediatR 14.0 | Commands and Queries pattern |
 | **Agent System** | Microsoft Semantic Kernel 1.71.0 | AgentGroupChat, custom strategies |
-| **AI Providers** | Groq, Gemini, Ollama, OpenAI | OpenAI-compatible API abstraction |
+| **AI Providers** | Groq, Cerebras, Mistral, Gemini, OpenRouter, OpenAI, Ollama | 7-provider LLM fallback chain |
 | **Database** | EF Core 10 + SQLite / Supabase PostgreSQL | Repository pattern, dual provider |
 | **Auth** | Supabase JWT (optional) | JwtBearer middleware |
 | **PII Security** | PIIRedactionService | SSN, policy#, claim#, phone, email |
-| **Testing** | xUnit + Moq (backend), Vitest (frontend), Playwright (E2E) | 461 backend tests, 235 frontend unit tests, 357 E2E tests (1,053 total) |
+| **Testing** | xUnit + Moq (backend), Vitest (frontend), Playwright (E2E) | ~530 backend, ~443 frontend, ~450 E2E (~1,423 total — Sprint 5 in progress) |
 
 ---
 
@@ -129,6 +141,7 @@ SentimentAnalyzer/
 │   ├── Endpoints/
 │   │   ├── InsuranceEndpoints.cs              # v2 Minimal API + MediatR
 │   │   ├── ClaimsEndpoints.cs                 # Claims triage + evidence upload
+│   │   ├── BatchClaimEndpoints.cs             # Batch CSV claims upload [Sprint 5]
 │   │   ├── FraudEndpoints.cs                  # Fraud analysis + alerts
 │   │   └── ProviderHealthEndpoints.cs         # Provider health monitoring
 │   ├── Features/
@@ -148,18 +161,32 @@ SentimentAnalyzer/
 │   │   ├── SqliteAnalysisRepository.cs        # SQLite implementation
 │   │   ├── IClaimsRepository.cs               # Claims domain repository
 │   │   ├── SqliteClaimsRepository.cs          # Claims SQLite implementation
+│   │   ├── ICxConversationRepository.cs       # CX conversation persistence [Sprint 5]
+│   │   ├── SqliteCxConversationRepository.cs  # CX conversation SQLite impl [Sprint 5]
 │   │   └── Entities/
 │   │       ├── AnalysisRecord.cs              # Sentiment analysis entity
 │   │       ├── ClaimRecord.cs                 # Claims triage entity
 │   │       ├── ClaimEvidenceRecord.cs         # Multimodal evidence entity
-│   │       └── ClaimActionRecord.cs           # Recommended actions entity
+│   │       ├── ClaimActionRecord.cs           # Recommended actions entity
+│   │       └── CxConversationRecord.cs        # CX conversation memory entity [Sprint 5]
 │   ├── Models/                                 # Request/Response DTOs
 │   ├── Services/
 │   │   ├── PIIRedactionService.cs             # PII redaction (mandatory)
 │   │   ├── Claims/
 │   │   │   ├── ClaimsOrchestrationService.cs  # Claims triage facade
-│   │   │   └── MultimodalEvidenceProcessor.cs # MIME routing + NER
+│   │   │   ├── MultimodalEvidenceProcessor.cs # MIME routing + NER
+│   │   │   ├── BatchClaimService.cs           # Batch CSV claims processing [Sprint 5]
+│   │   │   └── IBatchClaimService.cs          # Batch claims interface [Sprint 5]
 │   │   ├── Fraud/FraudAnalysisService.cs      # Fraud scoring facade
+│   │   ├── Documents/
+│   │   │   ├── BM25Scorer.cs                  # BM25 keyword scoring for hybrid retrieval [Sprint 5]
+│   │   │   └── HybridRetrievalService.cs      # BM25 + vector semantic retrieval (α=0.7/β=0.3) [Sprint 5]
+│   │   ├── Embeddings/
+│   │   │   ├── ResilientEmbeddingProvider.cs   # 6-provider embedding fallback chain
+│   │   │   ├── CohereEmbeddingService.cs      # Cohere embed-english-v3.0 [Sprint 5]
+│   │   │   ├── GeminiEmbeddingService.cs      # Gemini text-embedding-004 [Sprint 5]
+│   │   │   ├── HuggingFaceEmbeddingService.cs # HuggingFace sentence-transformers [Sprint 5]
+│   │   │   └── JinaEmbeddingService.cs        # Jina embeddings-v3 [Sprint 5]
 │   │   ├── ISentimentService.cs               # v1 (frozen)
 │   │   └── OpenAISentimentService.cs          # v1 (frozen)
 │   ├── Middleware/GlobalExceptionHandler.cs
@@ -184,8 +211,8 @@ SentimentAnalyzer/
 │
 ├── Frontend/sentiment-analyzer-ui/
 │   └── src/app/
-│       ├── components/ (18 total)
-│       │   ├── landing/                          # Public landing page (interactive platform showcase)
+│       ├── components/ (22 total)
+│       │   ├── landing/                          # Public landing page (parallax enhancements Sprint 5)
 │       │   ├── sentiment-analyzer/               # v1 general analyzer (legacy)
 │       │   ├── insurance-analyzer/               # v2 insurance analysis UI
 │       │   ├── dashboard/                        # Analytics dashboard (Chart.js charts)
@@ -202,12 +229,16 @@ SentimentAnalyzer/
 │       │   ├── document-query/                   # RAG Q&A with citations + confidence gauge (Sprint 4)
 │       │   ├── document-result/                  # Document detail + chunks browser + inline Q&A (Sprint 4)
 │       │   ├── cx-copilot/                       # CX Copilot SSE streaming chat (Sprint 4)
-│       │   └── fraud-correlation/                # Cross-claim fraud correlation + review workflow (Sprint 4)
-│       ├── services/ (sentiment, insurance, claims, document, customer-experience, fraud-correlation, auth, theme, analysis-state)
+│       │   ├── fraud-correlation/                # Cross-claim fraud correlation + review workflow (Sprint 4)
+│       │   ├── batch-upload/                     # Batch CSV claims upload (Sprint 5)
+│       │   ├── breadcrumb/                       # Breadcrumb navigation (Sprint 5)
+│       │   ├── command-palette/                  # Ctrl+K command palette (Sprint 5)
+│       │   └── toast/                            # Toast notification system (Sprint 5)
+│       ├── services/ (sentiment, insurance, claims, document, customer-experience, fraud-correlation, auth, theme, analysis-state, breadcrumb, command-registry, scroll, toast)
 │       ├── models/ (sentiment.model, insurance.model, claims.model, document.model)
 │       ├── guards/ (auth.guard, guest.guard)
 │       └── interceptors/ (auth.interceptor, error.interceptor)
-│   └── e2e/ (16 spec files, 357 tests)
+│   └── e2e/ (25 spec files, ~450 tests)
 │       ├── fixtures/mock-data.ts                 # Realistic insurance mock API responses
 │       ├── helpers/api-mocks.ts                  # page.route() interceptors for all endpoints
 │       ├── navigation.spec.ts                    # Route navigation, mobile menu
@@ -225,9 +256,16 @@ SentimentAnalyzer/
 │       ├── document-upload.spec.ts               # Document upload + type selector (Sprint 4)
 │       ├── document-query.spec.ts                # RAG Q&A + source citations (Sprint 4)
 │       ├── cx-copilot.spec.ts                    # SSE streaming chat + escalation (Sprint 4)
-│       └── fraud-correlation.spec.ts             # Cross-claim correlation + review (Sprint 4)
+│       ├── fraud-correlation.spec.ts             # Cross-claim correlation + review (Sprint 4)
+│       ├── batch-upload.spec.ts                  # Batch CSV claims upload (Sprint 5)
+│       ├── breadcrumbs.spec.ts                   # Breadcrumb navigation (Sprint 5)
+│       ├── command-palette.spec.ts               # Ctrl+K command palette (Sprint 5)
+│       ├── cx-copilot-memory.spec.ts             # CX conversation memory (Sprint 5)
+│       ├── micro-interactions.spec.ts            # Micro-interactions + animations (Sprint 5)
+│       ├── parallax-landing.spec.ts              # Parallax landing page (Sprint 5)
+│       └── toast.spec.ts                         # Toast notifications (Sprint 5)
 │
-├── Tests/ (461 tests)
+├── Tests/ (~530 tests)
 │   ├── SentimentControllerTests.cs             # v1 regression (9 tests - FROZEN)
 │   ├── InsuranceAnalysisControllerTests.cs     # CQRS handler tests (27 tests)
 │   ├── PIIRedactionTests.cs                    # PII redaction tests (11 tests)
@@ -251,8 +289,18 @@ SentimentAnalyzer/
 │   ├── ClaimsRepositoryTests.cs                # Claims DB persistence (6 tests)
 │   ├── GetClaimHandlerTests.cs                 # Claims query handler (4 tests)
 │   ├── FraudCommandsTests.cs                   # Fraud commands (4 tests)
-│   └── ProviderHealthTests.cs                  # Provider health (5 tests)
+│   ├── ProviderHealthTests.cs                  # Provider health (5 tests)
+│   ├── BatchClaimServiceTests.cs               # Batch CSV claims processing [Sprint 5]
+│   ├── BM25ScorerTests.cs                      # BM25 keyword scoring [Sprint 5]
+│   ├── HybridRetrievalServiceTests.cs          # Hybrid BM25+vector retrieval [Sprint 5]
+│   ├── CxConversationMemoryTests.cs            # CX conversation persistence [Sprint 5]
+│   ├── CohereEmbeddingServiceTests.cs          # Cohere embedding provider [Sprint 5]
+│   ├── GeminiEmbeddingServiceTests.cs          # Gemini embedding provider [Sprint 5]
+│   ├── HuggingFaceEmbeddingServiceTests.cs     # HuggingFace embedding provider [Sprint 5]
+│   └── JinaEmbeddingServiceTests.cs            # Jina embedding provider [Sprint 5]
 │
+├── .github/
+│   └── workflows/ci.yml                        # GitHub Actions CI/CD (3 parallel jobs) [Sprint 5]
 ├── PROJECT_CONTEXT.md (this file)
 ├── SPRINT-ROADMAP.md
 ├── REVIEW.md
@@ -369,6 +417,13 @@ npm test
 | PATCH | `/api/insurance/fraud/correlations/{id}/review` | Review correlation (Confirm/Dismiss with reason) |
 | DELETE | `/api/insurance/fraud/correlations/{claimId}` | Delete all correlations for a claim |
 
+### v2 (Batch Claims + CX Memory + Synthetic QA — Sprint 5 IN PROGRESS)
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/claims/batch` | Batch CSV claims upload (parse → triage → store) |
+| POST | `/api/insurance/documents/synthetic-qa` | Generate synthetic Q&A pairs from indexed documents |
+| GET | `/api/insurance/cx/history` | Retrieve CX conversation history (persisted memory) |
+
 ---
 
 ## v1 Frozen Files (NEVER modify)
@@ -385,6 +440,56 @@ npm test
 # CHANGELOG
 
 All sessions, reviews, decisions, and changes are logged here in reverse chronological order.
+
+---
+
+## [2026-02-28] Sprint 5: Hybrid RAG + Batch Claims + CX Memory + UX Enhancements (IN PROGRESS)
+
+### What Was Built
+
+**Backend Features:**
+- **Batch Claims CSV Upload**: `BatchClaimService` + `IBatchClaimService` + `BatchClaimEndpoints` — parse CSV, validate rows, triage each claim, store results
+- **CX Conversation Memory**: `CxConversationRecord` entity + `ICxConversationRepository` + `SqliteCxConversationRepository` — persist chat history across sessions
+- **Hybrid RAG Retrieval**: `BM25Scorer` (Okapi BM25 keyword scoring) + `HybridRetrievalService` — combines BM25 keyword search (beta=0.3) with vector semantic search (alpha=0.7) for improved document retrieval accuracy
+- **4 New Embedding Providers**: Cohere (`embed-english-v3.0`), Gemini (`text-embedding-004`), HuggingFace (`sentence-transformers`), Jina (`jina-embeddings-v3`) — 6-provider chain: Voyage AI -> Cohere -> Gemini -> HuggingFace -> Jina -> Ollama
+- **GitHub Actions CI/CD**: `.github/workflows/ci.yml` with 3 parallel jobs (backend-tests, frontend-unit-tests, e2e-tests)
+
+**Frontend Features (4 new components, 4 new services):**
+- **batch-upload**: Batch CSV claims upload component with file validation, progress tracking, result summary
+- **breadcrumb**: Dynamic breadcrumb navigation component + `breadcrumb.service.ts` — route-aware hierarchy
+- **command-palette**: Ctrl+K command palette component + `command-registry.service.ts` — global action search
+- **toast**: Toast notification system component + `toast.service.ts` — signal-based success/error/warning/info toasts
+- **scroll.service.ts**: Scroll position tracking and smooth navigation
+- **Parallax landing enhancements**: Improved parallax effects on landing page hero and sections
+- **Landing page spec**: Unit test coverage for landing component
+
+**New Endpoints (3):**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/insurance/claims/batch` | Batch CSV claims upload |
+| POST | `/api/insurance/documents/synthetic-qa` | Synthetic QA generation from indexed documents |
+| GET | `/api/insurance/cx/history` | CX conversation history retrieval |
+
+**New E2E Spec Files (7):**
+- `batch-upload.spec.ts`, `breadcrumbs.spec.ts`, `command-palette.spec.ts`, `cx-copilot-memory.spec.ts`, `micro-interactions.spec.ts`, `parallax-landing.spec.ts`, `toast.spec.ts`
+
+**New Backend Test Files (8):**
+- `BatchClaimServiceTests.cs`, `BM25ScorerTests.cs`, `HybridRetrievalServiceTests.cs`, `CxConversationMemoryTests.cs`, `CohereEmbeddingServiceTests.cs`, `GeminiEmbeddingServiceTests.cs`, `HuggingFaceEmbeddingServiceTests.cs`, `JinaEmbeddingServiceTests.cs`
+
+### Architecture Changes
+- **LLM Providers**: 5 -> 7 (added Cerebras, OpenAI to chain: Groq -> Cerebras -> Mistral -> Gemini -> OpenRouter -> OpenAI -> Ollama)
+- **Embedding Providers**: 2 -> 6 (added Cohere, Gemini, HuggingFace, Jina)
+- **Angular Components**: 18 -> 22
+- **Routes**: 15 -> 16
+- **E2E Spec Files**: 16 -> 25 (including landing page spec)
+
+### Test Counts (Sprint 5 — In Progress)
+| Suite | Count | Status |
+|-------|-------|--------|
+| Backend (xUnit) | ~530 | IN PROGRESS |
+| Frontend (Vitest) | ~443 | IN PROGRESS |
+| E2E (Playwright) | ~450 | IN PROGRESS |
+| **Total** | **~1,423** | **IN PROGRESS** |
 
 ---
 

@@ -4,6 +4,74 @@ This file tracks all review sessions and quality assessments. For full project c
 
 ---
 
+## Review Session #9 — 2026-02-28 (Sprint 5: Hybrid RAG + Batch Claims + UX Revamp + CI/CD — IN PROGRESS)
+
+### Status: IN PROGRESS
+
+### What Was Built
+
+**Backend Features:**
+- **Batch Claims CSV Upload**: `BatchClaimService` + `BatchClaimEndpoints` — bulk CSV ingestion for claims processing
+- **CX Conversation Memory/Persistence**: `CxConversationRecord` entity, `ICxConversationRepository` interface, `SqliteCxConversationRepository` implementation — persistent chat history across sessions
+- **Hybrid RAG Retrieval**: `BM25Scorer` (keyword scoring) + `HybridRetrievalService` — combines BM25 keyword search with vector semantic search using weighted fusion (alpha=0.7 semantic / beta=0.3 keyword)
+- **4 New Embedding Providers**: Cohere, Gemini, HuggingFace, Jina — extends fallback chain to Voyage AI -> Cohere -> Gemini -> HuggingFace -> Jina -> Ollama (6-provider chain)
+- **GitHub Actions CI/CD Pipeline**: `.github/workflows/ci.yml` with 3 parallel jobs (backend-tests, frontend-unit-tests, e2e-tests)
+
+**Frontend Features:**
+- **Batch Upload Component** (`batch-upload/`): CSV file upload for bulk claims processing
+- **Breadcrumb Navigation** (`breadcrumb/` + `breadcrumb.service.ts`): Context-aware breadcrumb trail across all routes
+- **Command Palette** (`command-palette/` + `command-registry.service.ts`): Ctrl+K keyboard shortcut for quick navigation and command execution
+- **Toast Notification System** (`toast/` + `toast.service.ts`): Signal-based toast notifications integrated into claims-triage, document-upload, fraud-correlation, cx-copilot
+- **Scroll Service** (`scroll.service.ts`): Scroll position tracking and smooth scroll utilities
+- **Parallax Landing Page Enhancements**: Floating shapes, gradient morph dividers, per-section decorative elements
+- **Landing Page Spec** (`landing.spec.ts`): Unit tests for the landing page component
+
+**New API Endpoints:**
+- `POST /api/insurance/claims/batch` — Batch CSV claims upload
+- `POST /api/insurance/documents/synthetic-qa` — Synthetic Q&A generation for RAG evaluation
+- `GET /api/insurance/cx/history` — CX conversation history retrieval
+
+### Files: ~40 new files created, ~50 modified
+
+### Estimated Test Results
+| Suite | Count | Delta | Status |
+|-------|-------|-------|--------|
+| Backend (xUnit) | ~530 | +69 | IN PROGRESS |
+| Frontend (Vitest) | ~443 | +208 | IN PROGRESS |
+| E2E (Playwright) | ~450 | +93 | IN PROGRESS |
+| **Total** | **~1,423** | **+370** | **IN PROGRESS** |
+
+### New Backend Test Files
+- `BM25ScorerTests.cs` — BM25 keyword scoring algorithm tests
+- `BatchClaimServiceTests.cs` — Batch CSV parsing and validation tests
+- `CohereEmbeddingServiceTests.cs` — Cohere embedding provider tests
+- `CxConversationMemoryTests.cs` — Conversation persistence and retrieval tests
+- `GeminiEmbeddingServiceTests.cs` — Gemini embedding provider tests
+- `HuggingFaceEmbeddingServiceTests.cs` — HuggingFace embedding provider tests
+- `HybridRetrievalServiceTests.cs` — Hybrid RAG retrieval fusion tests
+- `JinaEmbeddingServiceTests.cs` — Jina embedding provider tests
+
+### New E2E Spec Files
+- `batch-upload.spec.ts` — Batch CSV upload user journey
+- `breadcrumbs.spec.ts` — Breadcrumb navigation across routes
+- `command-palette.spec.ts` — Ctrl+K command palette interactions
+- `cx-copilot-memory.spec.ts` — CX Copilot conversation persistence
+- `micro-interactions.spec.ts` — UI micro-interaction animations and feedback
+- `parallax-landing.spec.ts` — Parallax landing page scroll behavior
+- `toast.spec.ts` — Toast notification display and dismissal
+
+### Key Technical Decisions
+- **Hybrid RAG fusion weights**: alpha=0.7 (semantic/vector) / beta=0.3 (BM25/keyword) — semantic search weighted higher for insurance domain where meaning matters more than exact keyword matches
+- **Embedding fallback chain expansion**: 6-provider chain (Voyage AI -> Cohere -> Gemini -> HuggingFace -> Jina -> Ollama) for maximum resilience
+- **BM25 scoring**: Local BM25 keyword scoring avoids API calls, complements vector similarity for hybrid retrieval
+- **CX conversation persistence**: SQLite-backed repository with full conversation thread storage for multi-session chat continuity
+- **Command palette**: Ctrl+K shortcut follows industry convention (VS Code, GitHub, Slack) for power-user navigation
+- **Toast notifications**: Signal-based architecture integrated into 4 existing components for consistent user feedback
+- **CI/CD**: GitHub Actions with 3 parallel jobs to minimize pipeline duration; separate jobs for backend, frontend unit, and E2E tests
+- **Angular totals**: 22 components (+4), 16 routes (+1)
+
+---
+
 ## Review Session #8 — 2026-02-26 (Sprint 4 Week 4: Frontend + E2E + MCP + Documentation — 3-Iteration Adversarial Review)
 
 ### Reviewers

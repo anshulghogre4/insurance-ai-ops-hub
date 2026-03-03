@@ -3,8 +3,11 @@
 ## URL Structure
 - v1 (legacy, frozen): `/api/sentiment/{action}`
 - v2 (insurance): `/api/insurance/{action}`
+- v2 (batch claims, v5.0): `/api/insurance/claims/batch`
 - v2 (documents, v4.0 Week 2): `/api/insurance/documents/{action}`
+- v2 (synthetic QA, v5.0): `/api/insurance/documents/synthetic-qa`
 - v2 (CX copilot, v4.0 Week 3): `/api/insurance/cx/{action}`
+- v2 (CX history, v5.0): `/api/insurance/cx/history`
 - Health: `/api/sentiment/health` (v1), `/api/insurance/health` (v2)
 
 ## v2 Response Envelope
@@ -93,6 +96,13 @@ The following endpoints are consumed by the 5 new Angular components added in We
 | `/api/insurance/fraud/correlate` | POST | Trigger cross-claim correlation | `{ claimId }` | `{ claimId, correlations: [...], count }` |
 | `/api/insurance/fraud/correlations/{claimId}` | GET | Get correlations for a claim | Path + query: `?page=1&pageSize=20` | `PaginatedResponse<FraudCorrelation>` |
 | `/api/insurance/fraud/correlations/{claimId}` | DELETE | Delete all correlations for a claim | Path param | `204 No Content` |
+
+## Sprint 5 Endpoints
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/insurance/claims/batch` | POST | Batch upload claims via CSV |
+| `/api/insurance/documents/synthetic-qa` | POST | Generate synthetic Q&A pairs from document chunks |
+| `/api/insurance/cx/history` | GET | Get CX conversation history |
 
 ## HTTP Status Codes
 - 200: Successful analysis

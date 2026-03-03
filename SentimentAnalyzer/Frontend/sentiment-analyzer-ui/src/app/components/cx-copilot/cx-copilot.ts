@@ -54,7 +54,7 @@ const SESSION_STORAGE_KEY = 'cx-copilot-session-id';
       </div>
 
       <!-- Chat Messages Area -->
-      <div class="flex-1 overflow-y-auto mb-4 space-y-4 scrollbar-thin" #chatContainer>
+      <div class="flex-1 overflow-y-auto mb-4 space-y-4 scrollbar-thin" tabindex="0" role="log" aria-label="Chat messages" #chatContainer>
         @if (isLoadingHistory()) {
           <div class="text-center py-8 animate-fade-in">
             <div class="inline-flex items-center gap-2 text-sm" [style.color]="'var(--text-muted)'">

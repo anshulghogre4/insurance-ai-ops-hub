@@ -57,7 +57,16 @@ e2e/
 ├── document-upload.spec.ts          # Document upload + type selector (Sprint 4 Week 4)
 ├── document-query.spec.ts           # RAG Q&A + source citations (Sprint 4 Week 4)
 ├── cx-copilot.spec.ts               # SSE streaming chat + typing indicator (Sprint 4 Week 4)
-└── fraud-correlation.spec.ts        # Cross-claim correlation + review workflow (Sprint 4 Week 4)
+├── fraud-correlation.spec.ts        # Cross-claim correlation + review workflow (Sprint 4 Week 4)
+├── batch-upload.spec.ts             # Batch CSV claims upload (Sprint 5)
+├── breadcrumbs.spec.ts              # Breadcrumb navigation (Sprint 5)
+├── command-palette.spec.ts          # Ctrl+K command palette (Sprint 5)
+├── content-safety.spec.ts           # Content safety screening (Sprint 5)
+├── cx-copilot-memory.spec.ts        # CX conversation persistence (Sprint 5)
+├── fine-tuning-qa.spec.ts           # Synthetic QA for fine-tuning (Sprint 5)
+├── micro-interactions.spec.ts       # UI micro-interactions (Sprint 5)
+├── parallax-landing.spec.ts         # Parallax landing page effects (Sprint 5)
+└── toast.spec.ts                    # Toast notifications (Sprint 5)
 ```
 
 ### E2E Rules
@@ -95,12 +104,12 @@ The Playwright MCP server (`@playwright/mcp@latest`) enables AI-assisted E2E tes
 5. Mock data added to `e2e/fixtures/mock-data.ts` for new endpoints
 
 ### Sprint 4 Test Counts (COMPLETE)
-| Category | Sprint 3 End | Sprint 4 Week 3 | Sprint 4 Week 4 | Status |
-|----------|-------------|----------------|----------------|--------|
-| Backend (xUnit) | 246 | **461** | **461** | +215 new tests (Weeks 1-3) |
-| Frontend Unit (Vitest) | 199 | 199 | **235** | +36 new tests (Week 4) |
-| E2E (Playwright) | 263 | 263 | **357** | +94 new tests (Week 4) |
-| **Grand Total** | **708** | **923** | **1,053** | **0 failures** |
+| Category | Sprint 3 End | Sprint 4 Week 3 | Sprint 4 Week 4 | Sprint 5 (est.) | Status |
+|----------|-------------|----------------|----------------|----------------|--------|
+| Backend (xUnit) | 246 | **461** | **461** | **~530** | +~69 new tests (Sprint 5) |
+| Frontend Unit (Vitest) | 199 | 199 | **235** | **~443** | +~208 new tests (Sprint 5) |
+| E2E (Playwright) | 263 | 263 | **357** | **~450** | +~93 new tests (Sprint 5) |
+| **Grand Total** | **708** | **923** | **1,053** | **~1,423** | **0 failures** |
 
 ### Week 4 New Test Files
 | Test File | Type | Tests | Coverage |
@@ -118,6 +127,19 @@ The Playwright MCP server (`@playwright/mcp@latest`) enables AI-assisted E2E tes
 | cx-copilot.spec.ts (E2E) | E2E | ~10 | SSE streaming chat, typing indicator, message history, escalation |
 | fraud-correlation.spec.ts (E2E) | E2E | ~8 | Linked claims, correlation indicators, review workflow, empty state |
 | accessibility.spec.ts (updated) | E2E | +4 | axe-core scans for 4 new routes (15 total routes scanned) |
+
+### Sprint 5 New Test Files
+| Test File | Type | Tests | Coverage |
+|-----------|------|-------|----------|
+| BM25ScorerTests.cs | Backend | ~6 | BM25 keyword scoring, IDF calculation, term frequency |
+| BatchClaimServiceTests.cs | Backend | ~8 | Batch CSV parsing, validation, bulk triage |
+| CohereEmbeddingServiceTests.cs | Backend | ~6 | Cohere API calls, error handling, dimension validation |
+| CxConversationMemoryTests.cs | Backend | ~8 | Conversation save/load, session management, history |
+| GeminiEmbeddingServiceTests.cs | Backend | ~6 | Gemini embedding API, error handling |
+| HuggingFaceEmbeddingServiceTests.cs | Backend | ~6 | HuggingFace sentence-transformers, error handling |
+| HybridRetrievalServiceTests.cs | Backend | ~8 | BM25+vector fusion, score normalization, ranking |
+| JinaEmbeddingServiceTests.cs | Backend | ~6 | Jina API calls, error handling |
+| SyntheticQAServiceTests.cs | Backend | ~6 | QA pair generation from chunks, quality scoring |
 
 ### SSE Mock Pattern (CX Copilot E2E)
 CX Copilot E2E tests mock SSE streaming using Playwright's `page.route()` with a custom `ReadableStream` response:

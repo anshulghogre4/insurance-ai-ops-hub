@@ -344,8 +344,17 @@ using (var scope = app.Services.CreateScope())
     {
         db.Database.ExecuteSqlRaw("PRAGMA journal_mode=WAL;");
 
-        // EnsureCreated() does NOT add new columns to existing tables.
-        // This block adds columns introduced after initial table creation (Sprint 4+).
+        // ──────────────────────────────────────────────────────────────
+        // SQLite Auto-Migration Block
+        // ──────────────────────────────────────────────────────────────
+        // EnsureCreated() does NOT add columns/tables to existing databases.
+        // Every new entity property or table MUST have an entry here.
+        // Rules:
+        //   1. ALTER TABLE for new columns on existing tables
+        //   2. CREATE TABLE IF NOT EXISTS for new tables
+        //   3. CREATE INDEX IF NOT EXISTS for indexes on manually-created tables
+        //   4. All operations are idempotent — safe to re-run
+        // ──────────────────────────────────────────────────────────────
         var conn = db.Database.GetDbConnection();
         conn.Open();
         using var cmd = conn.CreateCommand();
@@ -363,31 +372,122 @@ using (var scope = app.Services.CreateScope())
             return false;
         }
 
-        // Sprint 4: EntitiesJson added to ClaimEvidence
+        // Helper: returns true if table exists in the database
+        bool TableExists(string table)
+        {
+            cmd.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}';";
+            return Convert.ToInt32(cmd.ExecuteScalar()) > 0;
+        }
+
+        // ── Column Migrations (ALTER TABLE) ─────────────────────────
+        // Every entity property must be listed here. Even if it was in the
+        // "original" schema, the DB may have been created on an older version.
+
+        // -- ClaimEvidence --
         if (!ColumnExists("ClaimEvidence", "EntitiesJson"))
-        {
             db.Database.ExecuteSqlRaw("ALTER TABLE ClaimEvidence ADD COLUMN EntitiesJson TEXT NOT NULL DEFAULT '[]';");
-        }
 
-        // Feature 3: Content Safety columns on DocumentChunks
+        // -- DocumentChunks (all non-original columns) --
+        if (!ColumnExists("DocumentChunks", "PageNumber"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN PageNumber INTEGER;");
+        if (!ColumnExists("DocumentChunks", "ChunkLevel"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN ChunkLevel INTEGER NOT NULL DEFAULT 0;");
+        if (!ColumnExists("DocumentChunks", "ParentChunkId"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN ParentChunkId INTEGER;");
         if (!ColumnExists("DocumentChunks", "IsSafe"))
-        {
             db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN IsSafe INTEGER NOT NULL DEFAULT 1;");
-        }
         if (!ColumnExists("DocumentChunks", "SafetyFlags"))
-        {
             db.Database.ExecuteSqlRaw("ALTER TABLE DocumentChunks ADD COLUMN SafetyFlags TEXT;");
+
+        // -- Documents (all non-original columns) --
+        if (!ColumnExists("Documents", "ExtractedText"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN ExtractedText TEXT NOT NULL DEFAULT '';");
+        if (!ColumnExists("Documents", "PageCount"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN PageCount INTEGER NOT NULL DEFAULT 0;");
+        if (!ColumnExists("Documents", "ChunkCount"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN ChunkCount INTEGER NOT NULL DEFAULT 0;");
+        if (!ColumnExists("Documents", "EmbeddingProvider"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN EmbeddingProvider TEXT NOT NULL DEFAULT '';");
+        if (!ColumnExists("Documents", "EmbeddingDimensions"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN EmbeddingDimensions INTEGER NOT NULL DEFAULT 0;");
+        if (!ColumnExists("Documents", "ErrorMessage"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN ErrorMessage TEXT;");
+        if (!ColumnExists("Documents", "UpdatedAt"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Documents ADD COLUMN UpdatedAt TEXT;");
+
+        // -- Claims (columns that may have been added after initial schema) --
+        if (!ColumnExists("Claims", "FraudRiskLevel"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Claims ADD COLUMN FraudRiskLevel TEXT NOT NULL DEFAULT 'VeryLow';");
+        if (!ColumnExists("Claims", "FraudAnalysisJson"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Claims ADD COLUMN FraudAnalysisJson TEXT NOT NULL DEFAULT '{}';");
+        if (!ColumnExists("Claims", "FraudFlagsJson"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Claims ADD COLUMN FraudFlagsJson TEXT NOT NULL DEFAULT '[]';");
+        if (!ColumnExists("Claims", "UpdatedAt"))
+            db.Database.ExecuteSqlRaw("ALTER TABLE Claims ADD COLUMN UpdatedAt TEXT;");
+
+        // ── Table Migrations (CREATE TABLE IF NOT EXISTS) ───────────
+
+        // Sprint 4: CX Copilot conversation memory
+        if (!TableExists("CxConversations"))
+        {
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE CxConversations (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SessionId TEXT NOT NULL DEFAULT '',
+                MessagesJson TEXT NOT NULL DEFAULT '[]',
+                LastActivityUtc TEXT NOT NULL DEFAULT '0001-01-01T00:00:00',
+                TurnCount INTEGER NOT NULL DEFAULT 0
+            );");
+            db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IX_CxConversations_SessionId ON CxConversations(SessionId);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_CxConversations_LastActivityUtc ON CxConversations(LastActivityUtc);");
         }
 
-        // Feature 4: DocumentQAPairs table (may not exist if DB was created before Feature 4)
-        try
+        // Sprint 4: CX Copilot interaction audit trail (regulatory compliance)
+        if (!TableExists("CxInteractions"))
         {
-            cmd.CommandText = "SELECT 1 FROM DocumentQAPairs LIMIT 1;";
-            cmd.ExecuteNonQuery();
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE CxInteractions (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                MessageHash TEXT NOT NULL DEFAULT '',
+                MessageLength INTEGER NOT NULL DEFAULT 0,
+                ResponseText TEXT NOT NULL DEFAULT '',
+                Tone TEXT NOT NULL DEFAULT 'Professional',
+                EscalationRecommended INTEGER NOT NULL DEFAULT 0,
+                EscalationReason TEXT,
+                LlmProvider TEXT NOT NULL DEFAULT '',
+                ElapsedMilliseconds INTEGER NOT NULL DEFAULT 0,
+                HasClaimContext INTEGER NOT NULL DEFAULT 0,
+                WasStreamed INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00'
+            );");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_CxInteractions_CreatedAt ON CxInteractions(CreatedAt);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_CxInteractions_EscalationRecommended ON CxInteractions(EscalationRecommended);");
         }
-        catch
+
+        // Sprint 4: Fraud correlation records
+        if (!TableExists("FraudCorrelations"))
         {
-            db.Database.ExecuteSqlRaw(@"CREATE TABLE IF NOT EXISTS DocumentQAPairs (
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE FraudCorrelations (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                SourceClaimId INTEGER NOT NULL,
+                CorrelatedClaimId INTEGER NOT NULL,
+                CorrelationType TEXT NOT NULL DEFAULT '',
+                CorrelationScore REAL NOT NULL DEFAULT 0.0,
+                Details TEXT NOT NULL DEFAULT '',
+                DetectedAt TEXT NOT NULL DEFAULT '0001-01-01T00:00:00',
+                Status TEXT NOT NULL DEFAULT 'Pending',
+                ReviewedBy TEXT,
+                ReviewedAt TEXT,
+                DismissalReason TEXT
+            );");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_FraudCorrelations_SourceClaimId ON FraudCorrelations(SourceClaimId);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_FraudCorrelations_CorrelatedClaimId ON FraudCorrelations(CorrelatedClaimId);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_FraudCorrelations_CorrelationScore ON FraudCorrelations(CorrelationScore);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_FraudCorrelations_DetectedAt ON FraudCorrelations(DetectedAt);");
+        }
+
+        // Sprint 5: Synthetic QA pairs for fine-tuning
+        if (!TableExists("DocumentQAPairs"))
+        {
+            db.Database.ExecuteSqlRaw(@"CREATE TABLE DocumentQAPairs (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT,
                 DocumentId INTEGER NOT NULL,
                 ChunkId INTEGER NOT NULL,
@@ -400,6 +500,9 @@ using (var scope = app.Services.CreateScope())
                 FOREIGN KEY (DocumentId) REFERENCES Documents(Id),
                 FOREIGN KEY (ChunkId) REFERENCES DocumentChunks(Id)
             );");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_DocumentQAPairs_DocumentId ON DocumentQAPairs(DocumentId);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_DocumentQAPairs_ChunkId ON DocumentQAPairs(ChunkId);");
+            db.Database.ExecuteSqlRaw("CREATE INDEX IX_DocumentQAPairs_Category ON DocumentQAPairs(Category);");
         }
     }
 }

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using SentimentAnalyzer.API.Data;
@@ -33,19 +34,11 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
     private readonly IHybridRetrievalService _hybridRetrieval;
     private readonly ILogger<DocumentIntelligenceService> _logger;
     private readonly IContentSafetyService? _contentSafety;
+    private readonly IServiceProvider _serviceProvider;
 
     /// <summary>
     /// Initializes the Document Intelligence RAG service.
     /// </summary>
-    /// <param name="ocrService">Resilient OCR provider for text extraction.</param>
-    /// <param name="chunkingService">Insurance-aware document chunking service.</param>
-    /// <param name="embeddingService">Resilient embedding provider for vector generation.</param>
-    /// <param name="documentRepository">Repository for document and chunk persistence.</param>
-    /// <param name="kernelProvider">Resilient kernel provider for LLM access with automatic fallback.</param>
-    /// <param name="piiRedactor">PII redaction service — mandatory before external AI calls.</param>
-    /// <param name="hybridRetrieval">Hybrid retrieval service for BM25 + vector fusion.</param>
-    /// <param name="logger">Structured logger for this service.</param>
-    /// <param name="contentSafety">Optional content safety screening service. Null disables screening (non-blocking).</param>
     public DocumentIntelligenceService(
         IDocumentOcrService ocrService,
         IDocumentChunkingService chunkingService,
@@ -55,6 +48,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         IPIIRedactor piiRedactor,
         IHybridRetrievalService hybridRetrieval,
         ILogger<DocumentIntelligenceService> logger,
+        IServiceProvider serviceProvider,
         IContentSafetyService? contentSafety = null)
     {
         _ocrService = ocrService ?? throw new ArgumentNullException(nameof(ocrService));
@@ -65,6 +59,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         _piiRedactor = piiRedactor ?? throw new ArgumentNullException(nameof(piiRedactor));
         _hybridRetrieval = hybridRetrieval ?? throw new ArgumentNullException(nameof(hybridRetrieval));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _contentSafety = contentSafety;
     }
 
@@ -357,8 +352,10 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         _logger.LogInformation("Document query: {QuestionLength} chars, documentId: {DocId}",
             question.Length, documentId?.ToString() ?? "all");
 
-        // Step 1: Embed the question
-        var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(question, "query", cancellationToken);
+        // Step 1: Embed the question using the SAME provider that indexed the target document.
+        // Cross-provider cosine similarity is meaningless (different vector spaces).
+        var embeddingService = await ResolveQueryEmbeddingServiceAsync(documentId);
+        var queryEmbedding = await embeddingService.GenerateEmbeddingAsync(question, "query", cancellationToken);
         if (!queryEmbedding.IsSuccess)
         {
             return new DocumentQueryResult
@@ -545,6 +542,41 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
     }
 
     /// <summary>
+    /// Resolves the correct embedding service for query generation.
+    /// When querying a specific document, uses the same provider that indexed it
+    /// to ensure vector space compatibility. Falls back to the resilient provider
+    /// if the specific provider can't be resolved.
+    /// </summary>
+    private async Task<IEmbeddingService> ResolveQueryEmbeddingServiceAsync(int? documentId)
+    {
+        if (!documentId.HasValue)
+            return _embeddingService;
+
+        var document = await _documentRepository.GetDocumentByIdAsync(documentId.Value);
+        if (document == null || string.IsNullOrEmpty(document.EmbeddingProvider))
+            return _embeddingService;
+
+        // Strip "Resilient(...)" wrapper to get the actual provider name
+        var providerName = document.EmbeddingProvider;
+        if (providerName.StartsWith("Resilient(", StringComparison.Ordinal) && providerName.EndsWith(')'))
+            providerName = providerName["Resilient(".Length..^1];
+
+        var keyedService = _serviceProvider.GetKeyedService<IEmbeddingService>(providerName);
+        if (keyedService != null)
+        {
+            _logger.LogInformation(
+                "Query will use {Provider} to match document {DocId}'s index (indexed by {StoredProvider})",
+                providerName, documentId.Value, document.EmbeddingProvider);
+            return keyedService;
+        }
+
+        _logger.LogWarning(
+            "Could not resolve keyed embedding service '{Provider}' for document {DocId}. Falling back to resilient provider.",
+            providerName, documentId.Value);
+        return _embeddingService;
+    }
+
+    /// <summary>
     /// Screens chunk content through Azure Content Safety, setting IsSafe and SafetyFlags on each record.
     /// Insurance evidence documents may contain violent/harmful content that is legitimate evidence,
     /// so chunks are flagged but NEVER rejected. Non-blocking: if content safety is unavailable
@@ -566,28 +598,30 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         var screenedCount = 0;
         var flaggedCount = 0;
 
-        foreach (var chunk in chunkRecords)
+        // Parallel screening with concurrency limit to respect Azure Content Safety rate limits
+        await Parallel.ForEachAsync(chunkRecords,
+            new ParallelOptions { MaxDegreeOfParallelism = 5, CancellationToken = cancellationToken },
+            async (chunk, ct) =>
         {
             try
             {
-                var safetyResult = await _contentSafety.AnalyzeTextAsync(chunk.Content, cancellationToken);
+                var safetyResult = await _contentSafety.AnalyzeTextAsync(chunk.Content, ct);
 
                 if (!safetyResult.IsSuccess)
                 {
-                    // Content Safety unavailable or rate-limited — proceed without screening (non-blocking)
                     _logger.LogWarning(
                         "Content safety screening failed for chunk {ChunkIndex}: {Error} — proceeding without screening",
                         chunk.ChunkIndex, safetyResult.ErrorMessage);
-                    continue;
+                    return;
                 }
 
-                screenedCount++;
+                Interlocked.Increment(ref screenedCount);
                 chunk.IsSafe = safetyResult.IsSafe;
 
                 if (!safetyResult.IsSafe)
                 {
                     chunk.SafetyFlags = string.Join("|", safetyResult.FlaggedCategories);
-                    flaggedCount++;
+                    Interlocked.Increment(ref flaggedCount);
                     _logger.LogWarning(
                         "Chunk {ChunkIndex} flagged by Content Safety: {Flags} (retained as insurance evidence)",
                         chunk.ChunkIndex, chunk.SafetyFlags);
@@ -595,12 +629,11 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             }
             catch (Exception ex)
             {
-                // Non-blocking: any failure during screening should not halt document processing
                 _logger.LogWarning(ex,
                     "Content safety screening exception for chunk {ChunkIndex} — proceeding without screening",
                     chunk.ChunkIndex);
             }
-        }
+        });
 
         _logger.LogInformation(
             "Content safety screening complete: {Screened}/{Total} chunks screened, {Flagged} flagged",

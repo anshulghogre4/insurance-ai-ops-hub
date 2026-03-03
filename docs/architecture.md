@@ -18,15 +18,16 @@ Angular 21 SPA (Port 4200)
          ├── UX Designer Agent (screens/a11y)
          ├── Claims Triage Agent (v3.0)
          ├── Fraud Detection Agent (v3.0)
-         └── Document Query Agent (v4.0 planned - RAG Q&A)
+         └── Document Query Agent (v4.0 - RAG Q&A)
               |
-         IResilientKernelProvider (v3.0 - runtime fallback)
+         IResilientKernelProvider (v3.0 - runtime fallback, 7 providers)
          ├── Groq (primary, fast)
-         ├── Mistral (v3.0)
-         ├── Gemini (quality)
-         ├── OpenRouter (v3.0)
-         ├── Ollama (local, PII-safe, always-on fallback)
-         └── OpenAI (legacy v1)
+         ├── Cerebras (secondary, GPT-OSS 120B)
+         ├── Mistral (tertiary)
+         ├── Gemini (quaternary)
+         ├── OpenRouter (quinary)
+         ├── OpenAI (legacy v1)
+         └── Ollama (local, PII-safe, always-on fallback)
               |
          Multimodal Services (v3.0)
          ├── Deepgram (STT - voice notes/calls)
@@ -35,18 +36,29 @@ Angular 21 SPA (Port 4200)
          ├── OCR.space (document OCR)
          └── HuggingFace (NER - entity extraction)
               |
-         Embedding Services (v4.0 planned)
+         ResilientEmbeddingProvider (v5.0 - 6-provider chain)
          ├── Voyage AI (voyage-finance-2, 1024-dim)
+         ├── Cohere (embed-english-v3.0)
+         ├── Gemini (text-embedding-004)
+         ├── HuggingFace (sentence-transformers)
+         ├── Jina (embeddings-v3)
          └── Ollama nomic-embed-text (local fallback)
+              |
+         Sprint 5 Features
+         ├── Hybrid RAG (BM25 + Vector retrieval)
+         ├── CX Conversation Memory (persistent chat history)
+         ├── Batch Claims (CSV upload processing)
+         └── Synthetic QA (auto-generated Q&A from document chunks)
               |
          SQLite / Supabase (PostgreSQL)
               |
-         MCP Servers (v4.0 Week 4+)
+         MCP Servers (v5.0)
          ├── Playwright MCP (E2E test generation from browser)
-         └── Stitch MCP (Google Stitch AI design-to-code)
+         ├── Context7 MCP (up-to-date library documentation)
+         └── Sequential Thinking MCP (structured reasoning)
 ```
 
-## MCP Server Integration (Sprint 4 Week 4)
+## MCP Server Integration (Sprint 5)
 
 ### Active MCP Servers
 Configured in `.mcp.json` at project root:
@@ -54,7 +66,8 @@ Configured in `.mcp.json` at project root:
 | MCP Server | Package | Transport | Purpose |
 |-----------|---------|-----------|---------|
 | **Playwright** | `@playwright/mcp@latest` | stdio (headless) | Browser automation, E2E test generation from live browser sessions, exploratory testing |
-| **Stitch** | `@_davideast/stitch-mcp` | proxy | Google Stitch AI design-to-code pipeline for UI component generation |
+| **Context7** | `@upstash/context7-mcp@latest` | stdio | Up-to-date documentation for .NET 10, Angular 21, Semantic Kernel, and other libraries |
+| **Sequential Thinking** | `@anthropic/mcp-sequential-thinking` | stdio | Structured multi-step reasoning for architecture decisions and complex problem solving |
 
 ### How MCP Servers Integrate
 ```
@@ -66,21 +79,23 @@ Claude Code CLI
     │   ├── Generate Playwright test specs
     │   └── Capture screenshots for visual regression
     |
-    └── Stitch MCP Server (proxy)
-        ├── Accept text prompt describing UI component
-        ├── Generate design via Google Stitch AI
-        ├── Convert design to Angular 21 + Tailwind code
-        └── Output component files (*.ts, *.html, *.css)
+    ├── Context7 MCP Server (stdio)
+    │   ├── Resolve library IDs for any package
+    │   ├── Query up-to-date docs with code examples
+    │   └── Inform Claude with current API surfaces
+    |
+    └── Sequential Thinking MCP Server (stdio)
+        ├── Break down complex architecture decisions
+        ├── Multi-step reasoning with revision support
+        └── Hypothesis generation and verification
 ```
 
-### Sprint 5 MCP Ecosystem (Planned)
+### Future MCP Ecosystem (Planned)
 | MCP Server | Category | Purpose |
 |-----------|----------|---------|
 | Supabase | Database | Schema management, query testing, migrations |
 | GitHub | DevOps | PR management, automated code review, issues |
-| Context7 | Docs | Up-to-date docs for .NET 10, Angular 21, Semantic Kernel |
-| Sequential Thinking | Reasoning | Structured reasoning for architecture decisions |
-| Sentry | Monitoring | Error tracking across 5 LLM + 5 multimodal providers |
+| Sentry | Monitoring | Error tracking across 7 LLM + 5 multimodal providers |
 | Grafana | Observability | Provider health dashboards |
 | Snyk | Security | Dependency vulnerability scanning |
 | Upstash | Caching | Redis rate limiting + analysis caching |
@@ -134,11 +149,11 @@ The fraud-correlation component uses a split-card design:
 - **Review workflow**: Each correlation has Pending/Confirmed/Dismissed status with PATCH action buttons
 - **Confidence gauge**: Horizontal bar showing correlation confidence (0-100) with color zones
 
-### Angular Application Totals (v4.0)
-- **Components**: 18 (was 13 after Sprint 3)
-- **Routes**: 15 (was 10 after Sprint 3)
-- **Services**: claims, document, customer-experience, fraud-correlation, sentiment, insurance, auth, theme
-- **Model files**: claims.model.ts, document.model.ts
+### Angular Application Totals (v5.0)
+- **Components**: 22 (was 18 after Sprint 4)
+- **Routes**: 16 (was 15 after Sprint 4)
+- **Services**: claims, document, customer-experience, fraud-correlation, sentiment, insurance, auth, theme, breadcrumb, command-registry, scroll, toast
+- **Model files**: claims.model.ts, document.model.ts, batch-claim models
 
 ---
 
@@ -233,11 +248,12 @@ LLM agents produce non-deterministic output. The orchestrator uses resilient two
 
 ## Free AI Providers — LLM Fallback Chain
 1. **Groq** - Primary, fastest (Llama 3.3 70B, 250 req/day free)
-2. **Mistral** - Secondary (Mistral Large, 500K tokens/month free)
-3. **Gemini** - Tertiary (60 req/min free)
-4. **OpenRouter** - Quaternary ($1 free credit)
-5. **Ollama** - Local fallback, always available (unlimited, PII-safe)
+2. **Cerebras** - Secondary (GPT-OSS 120B, fast inference)
+3. **Mistral** - Tertiary (Mistral Large, 500K tokens/month free)
+4. **Gemini** - Quaternary (60 req/min free)
+5. **OpenRouter** - Quinary ($1 free credit)
 6. **OpenAI** - Legacy v1.0 provider only
+7. **Ollama** - Local fallback, always available (unlimited, PII-safe)
 
 Managed by `IResilientKernelProvider` with exponential backoff cooldown (30s/60s/120s/300s max).
 
@@ -252,11 +268,17 @@ Managed by `IResilientKernelProvider` with exponential backoff cooldown (30s/60s
 
 All use `HttpClient` REST — 0 new NuGet packages. PII redacted on output text.
 
-## Embedding Services (v4.0 Planned)
+## Embedding Services (v5.0 — 6-Provider Chain)
+Managed by `ResilientEmbeddingProvider` with automatic fallback.
+
 | Service | Provider | Free Tier | Use Case |
 |---------|----------|-----------|----------|
 | Embeddings (primary) | Voyage AI (`voyage-finance-2`) | 50M tokens | Finance-optimized 1024-dim |
-| Embeddings (fallback) | Ollama (`nomic-embed-text`) | Unlimited (local) | Local fallback |
+| Embeddings (secondary) | Cohere (`embed-english-v3.0`) | 1000 req/min | General-purpose, high quality |
+| Embeddings (tertiary) | Gemini (`text-embedding-004`) | 1500 req/min | Google ecosystem integration |
+| Embeddings (quaternary) | HuggingFace (`sentence-transformers`) | 300 req/hr | Open-source transformer models |
+| Embeddings (quinary) | Jina (`embeddings-v3`) | 10M tokens | Multi-language, flexible dimensions |
+| Embeddings (fallback) | Ollama (`nomic-embed-text`) | Unlimited (local) | Local fallback, PII-safe |
 
 ## Adding a New Agent
 1. Add system prompt to `Agents/Definitions/AgentDefinitions.cs`

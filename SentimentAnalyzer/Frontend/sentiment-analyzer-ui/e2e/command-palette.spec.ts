@@ -188,11 +188,20 @@ test.describe('Command Palette', () => {
   test('should navigate to correct route with ArrowDown + Enter', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
 
+    // Wait for palette to be ready
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    await expect(page.locator('[data-testid="command-palette-search"]')).toBeFocused();
+
     // ArrowDown once to select Claims - New Triage (index 1)
     await page.keyboard.press('ArrowDown');
+
+    // Verify selection moved before pressing Enter
+    const secondOption = page.locator('[role="option"]').nth(1);
+    await expect(secondOption).toHaveAttribute('aria-selected', 'true');
+
     await page.keyboard.press('Enter');
 
-    await expect(page).toHaveURL(/.*\/claims\/triage/);
+    await expect(page).toHaveURL(/.*\/claims\/triage/, { timeout: 10_000 });
   });
 
   test('should show keyboard shortcut hints in footer', async ({ page }) => {
@@ -220,7 +229,7 @@ test.describe('Command Palette', () => {
 
   test('should have aria-live region for result count', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
-    const liveRegion = page.locator('[aria-live="polite"]');
+    const liveRegion = page.getByTestId('command-palette-live');
     await expect(liveRegion).toContainText('10 results available');
   });
 

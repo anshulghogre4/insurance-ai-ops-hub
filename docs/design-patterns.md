@@ -16,6 +16,7 @@
 | Converting between incompatible interfaces | **Adapter** |
 | Extending frozen/legacy code without modification | **Decorator** |
 | Grounding LLM responses in document content | **RAG** |
+| Combining keyword + semantic search | **Hybrid Retrieval** |
 | Need a new pattern not listed here? | Discuss with Architect first, CTO approves |
 
 ## 1. Strategy Pattern
@@ -126,3 +127,14 @@ Ground LLM responses in factual document content.
 **Vector search:** SQLite stores embeddings as JSON blob (`float[1024]`). Cosine similarity via `System.Numerics.Vector<float>` SIMD. Top-5 chunks per query. Production: Supabase pgvector.
 
 **Rule:** Always include source citations. Never let LLM generate claims not grounded in retrieved chunks.
+
+## 10. Hybrid Retrieval Pattern (v5.0)
+Combine BM25 keyword scoring with vector semantic search for better document retrieval.
+
+| Phase | Step | Implementation |
+|-------|------|----------------|
+| Keyword | BM25 scoring | `BM25Scorer` — Okapi BM25 with IDF weighting on document chunks |
+| Semantic | Vector search | `ResilientEmbeddingProvider` — 6-provider embedding chain |
+| Fusion | Score normalization + ranking | `HybridRetrievalService` — weighted combination (α=0.7 semantic, β=0.3 keyword) |
+
+**Rule:** Hybrid retrieval always outperforms pure vector search for insurance documents with domain-specific terminology. BM25 catches exact policy numbers and claim IDs that semantic search may miss.

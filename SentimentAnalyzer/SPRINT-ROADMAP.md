@@ -2,522 +2,287 @@
 
 ## Vision
 
-Transform the Sentiment Analyzer (v2.0) into a full **Insurance AI Operations Hub** (v3.0) with claims triage, fraud detection, multimodal processing, and operational dashboards — all on free-tier AI providers.
+Transform the Sentiment Analyzer into a full **Insurance AI Operations Hub** with claims triage, fraud detection, document intelligence RAG, multimodal processing, and operational dashboards — all on free-tier AI providers.
 
 ---
 
 ## Sprint 1: Infrastructure + New Providers (COMPLETE)
 
-**Goal:** Build the provider infrastructure and multimodal services that everything else depends on.
+**Goal:** Build provider infrastructure and multimodal services.
 
-**Problem solved:** The system had a single static Kernel (one provider at boot, no runtime fallback). We needed runtime resilience, multimodal capabilities, and selective agent activation.
+**Key Deliverables:**
+- `IResilientKernelProvider` — 5-provider LLM fallback chain (Groq → Mistral → Gemini → OpenRouter → Ollama) with exponential backoff cooldown
+- 5 multimodal services (Deepgram STT, Azure Vision, Cloudflare Vision, OCR.space, HuggingFace NER) — all raw HttpClient, 0 new NuGet packages
+- `OrchestrationProfile` enum for selective agent activation (50-60% token reduction)
+- Claims Triage + Fraud Detection agent prompts + insurance entity extraction (NER post-processing)
+- PII redaction across entire multimodal pipeline
 
-### What Was Built
-
-#### 1. Resilient Kernel Provider (5-Provider Fallback Chain)
-- `IResilientKernelProvider` interface in Agents project
-- `ResilientKernelProvider` implementation in Backend with exponential backoff cooldown (30s -> 60s -> 120s -> 300s max)
-- Fallback order: **Groq -> Mistral -> Gemini -> OpenRouter -> Ollama (local, always available)**
-- Backward compatible: `Kernel` singleton still works via `IResilientKernelProvider.GetKernel()`
-- Health tracking per provider with `ReportFailure()` and `GetHealthStatus()`
-
-#### 2. Multimodal Services (5 Services, 0 New NuGet Packages)
-| Service | Provider | Free Tier | Purpose |
-|---------|----------|-----------|---------|
-| `DeepgramSpeechToTextService` | Deepgram Nova-2 | $200 credit | Transcribe adjuster voice notes, call recordings |
-| `AzureVisionService` | Azure Vision F0 | 5K/month | Analyze claim damage photos (labels, captions, objects) |
-| `CloudflareVisionService` | Cloudflare Workers AI | 10K neurons/day | Natural language image analysis for damage assessment |
-| `OcrSpaceService` | OCR.space | 500/day | Digitize scanned policy docs and claim forms |
-| `HuggingFaceNerService` | HuggingFace (BERT NER) | 300/hour | Extract entities (names, orgs, locations + insurance entities) |
-
-All services use `HttpClient` REST calls with PII redaction on output text.
-
-#### 3. Orchestration Profiles (Selective Agent Activation)
-- `OrchestrationProfile` enum: SentimentAnalysis, ClaimsTriage, FraudScoring, DocumentQuery
-- `OrchestrationProfileFactory` maps profiles to agent subsets (reduces token usage 50-60%)
-- ClaimsTriage: 4 agents, 8 max turns | SentimentAnalysis: 7 agents, 14 max turns
-
-#### 4. Claims Triage + Fraud Detection Agent Prompts
-- `ClaimsTriageSpecialist`: Severity (Critical/High/Medium/Low), urgency, claim type, recommended actions, preliminary fraud flags
-- `FraudDetectionSpecialist`: Fraud probability scoring (0-100), 5 indicator categories (Timing/Behavioral/Financial/Pattern/Documentation), SIU referral recommendations
-- Both have `.md` prompt files + hardcoded fallbacks in `AgentDefinitions.cs`
-
-#### 5. Insurance Entity Extraction (NER Post-Processing)
-- Regex patterns for: POLICY_NUMBER, CLAIM_NUMBER, MONEY, DATE, SSN, PHONE, EMAIL
-- Supplements BERT NER (PER/ORG/LOC/MISC) with insurance-domain entities
-- Deduplication by value+type
-
-#### 6. PII Redaction Across Multimodal Pipeline
-- `IPIIRedactor` injected into Deepgram, AzureVision, CloudflareVision, OcrSpace
-- Output text redacted before returning to callers
-- HuggingFace NER exempt (needs raw text) with audit warning log
-
-#### 7. Expanded Damage Keywords (Vision Services)
-- AzureVision: 16 -> 30 keywords
-- CloudflareVision: 16 -> 33 damage terms
-- Added: vandalism, theft, wind, foundation, glass, shatter, tree, smoke, roof, sinkhole, lightning, explosion, sewage, asbestos, erosion, corrosion, collapse, burst, cave-in, landslide
-
-### Sprint 1 Stats
-- **New files:** 30 (implementations + interfaces + tests + prompt files)
-- **Modified files:** 7 (Program.cs, AgentDefinitions, Orchestrator, IAnalysisOrchestrator, AgentRole, appsettings, LlmProviderConfiguration)
-- **Tests:** 173 passing (52 original + 121 new)
-- **New NuGet packages:** 0
-- **API keys configured:** 13 (all in .NET User Secrets)
-
-### Sprint 1 Architecture
-```
-Angular 21 SPA (Port 4200) — unchanged
-    |
-.NET 10 Web API (Port 5143)
-    |
-    ├── v1 API (legacy, frozen)
-    ├── v2 Insurance API
-    └── Agent Orchestration (Semantic Kernel)
-         ├── CTO Agent (orchestrator)
-         ├── BA Agent (domain analysis)
-         ├── Developer Agent (formatting)
-         ├── QA Agent (validation)
-         ├── AI Expert Agent (model/cloud/training)
-         ├── Architect Agent (storage/perf)
-         ├── UX Designer Agent (screens/a11y)
-         ├── Claims Triage Agent (NEW)        <-- Sprint 1
-         └── Fraud Detection Agent (NEW)      <-- Sprint 1
-              |
-         IResilientKernelProvider (NEW)        <-- Sprint 1
-         ├── Groq (primary)
-         ├── Mistral (NEW)
-         ├── Gemini
-         ├── OpenRouter (NEW)
-         └── Ollama (local fallback)
-              |
-         Multimodal Services (NEW)             <-- Sprint 1
-         ├── Deepgram STT
-         ├── Azure Vision
-         ├── Cloudflare Vision
-         ├── OCR.space
-         └── HuggingFace NER
-              |
-         SQLite / Supabase (PostgreSQL)
-```
+**Stats:** 30 new files, 7 modified | 173 tests | 0 new NuGet packages | 13 API keys configured
 
 ---
 
 ## Sprint 2: Claims & Fraud Pipeline + API Endpoints (COMPLETE)
 
-**Goal:** Wire Sprint 1 infrastructure into working claims processing workflows with real API endpoints.
+**Goal:** Wire Sprint 1 infrastructure into working API endpoints.
 
-**Problem solved:** All Sprint 1 infrastructure (5-provider fallback, 5 multimodal services, 9 agent definitions, orchestration profiles) was idle — no endpoints consumed the claims/fraud agents or multimodal services. Sprint 2 wired everything into working pipelines.
+**Key Deliverables:**
+- 3 new DB tables (ClaimRecord, ClaimEvidenceRecord, ClaimActionRecord) + repository with pagination
+- Profile-aware orchestration (ClaimsTriage: 4 agents/8 turns, FraudScoring: 3 agents/6 turns)
+- 3 service facades (ClaimsOrchestration, MultimodalEvidenceProcessor, FraudAnalysis)
+- 8 MediatR handlers + 8 API endpoints (triage, upload, claim detail, history, fraud analyze/score/alerts, provider health)
+- Provider health monitoring (LLM + multimodal status)
 
-### What Was Built
-
-#### 1. Database Layer (3 New Tables)
-- `ClaimRecord` entity: Id, ClaimText, Severity, Urgency, ClaimType, FraudScore, FraudRiskLevel, Status, TriageJson, FraudAnalysisJson, FraudFlagsJson, CreatedAt
-- `ClaimEvidenceRecord` entity: Id, ClaimId (FK), EvidenceType, MimeType, Provider, ProcessedText, DamageIndicatorsJson, CreatedAt
-- `ClaimActionRecord` entity: Id, ClaimId (FK), Action, Priority, Reasoning, Status, CreatedAt
-- `IClaimsRepository` + `SqliteClaimsRepository` with pagination support (tuple return `(List<ClaimRecord>, int TotalCount)`)
-- `PaginatedResponse<T>` generic wrapper with Items, TotalCount, Page, PageSize, TotalPages
-
-#### 2. Profile-Aware Orchestration (Critical Enabler)
-- Replaced stub in `InsuranceAnalysisOrchestrator.AnalyzeAsync(text, profile)` with real profile-aware agent selection
-- `OrchestrationProfile.ClaimsTriage`: 4 agents (ClaimsTriage, FraudDetection, BA, QA), 8 max turns
-- `OrchestrationProfile.FraudScoring`: 3 agents (FraudDetection, ClaimsTriage, QA), 6 max turns
-- JSON schema examples injected into agent prompts for consistent output structure
-- New parsing logic extracts `claimTriage` and `fraudAnalysis` JSON blocks from agent output
-- `ClaimTriageDetail` and `FraudAnalysisDetail` agent output models added to `AgentAnalysisResult`
-
-#### 3. Service Facades (3 New Services)
-- **ClaimsOrchestrationService**: Claim text → PII redact → orchestrator (ClaimsTriage profile) → extract triage + fraud → save to DB → return response
-- **MultimodalEvidenceProcessor**: MIME routing (`image/*` → Azure/Cloudflare Vision, `audio/*` → Deepgram STT, `application/pdf` → OCR.space) + NER on all output + DB persistence
-  - Azure → Cloudflare vision fallback via `[FromKeyedServices("CloudflareVision")]` keyed DI
-  - Graceful degradation when NER or fallback services fail
-- **FraudAnalysisService**: Load claim → orchestrator (FraudScoring profile) → fraud score → auto-flag SIU referral (score > 75) → update DB
-
-#### 4. MediatR Commands & Queries (8 New Handlers)
-| Handler | Type | Purpose |
-|---------|------|---------|
-| `TriageClaimCommand` | Command | Validates text → calls ClaimsOrchestrationService |
-| `UploadClaimEvidenceCommand` | Command | Validates file → calls MultimodalEvidenceProcessor |
-| `GetClaimQuery` | Query | Loads claim by ID |
-| `GetClaimsHistoryQuery` | Query | Loads claims with filters + pagination |
-| `AnalyzeFraudCommand` | Command | Calls FraudAnalysisService |
-| `GetFraudScoreQuery` | Query | Returns fraud score for a claim |
-| `GetFraudAlertsQuery` | Query | Returns claims with FraudScore > 55 |
-| `GetProviderHealthQuery` | Query | Returns health of all LLM + multimodal providers |
-
-#### 5. API Endpoints (8 New Endpoints)
-| Endpoint | Method | MediatR Handler |
-|----------|--------|-----------------|
-| `/api/insurance/claims/triage` | POST | TriageClaimCommand |
-| `/api/insurance/claims/upload` | POST | UploadClaimEvidenceCommand |
-| `/api/insurance/claims/{id}` | GET | GetClaimQuery |
-| `/api/insurance/claims/history` | GET | GetClaimsHistoryQuery |
-| `/api/insurance/fraud/analyze` | POST | AnalyzeFraudCommand |
-| `/api/insurance/fraud/score/{claimId}` | GET | GetFraudScoreQuery |
-| `/api/insurance/fraud/alerts` | GET | GetFraudAlertsQuery |
-| `/api/insurance/health/providers` | GET | GetProviderHealthQuery |
-
-#### 6. PII Redaction for Claims Pipeline
-- `IPIIRedactor` injected into `ClaimsOrchestrationService`
-- Claim text PII-redacted before DB persistence (not just before AI calls)
-- Text truncated to 5000 chars before redaction + storage
-
-#### 7. Provider Health Monitoring
-- LLM providers: status, consecutive failures, cooldown remaining for all 5 providers
-- Multimodal services: Deepgram, AzureVision, CloudflareVision, OcrSpace, HuggingFace — configured/unconfigured status via `IConfiguration` key check
-
-#### 8. Tests (57 New Tests, 9 New Test Files)
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| ClaimsOrchestrationServiceTests | 10 | Triage, PII redaction, DB persistence, null results, text truncation |
-| MultimodalEvidenceProcessorTests | 10 | MIME routing, vision fallback (Azure→Cloudflare), NER integration, graceful degradation |
-| FraudAnalysisServiceTests | 6 | Fraud scoring, SIU referral, alert thresholds |
-| TriageClaimHandlerTests | 5 | Valid claim, empty text, service errors |
-| UploadClaimEvidenceHandlerTests | 5 | Image/audio/PDF upload, unsupported MIME |
-| ClaimsRepositoryTests | 6 | Save/retrieve, filter by severity/date, pagination |
-| GetClaimHandlerTests | 4 | Found/not-found, history filters, empty results |
-| FraudCommandsTests | 4 | Analyze, score, alerts with threshold |
-| ProviderHealthTests | 5 | LLM health, multimodal health, unconfigured services |
-
-#### 9. Agent Review (3 Iterations)
-- All 9 agents reviewed Sprint 2 implementation across 3 iterations
-- Iteration 1: Fixed vision fallback, added pagination wrapper, PII before DB storage, 3 new fallback tests
-- Iteration 2: All agents rated 9-9.5/10 — no actionable gaps
-- Iteration 3: Added JSON schema examples to agent prompts for better output compliance
-- Final scores: All agents 9.5-10/10 satisfied
-
-### Sprint 2 Stats
-- **New files:** 40 (entities, repository, models, services, handlers, endpoints, tests)
-- **Modified files:** 5 (DbContext, Program.cs, AgentSelectionStrategy, InsuranceAnalysisOrchestrator, AgentAnalysisResult)
-- **Tests:** 230 passing (173 Sprint 1 + 57 new) — 0 regressions on v1
-- **New NuGet packages:** 0
-- **New API endpoints:** 8
+**Stats:** 40 new files, 5 modified | 230 tests (+57) | 8 new API endpoints
 
 ---
 
 ## Sprint 3: Frontend + Dashboard + E2E + Landing Page (COMPLETE)
 
-**Goal:** Build the UI for all Sprint 2 backend capabilities, expand E2E test coverage, and create a public landing page showcasing the platform.
+**Goal:** Build UI for all backend capabilities + public landing page.
 
-**Problem solved:** All Sprint 2 backend endpoints (claims triage, fraud analysis, evidence upload, provider health) had no frontend UI. The app only had v1 sentiment analyzer, v2 insurance analyzer, and a basic dashboard. Sprint 3 added 8 new Angular components, 6 new routes, Chart.js dashboard charts, comprehensive E2E test suite, and an interactive public landing page.
+**Key Deliverables:**
+- Public landing page at `/` (1,726 lines, 7 interactive sections, IntersectionObserver animations)
+- 7 new components: claims-triage, claim-result, evidence-viewer, claims-history, provider-health, fraud-alerts, dashboard charts
+- Claims service + TypeScript models (8 HTTP methods)
+- ng2-charts + Chart.js dashboard (severity doughnut, persona bar chart)
+- 6 new routes (all authGuard except landing), SVG nav icons
 
-### What Was Built
-
-#### 1. Public Landing Page (Interactive Platform Showcase)
-- **Route:** `/` (public, no auth required) — replaced sentiment analyzer as home page
-- **Landing component** (1,726 lines across 3 files: `landing.ts`, `landing.html`, `landing.css`)
-- 7 interactive sections:
-  1. **Hero**: Animated gradient orbs, version badge, gradient text headline, CTA buttons
-  2. **Agent Orchestration**: 9 agent cards with "Run Orchestration" step-by-step animation
-  3. **Provider Fallback Chain**: 5 LLM provider cards with "Simulate Failover" animation
-  4. **Multimodal Pipeline**: 4 modality tabs (Voice, Image, Document, Entities) with auto-cycling
-  5. **Interactive Demo**: Sample claim text → simulated triage result with severity/fraud/actions
-  6. **Security & PII**: Before/after PII redaction toggle with auto-cycling examples
-  7. **Stats & Tech Grid**: Technology badges across 4 categories (AI/ML, Backend, Frontend, Infrastructure)
-- IntersectionObserver for scroll-triggered section reveal animations
-- Full 3-theme compatibility (dark/semi-dark/light)
-- Responsive design (mobile-first)
-- `prefers-reduced-motion` support
-
-#### 2. Claims Triage Component
-- **Route:** `/claims/triage` (authGuard)
-- Claim text textarea with 10,000 char limit and character counter
-- Interaction type dropdown (Complaint/General/Call/Email/Review)
-- Quick template buttons (Water damage, Auto accident, Theft, Liability)
-- File upload zone with drag-and-drop (images, audio, PDFs)
-- Submit with loading state (elapsed timer + agent phase descriptions)
-- Inline result display: severity badge, fraud score gauge, recommended actions, fraud flags
-
-#### 3. Claim Result Component
-- **Route:** `/claims/:id` (authGuard)
-- Full claim detail view loaded by ID from `ActivatedRoute`
-- Triage summary card (severity, urgency, claim type, estimated loss range)
-- Fraud score gauge (0-100 horizontal bar with color zones)
-- Recommended actions list with priority badges and reasoning
-- Fraud flags warning badges
-- Evidence panel with `evidence-viewer` child components
-- "Run Fraud Analysis" action button
-
-#### 4. Evidence Viewer Component (Child)
-- Evidence type icon (camera/mic/document)
-- Provider badge (Azure Vision, Deepgram, OCR.space, etc.)
-- Processed text block (transcript / image description / OCR text)
-- Damage indicator chips (colored tags)
-
-#### 5. Claims History Component
-- **Route:** `/claims/history` (authGuard)
-- Filters bar: severity dropdown, status dropdown, date range inputs
-- Responsive results table: #, Date, Preview, Severity, Urgency, Fraud Score, Status
-- Colored badges for severity/status/fraud score (green <30, yellow 30-55, orange 55-75, red >75)
-- Pagination with page size selector (10/20/50)
-- Row click → navigate to `/claims/{id}`
-
-#### 6. Provider Health Monitor
-- **Route:** `/dashboard/providers` (authGuard)
-- LLM providers card grid: 5 providers with status dots (green/yellow/red), consecutive failures, cooldown timer
-- Fallback chain visualization (Groq → Mistral → Gemini → OpenRouter → Ollama)
-- Multimodal services card grid: 6 services with configured/unconfigured indicators
-- Auto-refresh every 30 seconds via `interval(30000).pipe(takeUntilDestroyed())`
-
-#### 7. Fraud Alerts Component
-- **Route:** `/dashboard/fraud` (authGuard)
-- Alert cards sorted by fraud score (highest first)
-- Fraud score gauge, risk level badge, SIU referral indicator
-- Fraud indicator category chips (Timing/Behavioral/Financial/Pattern/Documentation)
-- "View Claim" and "Run Deep Analysis" action buttons
-- Empty state message when no alerts
-
-#### 8. Dashboard Charts (ng2-charts + Chart.js)
-- Severity distribution doughnut chart (Critical/High/Medium/Low)
-- Customer persona horizontal bar chart (replacing CSS-only bars)
-- Quick links cards row: Claims Triage, Claims History, Provider Health, Fraud Alerts
-
-#### 9. Navigation + Route Updates
-- Sentiment Analyzer moved from `/` to `/sentiment` (authGuard)
-- 6 new routes added (all with authGuard except landing page)
-- Desktop nav: added "Claims" section (Triage + History) and expanded "Dashboard" (Providers + Fraud)
-- Mobile nav: same links in mobile drawer
-- SVG icons for all new nav items
-
-#### 10. Claims Service + TypeScript Models
-- `claims.model.ts`: ClaimTriageRequest/Response, FraudAnalysisResponse, ProviderHealthResponse, PaginatedResponse<T>, etc.
-- `claims.service.ts`: 8 HTTP methods mapping to all Sprint 2 API endpoints
-
-#### 11. Frontend Unit Tests (34 new, 196 total)
-| Test File | Tests | Coverage |
-|-----------|-------|----------|
-| claims.service.spec.ts | ~10 | All 8 HTTP methods + FormData + errors |
-| claims-triage.spec.ts | ~6 | Form, validation, submit, loading, file, error |
-| claim-result.spec.ts | ~5 | Data load, badges, gauge, evidence, not-found |
-| claims-history.spec.ts | ~5 | Table, filters, pagination, row click, empty |
-| provider-health.spec.ts | ~4 | Provider cards, status, multimodal, refresh |
-| fraud-alerts.spec.ts | ~4 | Alert cards, fraud score, SIU, empty state |
-
-#### 12. E2E Tests (Playwright — 101 new, 239 total passing)
-| E2E Spec File | Tests | Coverage |
-|---------------|-------|----------|
-| claims-triage.spec.ts | ~10 | Form, templates, submit, result, errors, Ctrl+Enter, mobile |
-| claims-detail.spec.ts | ~6 | Load by ID, badges, gauge, evidence, actions, back nav |
-| claims-history.spec.ts | ~8 | Table, filters, pagination, row click, empty, refresh |
-| provider-health.spec.ts | ~6 | LLM cards, status, fallback chain, multimodal, refresh |
-| fraud-alerts.spec.ts | ~6 | Alert cards, fraud score, SIU, category chips, empty |
-| accessibility.spec.ts | ~15 | WCAG AA axe-core on all 9 routes + ARIA + form labels + progress bars |
-| navigation.spec.ts (updated) | +2 | Landing page at root + sentiment at /sentiment |
-| sentiment-analyzer.spec.ts (updated) | — | Route changed to /sentiment |
-
-#### 13. BA Validation (3 Iterations)
-- Iteration 1 (B+): 12 issues found, all High/Medium fixed
-- Iteration 2 (A-): 6 remaining items, all Low/Informational
-- Iteration 3 (A): SHIP approved, 0 blocking issues, 6 deferred to Sprint 4
-
-### Sprint 3 Stats
-- **New files:** ~50 (8 components × 3 files each + models + service + 6 unit specs + 5 e2e specs + mock data)
-- **Modified files:** 8 (app.routes.ts, nav.ts, dashboard.ts, api-mocks.ts, mock-data.ts, navigation.spec.ts, sentiment-analyzer.spec.ts, accessibility.spec.ts)
-- **Backend tests:** 246 (unchanged — 0 backend changes in Sprint 3)
-- **Frontend unit tests:** 196 passing (20 spec files — was 126)
-- **E2E tests:** 239 passing, 9 skipped (12 spec files — was 7 spec files, ~138 tests)
-- **New npm packages:** 2 (ng2-charts, chart.js)
-- **New routes:** 6 (/sentiment, /claims/triage, /claims/history, /claims/:id, /dashboard/providers, /dashboard/fraud)
-- **Angular components:** 13 total (was 6)
+**Stats:** ~50 new files, 8 modified | 196 frontend unit tests | 239 E2E tests | 2 new npm packages | 13 components, 11 routes
 
 ---
 
 ## Sprint 4: Document Intelligence RAG + Technical Debt (COMPLETE)
 
-**Goal:** Fix critical P0/P1 technical debt, then build Document Intelligence RAG foundation for insurance policy/claims document understanding, Customer Experience Copilot, and cross-claim fraud correlation.
+**Goal:** Fix P0/P1 tech debt, build RAG pipeline, CX Copilot, and cross-claim fraud correlation.
 
-**Brainstorming:** 9-agent brainstorming across 3 iterations (unanimous APPROVE). See `REVIEW.md` Session #6 for full details.
+### Week 1: P0/P1 Technical Debt
+- 15+ orchestrator unit tests (0% → 60%+ coverage)
+- V1 PII fix via `PiiRedactingSentimentService` decorator (v1 files stay frozen)
+- Per-endpoint rate limiting (analyze: 10/min, triage: 5/min, fraud: 5/min, doc upload: 3/min)
+- Accessibility fixes (contrast, keyboard traps, aria-live)
 
-### Week 1: P0/P1 Technical Debt (MUST-HAVE)
+### Week 2: Document Intelligence RAG
+- Voyage AI embeddings (voyage-finance-2, 1024-dim) + Ollama fallback
+- `DocumentRecord` + `DocumentChunkRecord` with cosine similarity via System.Numerics.Vector
+- Insurance section-aware chunking (DECLARATIONS/COVERAGE/EXCLUSIONS/CONDITIONS/ENDORSEMENTS)
+- RAG facade: upload (OCR → chunk → embed → store) + query (embed → vector search → LLM answer with citations)
+- 4 document endpoints + DocumentQuery agent
 
-| # | Item | Priority | Owner | Deliverable |
-|---|------|----------|-------|-------------|
-| 1.1 | Orchestrator Unit Tests | P0 | Developer + QA | 15+ tests for `InsuranceAnalysisOrchestrator.cs` (0% → 60%+ coverage) |
-| 1.2 | V1 PII Fix (Decorator) | P0 | Developer + Architect | `PiiRedactingSentimentService` wrapping `ISentimentService` (v1 files remain frozen) |
-| 1.3 | PII Regression Tests | P0 | QA | 5 tests asserting zero PII patterns in DB across v1 and v2 pipelines |
-| 1.4 | Per-Endpoint Rate Limiting | P1 | Architect | analyze: 10/min, triage: 5/min, fraud: 5/min, doc upload: 3/min |
-| 1.5 | Accessibility Fixes | P1 | UX Designer | Fix `--text-muted`/`--text-secondary` contrast, keyboard trap prevention, `aria-live` regions |
+### Week 3: CX Copilot + Fraud Enhancement
+- `CustomerExperienceService` with SSE streaming, tone classification, 16-keyword escalation detection
+- PII dual-pass redaction (input + output), regulatory disclaimers, `CxInteractionRecord` audit trail
+- Cross-claim fraud correlation: 4 strategies (DateProximity, SimilarNarrative, SharedFlags, SameSeverity)
+- Claim-type-specific correlation windows, review workflow (Pending/Confirmed/Dismissed)
 
-**Gate:** 15+ orchestrator tests pass, PII regression tests pass, 0 test regressions.
+### Week 4: Frontend + E2E + MCP Integration
+- 5 new frontend components (document-upload, document-query, document-result, cx-copilot, fraud-correlation)
+- 3 new services + models, 4 new E2E specs
+- MCP servers: Playwright MCP (E2E test generation), Stitch MCP (design-to-code)
+- 3-iteration adversarial review: 37 issues → all fixed → unanimous APPROVE
 
-### Week 2: Document Intelligence RAG Foundation (MUST-HAVE)
-
-| # | Item | Deliverable |
-|---|------|-------------|
-| 2.1 | Voyage AI Embedding Service | `IEmbeddingService` + `VoyageEmbeddingService` (voyage-finance-2, 1024-dim) + `OllamaEmbeddingService` fallback, 8 tests |
-| 2.2 | RAG Database Schema | `DocumentRecord` + `DocumentChunkRecord` entities, `IDocumentRepository` + `SqliteDocumentRepository` with cosine similarity via `System.Numerics.Vector`, 6 tests |
-| 2.3 | Document Chunking | Insurance section-aware chunking (DECLARATIONS/COVERAGE/EXCLUSIONS/CONDITIONS/ENDORSEMENTS) + sentence-boundary splitting with 64-token overlap, 512-token target, 5 tests |
-| 2.4 | Document Intelligence Service | RAG Facade: upload (OCR → chunk → embed → store) + query (embed → vector search top-5 → LLM answer with citations), 10 tests |
-| 2.5 | Document API Endpoints | 4 MediatR handlers + 4 endpoints: POST upload, POST query, GET by ID, GET history, 8 tests |
-| 2.6 | DocumentQuery Agent | Agent prompt + `AgentRole.DocumentQuery` + orchestrator + selection strategy integration |
-
-**Gate:** RAG pipeline operational (upload + query), 32+ new backend tests, Voyage AI validated.
-
-### Week 3: CX Copilot + Fraud Enhancement (COMPLETE)
-
-| # | Item | Deliverable | Status |
-|---|------|-------------|--------|
-| 3.1 | Customer Experience Copilot | `CustomerExperienceService` with SSE streaming, `CustomerExperience` orchestration profile, chat endpoint, PII dual-pass redaction (input+output), tone classification, 16-keyword escalation detection, regulatory disclaimers, `CxInteractionRecord` audit trail | DONE |
-| 3.2 | Cross-Claim Fraud Correlation | 4-strategy detection (DateProximity, SimilarNarrative, SharedFlags, SameSeverity), claim-type-specific windows (Auto 90d, Property/Liability 180d, WorkersComp 365d), review workflow (Pending/Confirmed/Dismissed), `FraudCorrelationRecord` | DONE |
-| 3.3 | Related Claims Context in Triage | Query related claims before triage, inject context into agent prompt | DONE |
-
-**Files Created:** 12 new (CX service/interface/models/command/endpoint, fraud correlation entity/service/interface/repository/response/commands, CxInteractionRecord audit)
-**Files Modified:** 12 updated (Program.cs, DbContext, AgentDefinitions, AgentSelectionStrategy, OrchestrationProfileFactory, Orchestrator, FraudEndpoints, FraudCorrelationService, SqliteFraudCorrelationRepository, IFraudCorrelationRepository, OrchestrationProfileFactoryTests, all 10 agent .md files)
-**3-Iteration Adversarial Review:** Iteration 1: 37 issues (8 Critical, 11 High, 18 Med/Low) → Iteration 2: all Critical+High fixed → Iteration 3: Unanimous APPROVE (QA, UX, BA)
-
-**Gate:** PASSED — 461 backend + 199 frontend + 263 E2E = 923 total tests, 0 failures.
-
-### Week 4: Frontend + E2E + MCP Integration + Documentation (COMPLETE)
-
-| # | Item | Deliverable | Status |
-|---|------|-------------|--------|
-| 4.1 | Frontend Components (5 new) | document-upload, document-query, document-result, cx-copilot, fraud-correlation | DONE |
-| 4.2 | Frontend Services (3 new) + Model | document.service.ts, customer-experience.service.ts, fraud-correlation.service.ts, document.model.ts | DONE |
-| 4.3 | E2E Tests (4 new specs) | document-upload, document-query, cx-copilot, fraud-correlation + updated accessibility | DONE |
-| 4.4 | MCP Server Integration | Playwright MCP (E2E test generation from browser sessions) + Stitch MCP (design-to-code pipeline for Sprint 5 UI revamp) | DONE |
-| 4.5 | Documentation Updates | All MD files updated with Sprint 4 content | DONE |
-
-**Files Created:** 5 new components (3 files each = 15 component files), 3 new services, 1 new model, 4 new E2E specs, 5 new unit spec files
-**Files Modified:** app.routes.ts (15 routes, was 10), nav component (new nav items), api-mocks.ts, mock-data.ts, accessibility.spec.ts
-**Angular totals:** 18 components (was 13), 15 routes (was 10)
-
-**Gate:** PASSED — 461 backend + 235 frontend unit + 357 E2E = 1053 total tests, 0 failures.
-
-### Sprint 4 Test Progress
-
-| Category | Sprint 3 End | Week 3 Actual | Week 4 Actual | Sprint 4 Final |
-|----------|-------------|--------------|---------------|----------------|
-| Backend (xUnit) | 246 | **461** (+215) | **461** | **461** |
-| Frontend Unit (Vitest) | 199 | 199 | **235** (+36) | **235** |
-| E2E (Playwright) | 263 | 263 | **357** (+94) | **357** |
-| **Grand Total** | **708** | **923** | **1053** (+130) | **1053** |
-
-### Sprint 4 Risk Register
-
-| Risk | Mitigation |
-|------|-----------|
-| SQLite vector search too slow (>1K chunks) | Cap dev at 500 chunks; production uses Supabase pgvector |
-| Voyage AI free tier exhaustion (50M tokens) | Ollama `nomic-embed-text` fallback; incremental indexing not bulk |
-| SSE streaming browser compat issues | Standard `EventSource` API; fallback to polling |
-| Cross-claim correlation false positives | Require 2+ indicators; narrative similarity threshold 0.92 |
-| Scope creep into Week 3-4 | CTO scope lock Day 1; Week 3-4 items are SHOULD-HAVE, can defer to Sprint 5 |
+**Stats:** 461 backend + 235 frontend + 357 E2E = **1,053 total tests** | 18 components, 15 routes
 
 ---
 
-## Sprint 4.5: Azure AI Services Integration (PRE-SPRINT 5)
+## Sprint 5: UI Revamp + Enhanced RAG + New Providers + UX Polish (COMPLETE)
 
-**Goal:** Integrate 4 new Azure AI services (F0 free tier) into the existing multimodal pipeline, adding content safety screening, resilient NER/STT fallback chains, and multilingual translation support.
+**Goal:** Enhance backend with batch processing, CX memory, hybrid RAG, 4 embedding providers. Revamp landing page with parallax. Add UX polish + CI/CD.
 
-**Problem solved:** The platform relied on single providers for NER (HuggingFace, 300 req/hr) and STT (Deepgram, $200 credit) with no fallback. CX Copilot responses had no content safety screening before reaching policyholders. Non-English claims couldn't be processed. Sprint 4.5 adds Azure redundancy for all three plus a new translation capability.
+### Backend Enhancements
+- **Batch Claims Processing:** `BatchClaimEndpoints.cs`, `BatchClaimService.cs`, CSV upload API
+- **CX Conversation Memory:** `CxConversationRecord` entity, `ICxConversationRepository`, session-based chat history
+- **Hybrid RAG:** `BM25Scorer.cs` (Okapi BM25) + `HybridRetrievalService.cs` (BM25 + vector fusion)
+- **Synthetic QA:** Generate Q&A pairs from document chunks for model fine-tuning
+- **4 New Embedding Providers:** Cohere, Gemini, HuggingFace, Jina (extends `ResilientEmbeddingProvider` chain: Voyage → Cohere → Gemini → HuggingFace → Jina → Ollama)
+- **M4A Speech Fix:** Added audio/mp4, audio/x-m4a, audio/m4a, audio/aac, audio/flac support
 
-### Azure AI Resource Status
+### Frontend + UX Revamp
+- **Parallax Landing Page:** Sticky hero, floating geometric shapes, per-section animations, gradient-morph dividers (~1720 CSS, ~1900 HTML)
+- **4 New Components:** batch-upload, breadcrumb, command-palette (Ctrl+K), toast notifications
+- **Services:** breadcrumb.service, command-registry.service, scroll.service, toast.service
+- **GitHub Actions CI/CD:** `.github/workflows/ci.yml` with 3 parallel jobs
 
-| Resource | Free Tier | Status | Integration |
-|----------|-----------|--------|-------------|
-| Azure AI Vision | 5K txns/month | **Already integrated** | `AzureVisionService.cs`, primary `IImageAnalysisService` |
-| Azure AI Document Intelligence | 500 pages/month | **Already integrated** | `AzureDocumentIntelligenceOcrService.cs`, Tier 2 in 4-tier OCR chain |
-| Azure AI Content Safety | 5K text + 5K image/month | **New** | CX Copilot response screening |
-| Azure AI Language | 5K text records/month | **New** | NER fallback for HuggingFace |
-| Azure AI Speech | 5 hrs STT/month | **New** | STT fallback for Deepgram |
-| Azure AI Translator | 2M chars/month | **New** | Pre-processing for non-English text |
-| Azure Key Vault | Standard ($0.03/10K ops) | **Excluded** | No F0 tier — planned for later |
+### Sprint 5 Stats
 
-### Phase 0: Configuration + NuGet Packages
+| Metric | Sprint 4 End | Sprint 5 Final |
+|--------|-------------|----------------|
+| Angular components | 18 | **22** (+4) |
+| Routes | 15 | **16** (+1: /claims/batch) |
+| Backend tests (xUnit) | 461 | **662** (+201) |
+| Frontend unit tests (Vitest) | 235 | **443** (+208) |
+| E2E tests (Playwright) | 357 | **~450** (+~93) |
+| **Grand Total** | **1,053** | **~1,555** |
+| MCP servers | 2 | **4** (+Context7, Sequential Thinking) |
+| CI/CD | None | **GitHub Actions** |
+| Embedding providers | 2 | **6** (+Cohere, Gemini, HuggingFace, Jina) |
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.5.0a | NuGet Packages | `Azure.AI.ContentSafety` 1.0.0, `Microsoft.CognitiveServices.Speech` 1.42.0 (note: `Azure.AI.TextAnalytics` already in project) |
-| 4.5.0b | Settings Classes | 4 new settings in `LlmProviderConfiguration.cs`: `AzureLanguageSettings`, `AzureContentSafetySettings`, `AzureTranslatorSettings`, `AzureSpeechSettings` |
-| 4.5.0c | App Configuration | 4 new sections in `appsettings.json` under `AgentSystem` |
+---
 
-### Phase 1 (P1): Content Safety — CX Copilot Protection
+### Sprint 5 Hotfixes (Post-Completion)
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.5.1a | Interface + Models | `IContentSafetyService` with `AnalyzeTextAsync` + `AnalyzeImageAsync` → `ContentSafetyResult` (severity ints for Hate/Violence/SelfHarm/Sexual, `IsSafe` flag) |
-| 4.5.1b | Implementation | `AzureContentSafetyService` using `ContentSafetyClient` SDK, graceful degradation on missing config |
-| 4.5.1c | CX Integration | Optional `IContentSafetyService?` in `CustomerExperienceService` — screen LLM responses before output |
-| 4.5.1d | Tests | ~6 tests: missing API key, missing endpoint, provider name, insurance-realistic claim descriptions |
+| # | Issue | Root Cause | Fix |
+|---|-------|-----------|-----|
+| 5.H1 | SSE stream error: "Synchronous operations are disallowed" | `StreamWriter` with `AutoFlush = true` calls sync `Flush()` on Kestrel response stream | Removed `AutoFlush`, rely on explicit `FlushAsync()` |
+| 5.H2 | SSE stream stuck at 92% — final events never sent | Missing `FlushAsync()` after `[DONE]` write (caused by H1 fix) | Added `FlushAsync()` after `[DONE]` in both success and error paths |
+| 5.H3 | SQLite: "table DocumentChunks has no column named ChunkLevel" | `EnsureCreated()` never adds columns to existing tables; `ChunkLevel` + `ParentChunkId` missing from auto-migration block | Added `ALTER TABLE` for both columns in startup migration |
+| 5.H4 | Slow document upload (37 sequential Content Safety API calls) | `ScreenChunksSafetyAsync` used sequential `foreach` for HTTP calls | Switched to `Parallel.ForEachAsync` with `MaxDegreeOfParallelism = 5` |
+| 5.H5 | Auto-migration block missing table guards for Sprint 4 tables | `CxConversations`, `CxInteractions`, `FraudCorrelations` had no `CREATE TABLE IF NOT EXISTS` guards | Added `TableExists()` helper + `CREATE TABLE` with indexes for all 3 tables |
+| 5.H6 | RAG query returns "no results" despite indexed document | Cross-provider embedding mismatch: document indexed with Cohere (VoyageAI in cooldown), query used VoyageAI (recovered) — different vector spaces = 0 similarity | Added `ResolveQueryEmbeddingServiceAsync` — looks up document's `EmbeddingProvider`, resolves matching keyed service from DI |
+| 5.H7 | Retrieval confidence shows 3% on relevant results | Cohere asymmetric embeddings (`search_document` vs `search_query`) produce naturally lower raw cosine scores than symmetric models | Deferred to Sprint 6: per-provider confidence normalization |
+| 5.H8 | 13-page PDF shows only 2 pages after upload | **OCR chain gap**: PdfPig fails (scanned/image PDF, < 100 chars), Azure DocIntel F0 succeeds but caps at 2 pages/document, `ResilientOcrProvider` accepted 2-page partial as full success | Added partial extraction detection: compare Azure page count vs PdfPig's detected page count, fall through to next provider when `azurePages < expectedPages`. Updated `MaxPagesPerDocument` from 20 to 50. Enhanced PdfPig logging with first-200-char preview. |
 
-### Phase 2 (P1): Language NER + Resilient Entity Extraction
+---
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.5.2a | Azure NER Service | `AzureLanguageNerService` using `TextAnalyticsClient` SDK, maps Azure entity categories → our format (Person→PERSON, Organization→ORGANIZATION, etc.) + insurance regex patterns |
-| 4.5.2b | Resilient Provider | `ResilientEntityExtractionProvider` — chain: **HuggingFace (300 req/hr) → Azure Language (5K/month)**, exponential backoff cooldown (30s→300s cap) |
-| 4.5.2c | DI Conversion | Convert NER from direct registration to keyed services + resilient wrapper |
-| 4.5.2d | Tests | ~8 tests: AzureLanguageNerService validation + ResilientEntityExtractionProvider fallback chain (Moq) |
+## Sprint 6: Azure AI Services + Docker + Production Hardening (PLANNED)
 
-### Phase 3 (P2): Speech STT + Resilient Speech Provider
+**Goal:** Execute the planned Sprint 4.5 Azure AI integrations (4 services, 2 resilient chains), containerize the backend, and add production readiness features (health checks, App Insights, production config).
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.5.3a | Azure STT Service | `AzureSpeechToTextService` using Speech SDK (or REST API fallback if SDK doesn't support .NET 10), PII redaction on output |
-| 4.5.3b | Resilient Provider | `ResilientSpeechToTextProvider` — chain: **Deepgram ($200 credit) → Azure Speech (5 hrs/month)** |
-| 4.5.3c | DI Conversion | Convert STT from direct registration to keyed services + resilient wrapper |
-| 4.5.3d | Tests | ~9 tests: AzureSpeechToTextService validation + ResilientSpeechToTextProvider fallback chain (Moq) |
+**Brainstorming:** 9-agent brainstorming across 3 iterations (unanimous 9/9 APPROVE). All agents agreed Sprint 4.5 items are shovel-ready and Content Safety is a compliance gap for customer-facing CX Copilot.
 
-### Phase 4 (P2): Translator — Multilingual Claims
+**Why now:** Content Safety is mandatory for any customer-facing AI (CX Copilot). NER and STT are single-point-of-failure services with no fallback. Docker is prerequisite for cloud deployment.
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 4.5.4a | Interface + Models | `ITranslationService` with `TranslateAsync` + `DetectLanguageAsync` → `TranslationResult`, `LanguageDetectionResult` |
-| 4.5.4b | Implementation | `AzureTranslatorService` using raw HttpClient REST (matches Deepgram/HuggingFace pattern), PII redaction before sending |
-| 4.5.4c | Tests | ~8 tests: valid translation, auto-detect, missing API key, API error, PII redaction, insurance-realistic Spanish claim |
-
-### Phase 5: Startup Validation + Documentation
+### Week 1: Content Safety + Language NER (P1)
 
 | # | Item | Deliverable |
 |---|------|-------------|
-| 4.5.5a | Startup Logging | Azure AI services status in startup log: `Azure AI services: Vision, DocIntel, Language, ContentSafety, Translator, Speech` |
-| 4.5.5b | CLAUDE.md Update | Add NER + STT fallback chains to Provider Fallback Order section |
+| 6.1.1 | NuGet Packages | `Azure.AI.ContentSafety` 1.0.0, verify `Azure.AI.TextAnalytics` already present |
+| 6.1.2 | Settings Classes | `AzureContentSafetySettings`, `AzureLanguageSettings` in `LlmProviderConfiguration.cs` |
+| 6.1.3 | Content Safety Service | `IContentSafetyService` + `AzureContentSafetyService` — text/image moderation, prompt shields, groundedness detection |
+| 6.1.4 | CX Copilot Integration | Optional `IContentSafetyService?` in `CustomerExperienceService` — screen LLM responses before output |
+| 6.1.5 | Azure Language NER | `AzureLanguageNerService` using `TextAnalyticsClient` SDK, maps Azure entity categories → our format (Person→PERSON, Organization→ORGANIZATION) + insurance regex patterns |
+| 6.1.6 | Resilient NER Chain | `ResilientEntityExtractionProvider` — HuggingFace (300 req/hr) → Azure Language (5K/mo), exponential backoff (30s→300s cap) |
+| 6.1.7 | Backend Tests | ~14 tests: Content Safety (6) + Language NER (4) + Resilient NER (4) |
+| 6.1.8 | Config | `appsettings.json` sections for Content Safety + Language under `AgentSystem` |
 
-### New Files (14)
+**Gate:** Content Safety screens CX Copilot output. NER resolves to `ResilientEntityExtractionProvider`. 14 tests pass.
 
-| # | File | Phase |
-|---|------|-------|
+### Week 2: Speech STT + Translator + Docker (P2)
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 6.2.1 | NuGet Package | `Microsoft.CognitiveServices.Speech` 1.42.0 (or REST API fallback if SDK doesn't support .NET 10) |
+| 6.2.2 | Settings Classes | `AzureSpeechSettings`, `AzureTranslatorSettings` in `LlmProviderConfiguration.cs` |
+| 6.2.3 | Azure Speech STT | `AzureSpeechToTextService` — transcription with PII redaction on output |
+| 6.2.4 | Resilient STT Chain | `ResilientSpeechToTextProvider` — Deepgram ($200 credit) → Azure Speech (5 hrs/mo), exponential backoff |
+| 6.2.5 | Translation Service | `ITranslationService` + `AzureTranslatorService` — REST API (HttpClient), PII redaction before send, 130+ languages |
+| 6.2.6 | Backend Tests | ~17 tests: Speech STT (5) + Resilient STT (4) + Translator (8) |
+| 6.2.7 | Dockerfile | Multi-stage .NET 10 build (mcr.microsoft.com/dotnet/sdk:10.0 → aspnet:10.0), expose 8080 |
+| 6.2.8 | docker-compose.yml | Backend service + environment variables for local testing |
+| 6.2.9 | .dockerignore | Exclude bin/, obj/, node_modules/, test-results/, .git/ |
+
+**Gate:** STT resolves to `ResilientSpeechToTextProvider`. Translation works for Spanish/French claims. Docker builds and runs locally. 17 tests pass.
+
+### Week 3: RAG Query Agent Team + EF Migrations + Production Hardening
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 6.3.1 | RAG Query Agent Team | Multi-agent RAG query pipeline: **Provider Router** (matches query embedding to document index provider), **Query Reformulator** (rewrites vague questions for better retrieval), **Answer Evaluator** (checks citation quality + confidence), **Cross-Doc Reasoner** (synthesizes across multiple documents) |
+| 6.3.2 | EF Core Migrations | Replace `EnsureCreated()` + manual `ALTER TABLE` block with proper `dotnet ef migrations`. Initial migration from current schema, auto-apply on startup. Eliminates missing-column bugs permanently. |
+| 6.3.3 | Health Endpoints | `GET /health` (liveness), `GET /health/ready` (readiness — checks DB + at least 1 LLM provider + multimodal services) |
+| 6.3.4 | Production Config | `appsettings.Production.json` — cloud provider chain (no Ollama), Azure connection strings, daily cap settings |
+| 6.3.5 | App Insights Code | `builder.Services.AddApplicationInsightsTelemetry()` + `Microsoft.ApplicationInsights.AspNetCore` NuGet |
+| 6.3.6 | Startup Validation | Log all Azure AI service status at startup: `Azure AI: Vision ✓, DocIntel ✓, Language ✓, ContentSafety ✓, Translator ✓, Speech ✓` |
+| 6.3.7 | Frontend Badges | Content safety indicator on CX Copilot responses ("Screened ✓"), language auto-detect badge |
+| 6.3.8 | Accessibility Audit | Fresh axe-core sweep on all 16+ routes, fix any new contrast/ARIA issues from Sprint 5 |
+| 6.3.9 | E2E Tests | New specs for content safety flows, translation UI, health endpoint checks |
+| 6.3.10 | Documentation | Update all MD files (CLAUDE.md, architecture.md, api-reference.md, testing.md, security.md, pitfalls.md) |
+
+**Gate:** Docker container builds + runs. RAG agent team passes multi-provider query tests. Health endpoints return 200. App Insights configured. Axe-core clean. All tests pass.
+
+### Week 4: Bug Regression Tests + UX Polish
+
+| # | Item | Deliverable |
+|---|------|-------------|
+| 6.4.1 | SSE Streaming Tests | xUnit tests for `StreamUploadDocumentAsync`: verify `FlushAsync` on all paths, no sync I/O, `[DONE]` marker delivery |
+| 6.4.2 | Migration Tests | Integration tests for SQLite auto-migration: verify all `ALTER TABLE` and `CREATE TABLE` operations are idempotent |
+| 6.4.3 | Embedding Provider Consistency Tests | Tests for cross-provider query mismatch detection, `ResolveQueryEmbeddingServiceAsync` provider matching, dimension validation |
+| 6.4.4 | Content Safety Parallelism Tests | Tests for `Parallel.ForEachAsync` safety screening: thread safety of `Interlocked` counters, cancellation token propagation |
+| 6.4.5 | Document Upload Sub-Loaders | UX enhancement: per-phase sub-progress indicators for heavy steps (OCR, Embedding, Safety), animated step transitions, estimated time remaining |
+| 6.4.6 | Confidence Score Normalization | Per-provider score normalization for RAG retrieval confidence: Cohere asymmetric (0.02-0.08 raw → 0-100% display), VoyageAI asymmetric (0.15-0.40 raw → 0-100%), symmetric models (0.5-1.0 raw → 0-100%). Provider-specific min/max calibration stored in config. |
+| 6.4.7 | Provider Health UI Revamp | Update `provider-health` component to display ALL providers: **LLM** (Groq, Cerebras, Mistral, Gemini, OpenRouter, OpenAI, Ollama), **Embeddings** (VoyageAI, Cohere, Gemini, HuggingFace, Jina, Ollama), **OCR** (PdfPig, Azure DocIntel, OCR Space, Gemini Vision), **NER** (HuggingFace BERT, Azure Language), **STT** (Deepgram, Azure Speech), **Content Safety** (Azure AI), **Translation** (Azure Translator). Group by service category with collapsible sections, real-time health pings, cooldown timers for providers in backoff, and usage counters vs free-tier limits. New `GET /api/provider-health/extended` endpoint returning all provider statuses. |
+| 6.4.8 | Card Hover Effects Polish | Fix imperfect hover effects on card headers across all dashboard/list components (provider-health, claims-history, fraud-alerts, dashboard). Standardize hover states: smooth `transition: all 0.2s ease`, consistent `transform: translateY(-2px)`, subtle `box-shadow` elevation, header gradient shift on hover. Ensure focus-visible states match for keyboard accessibility. |
+| 6.4.9 | OCR Chain Overhaul — 2 New Providers + Hardening | **5.H8 root cause analysis + research revealed the OCR chain needs 2 new providers and 3 fixes:** **NEW PROVIDERS:** (1) **Mistral OCR** (Tier 2b): Reuses existing Mistral API key from LLM chain. 1,000 pages/doc, 50MB max. Best-in-class accuracy. Free tier available (data used for training, same as Gemini Vision). REST API: `POST https://api.mistral.ai/v1/ocr`. Insert after Azure DocIntel in chain. (2) **Tesseract OCR** (Tier 1b, local): `TesseractOCR` NuGet (5.5.1), 100% local like PdfPig. Handles scanned/image PDFs that PdfPig can't — converts pages to images then OCR. No page limits, no API calls, no data transfer. Insert after PdfPig as local scanned-doc fallback. **FIXES:** (3) **Azure DocIntel page batching**: Use SDK `pages` parameter to batch 2 pages at a time, stitch text. (4) **OCR Space 1MB size guard**: Pre-check file size, skip gracefully. (5) **PdfPig `page.Letters` fallback**: Try Letters collection for CID/Type3 font PDFs. **New chain:** PdfPig → Tesseract (local) → Azure DocIntel (batched) → Mistral OCR → OCR Space → Gemini Vision. |
+| 6.4.10 | Document Library Page | New `/documents` route listing all indexed documents (card grid with filename, category, page count, chunk count, embedding provider, upload date). Links to `/documents/:id` detail and `/documents/query?documentId=X`. Filters by category, sort by date. Accessible from nav sidebar + document-upload success state. Fixes orphaned `/documents/:id` route with no browsable entry point. |
+| 6.4.11 | Navigation Cross-Linking Gaps | **Audit findings:** (1) `/documents/:id` only reachable after upload — add Document Library as browsable entry point. (2) `/fraud/correlations/:claimId` only reachable from fraud-alerts — add "View Correlations" link on `claim-result` page when fraud flags are present. (3) `/claims/:id` has no direct nav — OK since it's a detail page, but `claims-history` should show clickable claim cards (not just router.navigate). (4) Add nav link for new `/documents` library page in Workspace dropdown + sidebar. |
+
+### New Files (Sprint 6)
+
+| # | File | Week |
+|---|------|------|
 | 1 | `Backend/Services/Multimodal/IContentSafetyService.cs` | 1 |
 | 2 | `Backend/Services/Multimodal/AzureContentSafetyService.cs` | 1 |
-| 3 | `Backend/Services/Multimodal/AzureLanguageNerService.cs` | 2 |
-| 4 | `Backend/Services/Multimodal/ResilientEntityExtractionProvider.cs` | 2 |
-| 5 | `Backend/Services/Multimodal/AzureSpeechToTextService.cs` | 3 |
-| 6 | `Backend/Services/Multimodal/ResilientSpeechToTextProvider.cs` | 3 |
-| 7 | `Backend/Services/Multimodal/ITranslationService.cs` | 4 |
-| 8 | `Backend/Services/Multimodal/AzureTranslatorService.cs` | 4 |
+| 3 | `Backend/Services/Multimodal/AzureLanguageNerService.cs` | 1 |
+| 4 | `Backend/Services/Multimodal/ResilientEntityExtractionProvider.cs` | 1 |
+| 5 | `Backend/Services/Multimodal/AzureSpeechToTextService.cs` | 2 |
+| 6 | `Backend/Services/Multimodal/ResilientSpeechToTextProvider.cs` | 2 |
+| 7 | `Backend/Services/Multimodal/ITranslationService.cs` | 2 |
+| 8 | `Backend/Services/Multimodal/AzureTranslatorService.cs` | 2 |
 | 9 | `Tests/AzureContentSafetyServiceTests.cs` | 1 |
-| 10 | `Tests/AzureLanguageNerServiceTests.cs` | 2 |
-| 11 | `Tests/ResilientEntityExtractionProviderTests.cs` | 2 |
-| 12 | `Tests/AzureSpeechToTextServiceTests.cs` | 3 |
-| 13 | `Tests/ResilientSpeechToTextProviderTests.cs` | 3 |
-| 14 | `Tests/AzureTranslatorServiceTests.cs` | 4 |
+| 10 | `Tests/AzureLanguageNerServiceTests.cs` | 1 |
+| 11 | `Tests/ResilientEntityExtractionProviderTests.cs` | 1 |
+| 12 | `Tests/AzureSpeechToTextServiceTests.cs` | 2 |
+| 13 | `Tests/ResilientSpeechToTextProviderTests.cs` | 2 |
+| 14 | `Tests/AzureTranslatorServiceTests.cs` | 2 |
+| 15 | `Backend/Dockerfile` | 2 |
+| 16 | `docker-compose.yml` | 2 |
+| 17 | `.dockerignore` | 2 |
+| 18 | `Backend/appsettings.Production.json` | 3 |
+| 19 | `Agents/RAGQuery/ProviderRouterAgent.cs` | 3 |
+| 20 | `Agents/RAGQuery/QueryReformulatorAgent.cs` | 3 |
+| 21 | `Agents/RAGQuery/AnswerEvaluatorAgent.cs` | 3 |
+| 22 | `Agents/RAGQuery/CrossDocReasonerAgent.cs` | 3 |
+| 23 | `Tests/SseStreamingTests.cs` | 4 |
+| 24 | `Tests/SqliteMigrationTests.cs` | 4 |
+| 25 | `Tests/EmbeddingProviderConsistencyTests.cs` | 4 |
+| 26 | `Tests/ContentSafetyParallelismTests.cs` | 4 |
 
-### Modified Files (5)
+### Modified Files (Sprint 6)
 
 | # | File | Change |
 |---|------|--------|
 | 1 | `Agents/Configuration/LlmProviderConfiguration.cs` | 4 settings classes + 4 properties on `AgentSystemSettings` |
 | 2 | `Backend/appsettings.json` | 4 config sections under `AgentSystem` |
-| 3 | `Backend/SentimentAnalyzer.API.csproj` | 2 NuGet packages |
-| 4 | `Backend/Program.cs` | DI registrations (keyed services + resilient providers) + startup validation |
+| 3 | `Backend/SentimentAnalyzer.API.csproj` | 3 NuGet packages (ContentSafety, Speech, AppInsights) |
+| 4 | `Backend/Program.cs` | DI registrations (keyed services + resilient providers) + health checks + App Insights + startup validation |
 | 5 | `Backend/Services/CustomerExperience/CustomerExperienceService.cs` | Optional content safety screening integration |
+| 6 | Frontend CX Copilot component | Content safety badge + language badge |
+| 7 | `CLAUDE.md` | Updated provider chains |
+| 8 | All docs/*.md files | Sprint 6 content |
 
-### New Resilient Provider Chains
+### New Resilient Provider Chains (Sprint 6)
 
 ```
-NER:        HuggingFace (300 req/hr) → Azure Language (5K/month)
-STT:        Deepgram ($200 credit)   → Azure Speech (5 hrs/month)
+NER:  HuggingFace BERT (300 req/hr) → Azure AI Language (5K records/mo)
+STT:  Deepgram Nova-2 ($200 credit)  → Azure AI Speech (5 hrs/mo)
 ```
 
 Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30s→60s→120s→240s→300s cap), thread-safe with `lock`, keyed DI services.
 
-### Sprint 4.5 Stats (Projected)
-- **New files:** 14 (8 service implementations/interfaces + 6 test files)
-- **Modified files:** 5 (config, appsettings, csproj, Program.cs, CX service)
-- **New backend tests:** ~34
-- **Backend tests projected:** ~495 (461 + 34)
-- **New NuGet packages:** 2
-- **Frontend changes:** 0 (backend-only integration, DI resolves automatically)
+### Sprint 6 Stats (Projected)
 
-**Gate:** All ~495 backend tests pass, startup log shows all 6 Azure AI services, `IEntityExtractionService` resolves to `ResilientEntityExtractionProvider`, `ISpeechToTextService` resolves to `ResilientSpeechToTextProvider`.
+| Metric | Sprint 5 End | Sprint 6 Projected |
+|--------|-------------|-------------------|
+| Backend tests (xUnit) | 662 | **~725** (+63: Azure services + regression) |
+| Frontend unit tests | 443 | **~465** (+~22: provider health revamp + hover fixes) |
+| E2E tests | ~450 | **~475** (+~25: provider health + content safety flows) |
+| **Grand Total** | **~1,555** | **~1,665** |
+| New NuGet packages | — | **3** (ContentSafety, Speech, AppInsights) |
+| New resilient chains | — | **2** (NER, STT) |
+| Azure AI services integrated | 2 (Vision, DocIntel) | **6** (+ContentSafety, Language, Speech, Translator) |
+| RAG agent team | None | **4 agents** (ProviderRouter, QueryReformulator, AnswerEvaluator, CrossDocReasoner) |
+| Docker | None | **Dockerfile + docker-compose** |
+| Health endpoints | None | **/health + /health/ready** |
+| DB migrations | Manual ALTER TABLE | **EF Core Migrations** |
+
+### Sprint 6 Risk Register
+
+| Risk | Severity | Mitigation |
+|------|----------|-----------|
+| Speech SDK may not support .NET 10 | Medium | Use REST API fallback (same HttpClient pattern as Deepgram) |
+| Content Safety F0 5K text limit hit | Low | Log usage counter, graceful bypass when exhausted |
+| Language F0 5K records shared across features | Medium | Budget: ~2,500 docs/month with dual-feature calls, log usage |
+| Docker image size bloat | Low | Multi-stage build, .dockerignore, minimal aspnet runtime image |
+| App Insights exceeds 5GB/month | Medium | Set daily cap to 0.16 GB/day, enable adaptive sampling |
 
 ---
 
@@ -525,90 +290,53 @@ Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30
 
 | Sprint | Focus | Status | Key Deliverable |
 |--------|-------|--------|-----------------|
-| **Sprint 1** | Infrastructure + Providers | **COMPLETE** | 5-provider fallback, 5 multimodal services, 9 agents, 173 tests |
-| **Sprint 2** | Claims & Fraud Pipeline | **COMPLETE** | 8 API endpoints, 3 DB tables, claims triage, fraud scoring, provider health, 246 tests |
-| **Sprint 3** | Frontend + Dashboard + E2E + Landing | **COMPLETE** | 8 new components, 6 new routes, landing page, Chart.js dashboard, 196 unit tests, 239 E2E tests |
-| **Sprint 4** | Document Intelligence RAG + Tech Debt | **COMPLETE** | RAG pipeline, CX Copilot, fraud correlation, PII fixes, rate limiting, 5 new frontend components, 18 total components, 15 routes, 1053 total tests |
-| **Sprint 4.5** | Azure AI Services Integration | **PLANNED** | 4 new Azure AI services (Content Safety, Language NER, Speech STT, Translator), 2 resilient provider chains, ~34 new backend tests |
+| **Sprint 1** | Infrastructure + Providers | **COMPLETE** | 5-provider LLM fallback, 5 multimodal services, 9 agents |
+| **Sprint 2** | Claims & Fraud Pipeline | **COMPLETE** | 8 API endpoints, 3 DB tables, claims triage, fraud scoring |
+| **Sprint 3** | Frontend + Dashboard + E2E | **COMPLETE** | 8 components, landing page, Chart.js dashboard, 239 E2E tests |
+| **Sprint 4** | Document Intelligence RAG | **COMPLETE** | RAG pipeline, CX Copilot (SSE), fraud correlation, 1,053 tests |
+| **Sprint 5** | UI Revamp + Enhanced RAG | **COMPLETE** | Parallax landing, batch claims, hybrid RAG, 4 embedding providers, ~1,555 tests |
+| **Sprint 6** | Azure AI + Docker + RAG Agents + Hardening | **PLANNED** | 4 Azure AI services, 2 resilient chains, RAG query agent team, EF migrations, Docker, regression tests, ~1,650 tests |
 
-## Free Tier Budget
-
-| Provider | Free Tier | Sprint 1 Usage | Sprint 2-3 Projected |
-|----------|-----------|----------------|----------------------|
-| Groq | 250 req/day | Primary LLM | ~100 req/day (claims + fraud) |
-| Mistral | 500K tokens/month | Fallback | ~50K tokens/month |
-| Gemini | 60 req/min | Fallback | ~20 req/day |
-| OpenRouter | $1 free credit | Fallback | Minimal |
-| Ollama | Unlimited (local) | Last resort | PII-sensitive analysis |
-| Deepgram | $200 credit | Ready | ~50 transcriptions/day |
-| Azure Vision | 5K/month | Ready | ~200 images/day |
-| Cloudflare Vision | 10K neurons/day | Ready (secondary) | Fallback for Azure |
-| OCR.space | 500/day | Ready | ~100 documents/day |
-| HuggingFace | 300/hour | Ready | ~50 NER calls/day |
-| Voyage AI | 50M tokens (free) | Sprint 4 planned | Document embeddings (voyage-finance-2, 1024-dim) |
-| Azure AI Content Safety | 5K text + 5K image/month | Sprint 4.5 planned | CX Copilot response safety screening |
-| Azure AI Language | 5K text records/month | Sprint 4.5 planned | NER fallback for HuggingFace (resilient chain) |
-| Azure AI Speech | 5 hrs STT/month | Sprint 4.5 planned | STT fallback for Deepgram (resilient chain) |
-| Azure AI Translator | 2M chars/month | Sprint 4.5 planned | Multilingual claims pre-processing |
+### Deferred to Sprint 7+
+- Azure Anomaly Detector integration (fraud pattern detection)
+- Azure Communication Services (email alerts for fraud/claims)
+- Azure AI Search (replace in-memory vector search)
+- Cloud deployment: Azure Static Web Apps (frontend) + App Service B1 (backend)
+- Azure Key Vault integration (cloud secrets management)
+- Custom domain + SSL certificate
+- Azure SQL Free as alternate DB provider
 
 ---
 
-## Sprint 5: UI Revamp + MCP Ecosystem + Observability (PLANNED)
+## Free Tier Budget
 
-**Goal:** Full UI/UX revamp using Google Stitch AI design-to-code pipeline, expand MCP server ecosystem for god-tier developer experience, and add production observability.
+| Provider | Free Tier | Status |
+|----------|-----------|--------|
+| Groq | 250 req/day | Primary LLM |
+| Cerebras | 30 req/min | LLM fallback |
+| Mistral | 500K tokens/month | LLM fallback |
+| Gemini | 60 req/min | LLM fallback |
+| OpenRouter | $1 free credit | LLM fallback |
+| OpenAI | Pay-per-token | LLM fallback |
+| Ollama | Unlimited (local) | LLM last resort |
+| Deepgram | $200 credit | Primary STT |
+| Azure Vision F0 | 5K/month | Primary vision |
+| Cloudflare Vision | 10K neurons/day | Vision fallback |
+| OCR.space | 500/day | OCR tier 3 |
+| Azure Doc Intelligence F0 | 500 pages/month | OCR tier 2 |
+| HuggingFace | 300/hour | Primary NER |
+| Voyage AI | 50M tokens | Primary embeddings |
+| Cohere | Trial tokens | Embedding fallback |
+| Gemini Embeddings | Free with API | Embedding fallback |
+| Mistral OCR | Free tier (data trains) | **Sprint 6** OCR Tier 2b |
+| Tesseract (local) | Unlimited (open-source) | **Sprint 6** OCR Tier 1b |
+| HuggingFace Embeddings | 300/hour | Embedding fallback |
+| Jina AI | 1M tokens | Embedding fallback |
+| Azure AI Content Safety F0 | 5K text + 5K img/mo | **Sprint 6** |
+| Azure AI Language F0 | 5K records/mo | **Sprint 6** |
+| Azure AI Speech F0 | 5 hrs STT/mo | **Sprint 6** |
+| Azure AI Translator F0 | 2M chars/mo | **Sprint 6** |
 
-### Week 1: UI/UX Revamp with Google Stitch
+---
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 5.1 | Stitch Design Generation | Generate new UI designs for all 13 components using Google Stitch AI from text prompts |
-| 5.2 | Landing Page Revamp | Redesign landing page with Stitch-generated layouts, convert to Angular 21 + Tailwind |
-| 5.3 | Claims Workflow Revamp | Redesign claims triage, history, detail, and fraud alerts with modern insurance UX patterns |
-| 5.4 | Dashboard Revamp | Redesign dashboard with improved data visualization, provider health, and KPI cards |
-| 5.5 | Design System Extraction | Extract consistent design tokens (colors, spacing, typography) from Stitch outputs |
-| 5.6 | Evidence-Aware Fraud Analysis | Feed multimodal evidence context (image descriptions, OCR text, damage indicators) into fraud analysis agent prompt so it can cross-reference evidence against claim narrative |
-
-### Week 2: MCP Ecosystem Expansion
-
-| # | Item | Deliverable |
-|---|------|-------------|
-| 5.7 | Supabase MCP | Direct database schema management, query testing, migration validation |
-| 5.8 | GitHub MCP | PR management, automated code review, issue tracking integration |
-| 5.9 | Context7 MCP | Up-to-date docs for .NET 10, Angular 21, Semantic Kernel, Playwright |
-| 5.10 | Sequential Thinking MCP | Structured reasoning for multi-agent architecture decisions |
-| 5.11 | Sentry MCP | Production error tracking across 5 LLM providers and 5 multimodal services |
-
-### Week 3: Observability + Security
-
-| # | Item | Deliverable |
-|---|------|-------------|
-| 5.12 | Grafana Dashboards | Provider health monitoring, agent orchestration metrics, rate limit tracking |
-| 5.13 | Snyk Security Scanning | Dependency vulnerability scanning for .NET + npm packages |
-| 5.14 | Docker Containerization | Multi-stage Dockerfiles for backend + frontend + Ollama sidecar |
-| 5.15 | Upstash Redis Caching | Cache identical analyses, per-endpoint rate limiting (from v4.0 design) |
-
-### Week 4: Polish + Testing + Documentation
-
-| # | Item | Deliverable |
-|---|------|-------------|
-| 5.16 | Playwright MCP Test Generation | Auto-generate E2E specs from browser sessions for new UI |
-| 5.17 | Accessibility Audit | Full WCAG AA re-audit on revamped UI with axe-core |
-| 5.18 | Performance Optimization | Lighthouse audits, bundle size analysis, lazy loading |
-| 5.19 | Documentation | Updated all MD files, API docs, architecture diagrams |
-
-### MCP Server Stack (Sprint 5)
-
-| MCP Server | Category | Purpose |
-|-----------|----------|---------|
-| Playwright | Testing | Browser automation, E2E test generation |
-| Stitch | Design | AI UI design → Angular code pipeline |
-| Supabase | Database | Schema management, query testing |
-| GitHub | DevOps | PR management, code review |
-| Context7 | Docs | Latest library documentation |
-| Sequential Thinking | Reasoning | Architecture decision support |
-| Sentry | Monitoring | Error tracking + AI root cause |
-| Grafana | Observability | Provider health dashboards |
-| Snyk | Security | Dependency vulnerability scanning |
-| Docker | Containers | Production containerization |
-| Upstash | Caching | Redis rate limiting + caching |
-| Tavily | Research | Insurance domain research |
+*Last updated: 2026-03-01 | Sprint 6 planned via 9-agent brainstorming (3 iterations, unanimous 9/9 APPROVE)*

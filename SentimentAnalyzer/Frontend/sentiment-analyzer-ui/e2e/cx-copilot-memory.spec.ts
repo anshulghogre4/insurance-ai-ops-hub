@@ -31,12 +31,12 @@ test.describe('CX Copilot — Conversation Memory', () => {
 
     await page.goto('/cx/copilot');
 
-    // Session creation should have been called
-    expect(sessionCreated).toBe(true);
-
-    // Session Active indicator should appear
+    // Session Active indicator should appear (proves session was created)
     await expect(page.getByLabel('Session active indicator')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Session Active')).toBeVisible();
+
+    // Session creation should have been called
+    expect(sessionCreated).toBe(true);
   });
 
   test('should show New Conversation button', async ({ page }) => {
@@ -182,15 +182,16 @@ test.describe('CX Copilot — Conversation Memory', () => {
 
     // Reload to trigger session restore
     await page.reload();
+    await page.waitForLoadState('networkidle');
 
-    // History should have been requested
-    expect(historyRequested).toBe(true);
-
-    // History messages should be visible
+    // History messages should be visible (wait for these first before checking the flag)
     await expect(page.getByText('What does my homeowners policy cover for water damage?')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByText('Your homeowners policy covers sudden and accidental water damage')).toBeVisible();
     await expect(page.getByText('How do I file a water damage claim?')).toBeVisible();
     await expect(page.getByText('To file a water damage claim, call our claims hotline')).toBeVisible();
+
+    // History should have been requested
+    expect(historyRequested).toBe(true);
 
     // Session Active indicator should be visible
     await expect(page.getByText('Session Active')).toBeVisible();
@@ -299,6 +300,7 @@ test.describe('CX Copilot — Conversation Memory', () => {
       sessionStorage.setItem('cx-copilot-session-id', sessionId);
     }, MOCK_CX_SESSION_RESPONSE.sessionId);
     await page.reload();
+    await page.waitForLoadState('networkidle');
 
     // Wait for history to render
     await expect(page.getByText('What does my homeowners policy cover for water damage?')).toBeVisible({ timeout: 5_000 });

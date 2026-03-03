@@ -96,6 +96,18 @@ import { CommandRegistryService, PaletteCommand } from '../../services/command-r
             {{ resultCountText() }}
           </div>
 
+          <!-- Empty State (outside listbox to satisfy ARIA children rules) -->
+          @if (flatResults().length === 0) {
+            <div class="px-4 py-8 text-center" [style.color]="'var(--text-muted)'">
+              <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              <p class="text-sm">No commands found</p>
+              <p class="text-xs mt-1 opacity-60">Try a different search term</p>
+            </div>
+          }
+
           <!-- Results List -->
           <div
             id="command-palette-results"
@@ -104,16 +116,7 @@ import { CommandRegistryService, PaletteCommand } from '../../services/command-r
             aria-label="Command results"
             data-testid="command-palette-results"
           >
-            @if (flatResults().length === 0) {
-              <div class="px-4 py-8 text-center" [style.color]="'var(--text-muted)'">
-                <svg class="w-8 h-8 mx-auto mb-2 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <p class="text-sm">No commands found</p>
-                <p class="text-xs mt-1 opacity-60">Try a different search term</p>
-              </div>
-            } @else {
+            @if (flatResults().length > 0) {
               @for (category of categoryNames(); track category) {
                 <!-- Category Header -->
                 <div

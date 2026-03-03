@@ -181,7 +181,7 @@ public static class DocumentEndpoints
 
         return Results.Stream(async stream =>
         {
-            var writer = new StreamWriter(stream) { AutoFlush = true };
+            var writer = new StreamWriter(stream);
             try
             {
                 await foreach (var progressEvent in documentService.UploadWithProgressAsync(
@@ -193,6 +193,7 @@ public static class DocumentEndpoints
                     await writer.FlushAsync();
                 }
                 await writer.WriteAsync("data: [DONE]\n\n");
+                await writer.FlushAsync();
             }
             catch (Exception ex)
             {
@@ -205,6 +206,7 @@ public static class DocumentEndpoints
                     new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
                 await writer.WriteAsync($"data: {errorJson}\n\n");
                 await writer.WriteAsync("data: [DONE]\n\n");
+                await writer.FlushAsync();
             }
         }, contentType: "text/event-stream");
     }

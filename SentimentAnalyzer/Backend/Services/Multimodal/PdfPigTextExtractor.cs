@@ -73,8 +73,11 @@ public class PdfPigTextExtractor : IDocumentOcrService
             if (fullText.Length < MinimumTextLength)
             {
                 _logger.LogInformation(
-                    "PdfPig extracted only {Length} chars from {Pages} page(s) — likely a scanned document, deferring to cloud OCR",
-                    fullText.Length, pageCount);
+                    "PdfPig extracted only {Length} chars from {Pages} page(s) — likely a scanned document or " +
+                    "encrypted/signed PDF with non-extractable text. Deferring to cloud OCR. " +
+                    "First 200 chars: [{Preview}]",
+                    fullText.Length, pageCount,
+                    fullText.Length > 0 ? fullText[..Math.Min(200, fullText.Length)] : "(empty)");
 
                 return Task.FromResult(new OcrResult
                 {

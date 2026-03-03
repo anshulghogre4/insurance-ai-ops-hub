@@ -30,3 +30,10 @@
 | Voyage AI free tier exhaustion (50M tokens) | Ollama `nomic-embed-text` fallback; use incremental indexing, not bulk. |
 | SSE streaming browser compat issues | Use standard `EventSource` API; fallback to polling. |
 | Cross-claim correlation false positives | Require 2+ indicators; narrative similarity threshold 0.92. |
+| `ng build` uses production config (no file replacement) | Always use `npm start` / `ng serve` for local dev — this triggers `fileReplacements` to swap `environment.ts` with `environment.development.ts`. Running `ng build` defaults to production (empty Supabase credentials). |
+| "Auth not configured" on login page | The Supabase client only initializes when `environment.supabaseUrl` and `environment.supabaseAnonKey` are non-empty. If these are empty (production env), `authService.signIn()` returns "Auth not configured". Fix: use development config or restart dev server. |
+| Floating CSS shapes drifting off-screen | Use bounded oscillating transforms (`sin(y * freq) * amp`) instead of linear (`translateY(y * -0.6)`). Linear transforms drift shapes off-screen during scroll. |
+| `position: fixed` elements overlaying all pages | Use `position: absolute` with `inset: 0` inside the parent section, not `position: fixed` which overlays the entire viewport across all routes. |
+| CSS budget warnings on large component styles | Landing page CSS (~30 kB) exceeds 24 kB warning threshold. Adjust `angular.json` budget: `maximumWarning: "24kB"`, `maximumError: "32kB"` for `anyComponentStyle`. |
+| Sign In button hidden when authEnabled() is false | Don't gate the Sign In button behind `authService.authEnabled()`. Show it whenever `!(authService.authEnabled() && authService.isAuthenticated())` so it's always visible when not logged in. |
+| Background tasks completing prematurely | `ng serve` background tasks may report exit code 0 while server keeps running. The server is still active — verify by navigating to `localhost:4200`. |

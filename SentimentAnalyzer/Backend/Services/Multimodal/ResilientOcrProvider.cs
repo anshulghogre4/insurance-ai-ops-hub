@@ -75,22 +75,44 @@ public class ResilientOcrProvider : IDocumentOcrService
             return pdfPigResult;
         }
 
+        // PdfPig failed but may have detected the actual page count (useful for detecting
+        // partial extraction from Azure DocIntel F0's 2-page limit).
+        var expectedPageCount = pdfPigResult.PageCount;
+
         _logger.LogInformation(
-            "Native PDF text extraction insufficient ({Error}), trying OCR providers",
-            pdfPigResult.ErrorMessage ?? "unknown");
+            "Native PDF text extraction insufficient ({Error}), detected {ExpectedPages} pages, trying OCR providers",
+            pdfPigResult.ErrorMessage ?? "unknown", expectedPageCount);
 
         // Tier 2: Azure Document Intelligence (if not in cooldown)
+        // IMPORTANT: Azure F0 tier hard-limits to 2 pages per document. If PdfPig detected more
+        // pages, Azure's "success" is actually a partial extraction — fall through to next provider.
         if (!IsInCooldown(ref _azureCooldownExpiresUtc, "AzureDocIntel"))
         {
             var azureResult = await _azureService.ExtractTextAsync(documentData, mimeType, cancellationToken);
             if (azureResult.IsSuccess)
             {
-                ResetFailures(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel");
-                _logger.LogInformation("OCR completed via Azure Document Intelligence (Tier 2)");
-                return azureResult;
+                // Detect partial page extraction: Azure F0 caps at 2 pages per document.
+                // If PdfPig detected more pages, Azure only processed a subset — try next provider.
+                if (expectedPageCount > 0 && azureResult.PageCount < expectedPageCount)
+                {
+                    _logger.LogWarning(
+                        "Azure DocIntel F0 only processed {Actual} of {Expected} pages (F0 tier: 2 pages/document). " +
+                        "Falling through to next OCR provider for full extraction.",
+                        azureResult.PageCount, expectedPageCount);
+                    ReportFailure(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel",
+                        $"Partial extraction: {azureResult.PageCount}/{expectedPageCount} pages (F0 tier limit)");
+                }
+                else
+                {
+                    ResetFailures(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel");
+                    _logger.LogInformation("OCR completed via Azure Document Intelligence (Tier 2)");
+                    return azureResult;
+                }
             }
-
-            ReportFailure(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel", azureResult.ErrorMessage);
+            else
+            {
+                ReportFailure(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel", azureResult.ErrorMessage);
+            }
         }
 
         // Tier 3: OCR Space (if not in cooldown) — safer than Gemini (no data training, GDPR compliant)

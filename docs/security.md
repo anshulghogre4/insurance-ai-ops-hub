@@ -96,11 +96,31 @@ AgentSystem__HuggingFace__ApiKey=your-key
 - MCP servers do NOT have access to .NET User Secrets or API keys
 - Never pass PII-containing text through MCP tool calls — redact first
 
-### Embedding Service Secrets (Sprint 4)
+## CI/CD Security (Sprint 5)
+- GitHub Actions secrets stored in repository settings (never in workflow files)
+- CI/CD workflow `.github/workflows/ci.yml` uses `secrets.GROQ_API_KEY` etc.
+- No real API keys needed for test runs — all backend tests use Moq, frontend tests use mocks
+- Environment files: `environment.development.ts` is gitignored, never committed
+
+### Embedding Service Secrets (Sprint 4-5)
 ```bash
 # Voyage AI (primary embeddings)
 dotnet user-secrets set "AgentSystem:Voyage:ApiKey" "your-key"
 
+# Cohere (Sprint 5 - embed-english-v3.0)
+dotnet user-secrets set "AgentSystem:Cohere:ApiKey" "your-key"
+
+# Gemini (Sprint 5 - text-embedding-004, uses same Gemini API key)
+# Uses AgentSystem:Gemini:ApiKey (already configured)
+
+# HuggingFace (Sprint 5 - sentence-transformers, uses same HF key)
+# Uses AgentSystem:HuggingFace:ApiKey (already configured)
+
+# Jina (Sprint 5 - embeddings-v3)
+dotnet user-secrets set "AgentSystem:Jina:ApiKey" "your-key"
+
 # CI/CD
 AgentSystem__Voyage__ApiKey=your-key
+AgentSystem__Cohere__ApiKey=your-key
+AgentSystem__Jina__ApiKey=your-key
 ```
