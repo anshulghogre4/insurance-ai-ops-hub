@@ -22,11 +22,12 @@ test.describe('Document Query', () => {
     const select = page.locator('#documentFilter');
     await expect(select).toBeVisible();
 
-    // Wait for document history to load (3 items from mock)
-    await expect(select.locator('option')).toHaveCount(4); // "All documents" + 3 items
+    // Wait for document history to load (4 items from mock)
+    await expect(select.locator('option')).toHaveCount(5); // "All documents" + 4 items
     await expect(select.locator('option').nth(1)).toContainText('homeowners-policy-2024.pdf');
     await expect(select.locator('option').nth(2)).toContainText('auto-claim-CLM-2024-001.pdf');
     await expect(select.locator('option').nth(3)).toContainText('endorsement-amendment-003.pdf');
+    await expect(select.locator('option').nth(4)).toContainText('adjuster-correspondence.png');
   });
 
   test('should submit query and show answer', async ({ page }) => {

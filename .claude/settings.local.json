@@ -40,7 +40,11 @@
       "Bash(npx playwright test e2e/batch-upload.spec.ts:25 e2e/batch-upload.spec.ts:78 e2e/batch-upload.spec.ts:100 --project=mobile-chrome --reporter=line)",
       "Bash(xargs grep -l \"DocumentQuery\\\\|DocumentIntelligence\")",
       "Bash(npm run e2e)",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(npx playwright test --reporter=line)",
+      "Bash(npx playwright test e2e/document-library.spec.ts:27 e2e/document-query.spec.ts:21 --project=chromium --reporter=list)",
+      "Bash(npx playwright test e2e/document-library.spec.ts:27 --project=chromium --reporter=list)",
+      "Bash(tasklist)"
     ]
   }
 }

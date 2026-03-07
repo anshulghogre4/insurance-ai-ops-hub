@@ -33,8 +33,13 @@ import {
             }
           </div>
         </div>
-        <button (click)="refresh()" class="btn-ghost text-sm p-2.5" aria-label="Refresh health status">
-          <svg class="w-4 h-4" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <button (click)="refresh()" [disabled]="isLoading()"
+                class="p-2.5 rounded-xl border transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                [style.background]="'var(--bg-surface-hover)'"
+                [style.border-color]="'var(--border-primary)'"
+                [style.color]="'var(--text-primary)'"
+                aria-label="Refresh health status">
+          <svg class="w-5 h-5" [class.animate-spin]="isLoading()" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
         </button>
@@ -63,9 +68,10 @@ import {
 
       <!-- ==================== 1. LLM Providers ==================== -->
       @if (llmProviders().length > 0) {
-        <div class="mb-6 animate-fade-in-up stagger-1">
+        <div class="mb-6 animate-fade-in-up stagger-1 isolate">
           <!-- Collapsible Header -->
-          <button (click)="toggleSection('llm')" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+          <button (click)="toggleSection('llm')" class="w-full text-left flex items-center justify-between p-4 glass-card-static no-backdrop-blur mb-0 cursor-pointer hover:bg-white/5 transition-colors !transform-none"
+                  [class.rounded-b-none]="isSectionExpanded('llm')"
                   [attr.aria-expanded]="isSectionExpanded('llm')" aria-controls="section-llm" aria-label="Toggle LLM Providers section">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
@@ -81,7 +87,7 @@ import {
           </button>
 
           @if (isSectionExpanded('llm')) {
-            <div id="section-llm" class="glass-card-static rounded-t-none border-t-0 p-5">
+            <div id="section-llm" class="glass-card-static no-backdrop-blur rounded-t-none border-t-0 p-5 overflow-hidden">
               <!-- LLM Fallback Chain -->
               <p class="text-xs font-bold uppercase tracking-wider mb-3" [style.color]="'var(--text-muted)'">LLM Fallback Chain</p>
               <div class="flex items-center gap-1 overflow-x-auto pb-3 mb-4 custom-scrollbar" tabindex="0" role="region" aria-label="LLM provider fallback chain">
@@ -176,8 +182,9 @@ import {
 
       <!-- Chain Section Template (for Embedding, OCR, NER, STT) -->
       <ng-template #chainSection let-section let-label="label" let-subtitle="subtitle" let-providers="providers" let-icon="icon" let-gradient="gradient">
-        <div class="mb-6 animate-fade-in-up">
-          <button (click)="toggleSection(section)" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+        <div class="mb-6 animate-fade-in-up isolate">
+          <button (click)="toggleSection(section)" class="w-full text-left flex items-center justify-between p-4 glass-card-static no-backdrop-blur mb-0 cursor-pointer hover:bg-white/5 transition-colors !transform-none"
+                  [class.rounded-b-none]="isSectionExpanded(section)"
                   [attr.aria-expanded]="isSectionExpanded(section)" [attr.aria-controls]="'section-' + section" [attr.aria-label]="'Toggle ' + label + ' section'">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center" [ngClass]="gradient">
@@ -214,7 +221,7 @@ import {
           </button>
 
           @if (isSectionExpanded(section)) {
-            <div [id]="'section-' + section" class="glass-card-static rounded-t-none border-t-0 p-5">
+            <div [id]="'section-' + section" class="glass-card-static no-backdrop-blur rounded-t-none border-t-0 p-5 overflow-hidden">
               <!-- Chain Visualization -->
               <p class="text-xs font-bold uppercase tracking-wider mb-3" [style.color]="'var(--text-muted)'">Fallback Chain</p>
               <div class="flex items-center gap-1 overflow-x-auto pb-3 mb-4 custom-scrollbar" tabindex="0" role="region" [attr.aria-label]="label + ' fallback chain'">
@@ -288,8 +295,9 @@ import {
 
       <!-- Service Section Template (for Content Safety, Translation) -->
       <ng-template #serviceSection let-section let-label="label" let-services="services" let-gradient="gradient">
-        <div class="mb-6 animate-fade-in-up">
-          <button (click)="toggleSection(section)" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+        <div class="mb-6 animate-fade-in-up isolate">
+          <button (click)="toggleSection(section)" class="w-full text-left flex items-center justify-between p-4 glass-card-static no-backdrop-blur mb-0 cursor-pointer hover:bg-white/5 transition-colors !transform-none"
+                  [class.rounded-b-none]="isSectionExpanded(section)"
                   [attr.aria-expanded]="isSectionExpanded(section)" [attr.aria-controls]="'section-' + section" [attr.aria-label]="'Toggle ' + label + ' section'">
             <div class="flex items-center gap-3">
               <div class="w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center" [ngClass]="gradient">
@@ -305,7 +313,7 @@ import {
           </button>
 
           @if (isSectionExpanded(section)) {
-            <div [id]="'section-' + section" class="glass-card-static rounded-t-none border-t-0 p-5">
+            <div [id]="'section-' + section" class="glass-card-static no-backdrop-blur rounded-t-none border-t-0 p-5 overflow-hidden">
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 @for (svc of services; track svc.name; let i = $index) {
                   <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + mathMin(i + 1, 5)">

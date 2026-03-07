@@ -28,14 +28,15 @@ test.describe('Document Library', () => {
     const main = page.getByRole('main');
     await expect(main.getByText('homeowners-policy-2024.pdf')).toBeVisible({ timeout: 10_000 });
 
-    // Category badges
-    await expect(main.getByText('Policy', { exact: true }).first()).toBeVisible();
-    await expect(main.getByText('Claim', { exact: true }).first()).toBeVisible();
-    await expect(main.getByText('Endorsement', { exact: true }).first()).toBeVisible();
-    await expect(main.getByText('Correspondence', { exact: true }).first()).toBeVisible();
+    // Category badges (scope to card grid to avoid matching dropdown options)
+    const cardGrid = main.locator('.grid');
+    await expect(cardGrid.getByText('Policy', { exact: true }).first()).toBeVisible();
+    await expect(cardGrid.getByText('Claim', { exact: true }).first()).toBeVisible();
+    await expect(cardGrid.getByText('Endorsement', { exact: true }).first()).toBeVisible();
+    await expect(cardGrid.getByText('Correspondence', { exact: true }).first()).toBeVisible();
 
     // Status badges
-    const processedBadges = main.getByText('Processed', { exact: true });
+    const processedBadges = cardGrid.getByText('Processed', { exact: true });
     await expect(processedBadges.first()).toBeVisible();
   });
 

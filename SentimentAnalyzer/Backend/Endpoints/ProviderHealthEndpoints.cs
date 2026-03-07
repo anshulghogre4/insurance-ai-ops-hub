@@ -103,18 +103,18 @@ public static class ProviderHealthEndpoints
             {
                 Name = "Gemini",
                 ChainOrder = 3,
-                IsConfigured = HasApiKey(settings.GeminiEmbedding.ApiKey),
-                Status = HasApiKey(settings.GeminiEmbedding.ApiKey) ? "Healthy" : "NotConfigured",
-                IsAvailable = HasApiKey(settings.GeminiEmbedding.ApiKey),
+                IsConfigured = HasApiKey(settings.GeminiEmbedding.ApiKey) || HasApiKey(settings.Gemini.ApiKey),
+                Status = (HasApiKey(settings.GeminiEmbedding.ApiKey) || HasApiKey(settings.Gemini.ApiKey)) ? "Healthy" : "NotConfigured",
+                IsAvailable = HasApiKey(settings.GeminiEmbedding.ApiKey) || HasApiKey(settings.Gemini.ApiKey),
                 FreeTierLimit = "1,500 req/day"
             },
             new ProviderChainHealth
             {
                 Name = "HuggingFace",
                 ChainOrder = 4,
-                IsConfigured = HasApiKey(settings.HuggingFaceEmbedding.ApiKey),
-                Status = HasApiKey(settings.HuggingFaceEmbedding.ApiKey) ? "Healthy" : "NotConfigured",
-                IsAvailable = HasApiKey(settings.HuggingFaceEmbedding.ApiKey),
+                IsConfigured = HasApiKey(settings.HuggingFaceEmbedding.ApiKey) || HasApiKey(settings.HuggingFace.ApiKey),
+                Status = (HasApiKey(settings.HuggingFaceEmbedding.ApiKey) || HasApiKey(settings.HuggingFace.ApiKey)) ? "Healthy" : "NotConfigured",
+                IsAvailable = HasApiKey(settings.HuggingFaceEmbedding.ApiKey) || HasApiKey(settings.HuggingFace.ApiKey),
                 FreeTierLimit = "300 req/hr"
             },
             new ProviderChainHealth

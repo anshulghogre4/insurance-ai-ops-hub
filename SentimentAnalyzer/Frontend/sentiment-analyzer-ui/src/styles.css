@@ -9,6 +9,7 @@
 
 @layer base {
   .theme-dark {
+    color-scheme: dark;
     --bg-primary: #0a0f1e;
     --bg-secondary: #111827;
     --bg-surface: rgba(255, 255, 255, 0.05);
@@ -28,6 +29,7 @@
   }
 
   .theme-semi-dark {
+    color-scheme: dark;
     --bg-primary: #1e293b;
     --bg-secondary: #2d3a4f;
     --bg-surface: rgba(255, 255, 255, 0.08);
@@ -47,6 +49,7 @@
   }
 
   .theme-light {
+    color-scheme: light;
     --bg-primary: #f8fafc;
     --bg-secondary: #ffffff;
     --bg-surface: rgba(255, 255, 255, 0.9);
@@ -112,6 +115,10 @@ body {
     outline: 2px solid var(--accent-primary);
     outline-offset: 2px;
   }
+  .no-backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
   .elevated-card {
     background: var(--bg-elevated);
     backdrop-filter: blur(16px);
@@ -169,7 +176,12 @@ body {
   select.input-field option {
     background: var(--bg-secondary);
     color: var(--text-primary);
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  select.input-field option:checked {
+    background: var(--accent-primary);
+    color: #fff;
   }
   .metric-card {
     @apply p-5 rounded-xl;

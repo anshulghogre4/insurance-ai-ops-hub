@@ -200,6 +200,9 @@ Transform the Sentiment Analyzer into a full **Insurance AI Operations Hub** wit
 | 6.4.9 | OCR Chain Overhaul — 2 New Providers + Hardening | ✅ **DONE** — Added `TesseractOcrService` (local, TesseractOCR 5.5.1) + `MistralOcrService` (cloud, reuses Mistral API key). Azure page batching (2 pages/batch via `AnalyzeDocumentOptions.Pages`). OCR Space 1MB guard. PdfPig Letters fallback for CID/Type3 fonts. `ResilientOcrProvider` rewritten for 6-tier chain. 9 tests in `ResilientOcrProviderTests`. |
 | 6.4.10 | Document Library Page | ✅ **DONE** — `/documents` route with card grid, category filter, sort toggle, pagination, nav links. 14 unit + 10 E2E tests |
 | 6.4.11 | Navigation Cross-Linking Gaps | ✅ **DONE** — Added "View Correlations" link on `claim-result` when fraud flags present (`[routerLink]="'/fraud/correlations/' + c.claimId"`). Remaining items (Document Library page, nav links) deferred to 6.4.10. |
+| 6.4.12 | Provider Health UI Polish | ✅ **DONE** — Fixed accordion backdrop-filter blur artifact (`.no-backdrop-blur` class with `!important`), text-left alignment on accordion headers, refresh button restyled with hover/active scale effects + disabled state. Gemini/HuggingFace embedding health now falls back to shared LLM API keys (`\|\|` logic). |
+| 6.4.13 | Native Select Dropdown Theme | ✅ **DONE** — Added `color-scheme: dark` to `.theme-dark`/`.theme-semi-dark` and `color-scheme: light` to `.theme-light` in `styles.css` so native `<select>`/`<option>` elements match the app theme. |
+| 6.4.14 | E2E Test Fixes | ✅ **DONE** — Fixed document-library badge tests (scoped to `.grid` to avoid matching hidden `<option>` elements), fixed document-query filter dropdown count (5 options: "All documents" + 4 items). 666 E2E tests passing. |
 
 ### New Files (Sprint 6)
 
@@ -259,9 +262,9 @@ Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30
 | Metric | Sprint 5 End | Sprint 6 Current |
 |--------|-------------|-----------------|
 | Backend tests (xUnit) | 662 | **704** (+42: Week 4 regression + Week 1-3 services + extended health) |
-| Frontend unit tests | 443 | **443** (command palette fix) |
-| E2E tests | ~450 | **~450** (health endpoint mocks added) |
-| **Grand Total** | **~1,555** | **~1,597** |
+| Frontend unit tests | 443 | **462** (+19: document library, provider health) |
+| E2E tests | ~450 | **~666** (+~216: document library, document query, provider health, batch upload) |
+| **Grand Total** | **~1,555** | **~1,832** |
 | New NuGet packages | — | **3** (ContentSafety, Speech, AppInsights) |
 | New resilient chains | — | **2** (NER: HuggingFace→Azure, STT: Deepgram→Azure) |
 | Azure AI services integrated | 2 (Vision, DocIntel) | **6** (+ContentSafety, Language, Speech, Translator) |
@@ -477,4 +480,4 @@ All Week 4 items are done. See individual item rows in Week 4 table above for de
 
 ---
 
-*Last updated: 2026-03-07 | Sprint 6 COMPLETE (Weeks 1-4). All items done: Upload Sub-Loaders, Provider Health UI Revamp (7 collapsible sections), Document Library Page. 704 backend + 462 frontend tests passing. 3 adversarial review iterations (QA/UX/BA).*
+*Last updated: 2026-03-08 | Sprint 6 COMPLETE (Weeks 1-4 + polish). All items done including 6.4.12-14 UI polish fixes. 704 backend + 462 frontend + ~666 E2E = ~1,832 total tests passing.*
