@@ -16,6 +16,7 @@ using SentimentAnalyzer.API.Services.Fraud;
 using SentimentAnalyzer.API.Services.Multimodal;
 using SentimentAnalyzer.API.Services.CustomerExperience;
 using SentimentAnalyzer.API.Services.Documents;
+using SentimentAnalyzer.API.Services.Documents.RAGQuery;
 using SentimentAnalyzer.API.Services.Embeddings;
 using SentimentAnalyzer.API.Services.Providers;
 
@@ -30,6 +31,16 @@ builder.Services.AddProblemDetails();
 
 // Register MediatR for CQRS (scans this assembly for handlers)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
+
+// Application Insights telemetry (production monitoring)
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
+if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry(options =>
+    {
+        options.ConnectionString = appInsightsConnectionString;
+    });
+}
 
 // Register PII redaction service (mandatory before external AI calls)
 builder.Services.AddSingleton<IPIIRedactor, PIIRedactionService>();
@@ -79,19 +90,26 @@ builder.Services.AddKeyedSingleton<ISpeechToTextService>("AzureSpeech", (sp, _) 
     sp.GetRequiredService<AzureSpeechToTextService>());
 builder.Services.AddSingleton<ISpeechToTextService, ResilientSpeechToTextProvider>();
 
-// OCR Services: 4-tier resilient fallback chain ordered by data safety (PdfPig -> Azure Doc Intel -> OCR Space -> Gemini Vision)
+// OCR Services: 6-tier resilient fallback chain ordered by data safety
+// PdfPig -> Tesseract (local) -> Azure DocIntel (batched) -> Mistral OCR -> OCR Space -> Gemini Vision
 builder.Services.AddSingleton<PdfPigTextExtractor>();
 builder.Services.AddKeyedSingleton<IDocumentOcrService>("PdfPig", (sp, _) =>
     sp.GetRequiredService<PdfPigTextExtractor>());
+builder.Services.AddSingleton<TesseractOcrService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("Tesseract", (sp, _) =>
+    sp.GetRequiredService<TesseractOcrService>());
 builder.Services.AddSingleton<AzureDocumentIntelligenceOcrService>();
 builder.Services.AddKeyedSingleton<IDocumentOcrService>("AzureDocIntel", (sp, _) =>
     sp.GetRequiredService<AzureDocumentIntelligenceOcrService>());
-builder.Services.AddHttpClient<GeminiOcrService>();
-builder.Services.AddKeyedSingleton<IDocumentOcrService>("GeminiOcr", (sp, _) =>
-    sp.GetRequiredService<GeminiOcrService>());
+builder.Services.AddHttpClient<MistralOcrService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("MistralOcr", (sp, _) =>
+    sp.GetRequiredService<MistralOcrService>());
 builder.Services.AddHttpClient<OcrSpaceService>();
 builder.Services.AddKeyedSingleton<IDocumentOcrService>("OcrSpace", (sp, _) =>
     sp.GetRequiredService<OcrSpaceService>());
+builder.Services.AddHttpClient<GeminiOcrService>();
+builder.Services.AddKeyedSingleton<IDocumentOcrService>("GeminiOcr", (sp, _) =>
+    sp.GetRequiredService<GeminiOcrService>());
 builder.Services.AddSingleton<IDocumentOcrService, ResilientOcrProvider>();
 
 // NER Services: 2-tier resilient fallback chain (HuggingFace → Azure Language)
@@ -187,6 +205,11 @@ builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceSer
 
 // Feature 4: Synthetic Q&A Pipeline (fine-tuning preparation)
 builder.Services.AddScoped<ISyntheticQAService, SyntheticQAService>();
+
+// RAG Query Agent Team (Sprint 6) — pipeline services for enhanced document Q&A
+builder.Services.AddSingleton<IQueryReformulator, QueryReformulatorService>();
+builder.Services.AddSingleton<IAnswerEvaluator, AnswerEvaluatorService>();
+builder.Services.AddSingleton<ICrossDocReasoner, CrossDocReasonerService>();
 
 // Supabase JWT Authentication (optional - requires BOTH Url AND JwtSecret)
 // Supabase access tokens use HS256 (symmetric), so JWKS/OIDC discovery cannot validate them.
@@ -317,18 +340,33 @@ if (resolvedSettings != null)
         Console.WriteLine($"Configured AI providers: {string.Join(" → ", configuredProviders)}");
     }
 
-    // Azure AI services status (Sprint 4.5)
-    var azureServices = new List<string>();
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureVision.ApiKey)) azureServices.Add("Vision");
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureDocumentIntelligence.ApiKey)) azureServices.Add("DocIntel");
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureLanguage.ApiKey)) azureServices.Add("Language");
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureContentSafety.ApiKey)) azureServices.Add("ContentSafety");
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureTranslator.ApiKey)) azureServices.Add("Translator");
-    if (!string.IsNullOrWhiteSpace(resolvedSettings.AzureSpeech.ApiKey)) azureServices.Add("Speech");
-    if (azureServices.Count > 0)
+    // Azure AI services status
+    var azureStatus = new Dictionary<string, bool>
     {
-        Console.WriteLine($"Azure AI services: {string.Join(", ", azureServices)}");
-    }
+        ["Vision"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureVision.ApiKey),
+        ["DocIntel"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureDocumentIntelligence.ApiKey),
+        ["Language"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureLanguage.ApiKey),
+        ["ContentSafety"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureContentSafety.ApiKey),
+        ["Translator"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureTranslator.ApiKey),
+        ["Speech"] = !string.IsNullOrWhiteSpace(resolvedSettings.AzureSpeech.ApiKey),
+    };
+
+    var statusLine = string.Join(", ", azureStatus.Select(kvp =>
+        $"{kvp.Key} {(kvp.Value ? "\u2713" : "\u2717")}"));
+    Console.WriteLine($"Azure AI: {statusLine}");
+
+    // Embedding providers
+    var embeddingProviders = new List<string>();
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.Voyage.ApiKey)) embeddingProviders.Add("Voyage");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.Jina.ApiKey)) embeddingProviders.Add("Jina");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.CohereEmbedding.ApiKey)) embeddingProviders.Add("Cohere");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.GeminiEmbedding.ApiKey)) embeddingProviders.Add("Gemini");
+    if (!string.IsNullOrWhiteSpace(resolvedSettings.HuggingFaceEmbedding.ApiKey)) embeddingProviders.Add("HuggingFace");
+    embeddingProviders.Add("Ollama");
+    Console.WriteLine($"Embedding providers: {string.Join(" \u2192 ", embeddingProviders)}");
+
+    // OCR chain (always available: PdfPig + Tesseract are local)
+    Console.WriteLine("OCR chain: PdfPig \u2192 Tesseract (local) \u2192 Azure DocIntel \u2192 Mistral \u2192 OCR Space \u2192 Gemini Vision");
 }
 
 var app = builder.Build();
@@ -551,5 +589,8 @@ app.MapDocumentEndpoints(requireAuth: supabaseAuthEnabled);
 
 // v4 Customer Experience Copilot (SSE streaming)
 app.MapCustomerExperienceEndpoints(requireAuth: supabaseAuthEnabled);
+
+// Health check endpoints (liveness + readiness probes)
+app.MapHealthEndpoints();
 
 app.Run();

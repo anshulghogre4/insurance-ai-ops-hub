@@ -11,7 +11,8 @@ test.describe('Fine-Tuning Q&A Pipeline', () => {
   test('should show Generate Q&A button on document detail page', async ({ page }) => {
     const generateBtn = page.getByLabel('Generate QA training pairs');
     await expect(generateBtn).toBeVisible({ timeout: 10_000 });
-    await expect(generateBtn).toContainText('Generate Q&A Pairs');
+    // Button shows "Regenerate" when Q&A pairs are already loaded (mock pre-loads pairs)
+    await expect(generateBtn).toContainText(/Q&A Pairs/);
   });
 
   test('should show Fine-Tuning Training Data section header', async ({ page }) => {

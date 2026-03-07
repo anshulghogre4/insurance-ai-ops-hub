@@ -191,7 +191,8 @@ public class CustomerExperienceService : ICustomerExperienceService
                 EscalationReason = escalationReason,
                 LlmProvider = providerName,
                 ElapsedMilliseconds = sw.ElapsedMilliseconds,
-                Disclaimer = RegulatoryDisclaimer
+                Disclaimer = RegulatoryDisclaimer,
+                ContentSafetyScreened = _contentSafety != null
             };
         }
         catch (Exception ex)
@@ -209,7 +210,8 @@ public class CustomerExperienceService : ICustomerExperienceService
                 Tone = "Professional",
                 EscalationRecommended = false,
                 LlmProvider = "Error",
-                ElapsedMilliseconds = sw.ElapsedMilliseconds
+                ElapsedMilliseconds = sw.ElapsedMilliseconds,
+                ContentSafetyScreened = false
             };
         }
     }
@@ -424,7 +426,8 @@ public class CustomerExperienceService : ICustomerExperienceService
                 EscalationReason = escalationReason,
                 LlmProvider = providerName,
                 ElapsedMilliseconds = sw.ElapsedMilliseconds,
-                Disclaimer = RegulatoryDisclaimer
+                Disclaimer = RegulatoryDisclaimer,
+                ContentSafetyScreened = _contentSafety != null
             }
         };
 
@@ -634,8 +637,10 @@ public class CustomerExperienceService : ICustomerExperienceService
             "speak with a manager",
             "speak to someone in charge",
             "contact a licensed agent",
-            "recommend speaking with",
-            "recommend contacting",
+            "recommend speaking with a supervisor",
+            "recommend speaking with a manager",
+            "recommend contacting a supervisor",
+            "recommend contacting a manager",
             "escalate this matter",
             "department of insurance",
             "legal counsel",

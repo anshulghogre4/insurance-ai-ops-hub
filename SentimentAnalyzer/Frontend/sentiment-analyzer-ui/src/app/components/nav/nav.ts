@@ -143,6 +143,14 @@ import { CommandRegistryService } from '../../services/command-registry.service'
                   <div class="rounded-xl shadow-xl border p-1.5 animate-dropdown-enter"
                        [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
                     <p class="text-[10px] font-bold uppercase tracking-wider px-3 pt-1 pb-1" [style.color]="'var(--text-muted)'">Documents</p>
+                    <a routerLink="/documents" (click)="showWorkspaceMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                      </svg>
+                      Library
+                    </a>
                     <a routerLink="/documents/upload" (click)="showWorkspaceMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
                        [style.color]="'var(--text-secondary)'">
@@ -379,6 +387,13 @@ import { CommandRegistryService } from '../../services/command-registry.service'
               <!-- Workspace section -->
               <div class="pt-2 mt-1 border-t" [style.border-color]="'var(--border-secondary)'">
                 <p class="text-[10px] font-bold uppercase tracking-wider px-3 mb-1" [style.color]="'var(--text-muted)'">Workspace</p>
+                <a routerLink="/documents" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                  </svg>
+                  Library
+                </a>
                 <a routerLink="/documents/upload" routerLinkActive="nav-link-active"
                    (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
                   <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

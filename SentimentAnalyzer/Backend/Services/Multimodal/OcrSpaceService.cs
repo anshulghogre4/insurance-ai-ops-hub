@@ -47,6 +47,21 @@ public class OcrSpaceService : IDocumentOcrService
             };
         }
 
+        // OCR.space free tier has a 1MB file size limit
+        const int maxFileSizeBytes = 1 * 1024 * 1024;
+        if (documentData.Length > maxFileSizeBytes)
+        {
+            _logger.LogWarning(
+                "Document size {Size} bytes exceeds OCR.space 1MB limit ({MaxSize} bytes). Skipping to next provider.",
+                documentData.Length, maxFileSizeBytes);
+            return new OcrResult
+            {
+                IsSuccess = false,
+                Provider = "OcrSpace",
+                ErrorMessage = "Document exceeds OCR.space 1MB file size limit"
+            };
+        }
+
         try
         {
             var fileExtension = mimeType switch

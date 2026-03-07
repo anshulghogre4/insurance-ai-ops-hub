@@ -18,8 +18,9 @@ public class DocumentQueryResult
     public string Answer { get; set; } = string.Empty;
 
     /// <summary>
-    /// Average cosine similarity of retrieved chunks to the query embedding.
-    /// Measures retrieval relevance (0.0-1.0), NOT answer correctness confidence.
+    /// Normalized retrieval relevance score (0.0-1.0).
+    /// Average of fused RRF scores normalized to 0-1 scale (top result = 1.0, others proportional).
+    /// Measures retrieval quality, NOT answer correctness confidence.
     /// </summary>
     public double Confidence { get; set; }
 
@@ -29,6 +30,18 @@ public class DocumentQueryResult
 
     /// <summary>Content safety screening result for the LLM answer (null if screening was skipped).</summary>
     public ContentSafetyInfo? AnswerSafety { get; set; }
+
+    /// <summary>Whether the query was reformulated for better retrieval (null if reformulation was skipped).</summary>
+    public bool? QueryReformulated { get; set; }
+
+    /// <summary>Answer quality score from the evaluator (0.0-1.0, null if evaluation was skipped).</summary>
+    public double? AnswerQualityScore { get; set; }
+
+    /// <summary>Whether the answer is grounded in source documents (null if evaluation was skipped).</summary>
+    public bool? IsGrounded { get; set; }
+
+    /// <summary>Cross-document conflicts found during synthesis (empty if single-document or skipped).</summary>
+    public List<string> CrossDocConflicts { get; set; } = [];
 }
 
 /// <summary>A citation pointing to a specific document chunk.</summary>

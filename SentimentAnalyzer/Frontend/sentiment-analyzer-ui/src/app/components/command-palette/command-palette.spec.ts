@@ -144,8 +144,8 @@ describe('CommandPaletteComponent', () => {
     registry.setSearchQuery('xyznonexistentcommand');
     fixture.detectChanges();
 
-    const noResults = fixture.nativeElement.querySelector('[role="listbox"]');
-    expect(noResults.textContent).toContain('No commands found');
+    const dialog = fixture.nativeElement.querySelector('[role="dialog"]');
+    expect(dialog.textContent).toContain('No commands found');
   });
 
   it('should move highlight down with ArrowDown', () => {

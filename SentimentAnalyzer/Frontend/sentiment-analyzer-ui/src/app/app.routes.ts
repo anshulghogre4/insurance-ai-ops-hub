@@ -15,6 +15,7 @@ import { DocumentResultComponent } from './components/document-result/document-r
 import { CxCopilotComponent } from './components/cx-copilot/cx-copilot';
 import { FraudCorrelationComponent } from './components/fraud-correlation/fraud-correlation';
 import { BatchUploadComponent } from './components/batch-upload/batch-upload';
+import { DocumentLibraryComponent } from './components/document-library/document-library';
 import { authGuard } from './guards/auth.guard';
 import { guestGuard } from './guards/guest.guard';
 
@@ -30,6 +31,7 @@ export const routes: Routes = [
   { path: 'claims/:id', component: ClaimResultComponent, canActivate: [authGuard], data: { breadcrumb: 'Claim :id' } },
   { path: 'dashboard/providers', component: ProviderHealthComponent, canActivate: [authGuard], data: { breadcrumb: 'Provider Health' } },
   { path: 'dashboard/fraud', component: FraudAlertsComponent, canActivate: [authGuard], data: { breadcrumb: 'Fraud Alerts' } },
+  { path: 'documents', component: DocumentLibraryComponent, canActivate: [authGuard], data: { breadcrumb: 'Library' } },
   { path: 'documents/upload', component: DocumentUploadComponent, canActivate: [authGuard], data: { breadcrumb: 'Upload' } },
   { path: 'documents/query', component: DocumentQueryComponent, canActivate: [authGuard], data: { breadcrumb: 'Query' } },
   { path: 'documents/:id', component: DocumentResultComponent, canActivate: [authGuard], data: { breadcrumb: 'Document :id' } },

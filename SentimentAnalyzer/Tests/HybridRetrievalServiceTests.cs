@@ -68,16 +68,16 @@ public class HybridRetrievalServiceTests
         Assert.Equal(3, fused.Count);
         Assert.Equal(1, fused[0].Chunk.Id);
 
-        // Shared chunk gets 1/(60+1) from vector rank 1 + 1/(60+1) from BM25 rank 1
-        var expectedSharedScore = 1.0 / 61 + 1.0 / 61;
-        Assert.Equal(expectedSharedScore, fused[0].Score, precision: 10);
+        // Shared chunk gets max RRF score → normalizes to 1.0 (top result)
+        Assert.Equal(1.0, fused[0].Score, precision: 4);
 
-        // Vector-only and BM25-only chunks should each get score from only one list
+        // Vector-only and BM25-only chunks each get 1/(62) raw, normalized relative to shared (2/61)
         var vectorOnlyScore = fused.First(r => r.Chunk.Id == 2).Score;
         var bm25OnlyScore = fused.First(r => r.Chunk.Id == 3).Score;
 
-        Assert.Equal(1.0 / 62, vectorOnlyScore, precision: 10); // rank 2 in vector
-        Assert.Equal(1.0 / 62, bm25OnlyScore, precision: 10);   // rank 2 in BM25
+        var expectedRelative = Math.Round((1.0 / 62) / (2.0 / 61), 4);
+        Assert.Equal(expectedRelative, vectorOnlyScore, precision: 4); // rank 2 in vector
+        Assert.Equal(expectedRelative, bm25OnlyScore, precision: 4);   // rank 2 in BM25
     }
 
     [Fact]
@@ -294,11 +294,10 @@ public class HybridRetrievalServiceTests
         // Act
         var fused = _sut.FuseResults(vectorResults, bm25Results, topK: 5);
 
-        // Assert — each chunk gets exactly 1/(60 + 1) = 1/61
+        // Assert — each chunk gets equal RRF 1/61 → both normalize to 1.0
         Assert.Equal(2, fused.Count);
-        var expectedScore = 1.0 / 61;
-        Assert.Equal(expectedScore, fused[0].Score, precision: 10);
-        Assert.Equal(expectedScore, fused[1].Score, precision: 10);
+        Assert.Equal(1.0, fused[0].Score, precision: 4);
+        Assert.Equal(1.0, fused[1].Score, precision: 4);
     }
 
     [Fact]
@@ -327,10 +326,10 @@ public class HybridRetrievalServiceTests
         Assert.True(fused[0].Score > fused[1].Score);
         Assert.True(fused[1].Score > fused[2].Score);
 
-        // Verify exact RRF scores: 1/(61), 1/(62), 1/(63)
-        Assert.Equal(0.95, fused[0].Score, precision: 10);    // passthrough (no fusion)
-        Assert.Equal(0.80, fused[1].Score, precision: 10);
-        Assert.Equal(0.65, fused[2].Score, precision: 10);
+        // Passthrough scores are normalized to 0-1 (top = 1.0, others proportional)
+        Assert.Equal(1.0, fused[0].Score, precision: 4);
+        Assert.Equal(Math.Round(0.80 / 0.95, 4), fused[1].Score, precision: 4);
+        Assert.Equal(Math.Round(0.65 / 0.95, 4), fused[2].Score, precision: 4);
     }
 
     [Fact]

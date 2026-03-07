@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/test-results/
+**/.git/
+**/*.user
+**/*.suo
+**/appsettings.Development.json
+**/.env
+**/e2e/test-results/

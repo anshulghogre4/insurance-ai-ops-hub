@@ -34,7 +34,13 @@
       "Bash(npx playwright test --grep \"Fraud Alerts\")",
       "Bash(npx playwright test)",
       "WebFetch(domain:ocr.space)",
-      "WebFetch(domain:ai.google.dev)"
+      "WebFetch(domain:ai.google.dev)",
+      "Bash(npx playwright test e2e/batch-upload.spec.ts e2e/claims-triage.spec.ts:80 e2e/claims-triage.spec.ts:101 e2e/fine-tuning-qa.spec.ts:11 e2e/login.spec.ts:17 e2e/micro-interactions.spec.ts:16 e2e/micro-interactions.spec.ts:26 e2e/micro-interactions.spec.ts:34 e2e/micro-interactions.spec.ts:42 e2e/micro-interactions.spec.ts:74 e2e/micro-interactions.spec.ts:84 e2e/micro-interactions.spec.ts:200 e2e/micro-interactions.spec.ts:241 --reporter=line)",
+      "Bash(npx playwright test \"e2e/batch-upload.spec.ts:25\" --project=mobile-chrome --reporter=line)",
+      "Bash(npx playwright test e2e/batch-upload.spec.ts:25 e2e/batch-upload.spec.ts:78 e2e/batch-upload.spec.ts:100 --project=mobile-chrome --reporter=line)",
+      "Bash(xargs grep -l \"DocumentQuery\\\\|DocumentIntelligence\")",
+      "Bash(npm run e2e)",
+      "mcp__sequential-thinking__sequentialthinking"
     ]
   }
 }

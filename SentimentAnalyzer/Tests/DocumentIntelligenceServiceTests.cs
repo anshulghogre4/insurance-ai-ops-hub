@@ -80,7 +80,8 @@ public class DocumentIntelligenceServiceTests
             _mockKernelProvider.Object,
             _mockPiiRedactor.Object,
             _mockHybridRetrieval.Object,
-            _mockLogger.Object);
+            _mockLogger.Object,
+            new Mock<IServiceProvider>().Object);
     }
 
     // ────────────────────────────────────────────────────────────
@@ -938,6 +939,7 @@ public class DocumentIntelligenceServiceTests
             _mockPiiRedactor.Object,
             _mockHybridRetrieval.Object,
             _mockLogger.Object,
+            new Mock<IServiceProvider>().Object,
             contentSafety);
     }
 

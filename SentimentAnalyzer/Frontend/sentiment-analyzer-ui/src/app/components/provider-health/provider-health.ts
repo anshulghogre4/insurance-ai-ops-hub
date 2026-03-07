@@ -4,7 +4,12 @@ import { RouterLink } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { interval } from 'rxjs';
 import { ClaimsService } from '../../services/claims.service';
-import { ProviderHealthResponse, LlmProviderHealth, ServiceHealth } from '../../models/claims.model';
+import {
+  ExtendedProviderHealthResponse,
+  LlmProviderHealth,
+  ProviderChainHealth,
+  ServiceHealth
+} from '../../models/claims.model';
 
 @Component({
   selector: 'app-provider-health',
@@ -46,143 +51,298 @@ import { ProviderHealthResponse, LlmProviderHealth, ServiceHealth } from '../../
         </div>
       }
 
-      <!-- Fallback Chain Visualization -->
-      @if (llmProviders().length > 0) {
-        <div class="glass-card-static p-5 mb-6 animate-fade-in-up stagger-1">
-          <p class="text-xs font-bold uppercase tracking-wider mb-3" [style.color]="'var(--text-muted)'">LLM Fallback Chain</p>
-          <div class="flex items-center gap-1 overflow-x-auto pb-2 custom-scrollbar" tabindex="0" role="region" aria-label="LLM provider fallback chain">
-            @for (provider of llmProviders(); track provider.name; let last = $last) {
-              <div class="flex items-center gap-1 flex-shrink-0">
-                <div class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
-                     [class]="getChainClass(provider)">
-                  <span class="w-2 h-2 rounded-full" [class]="getStatusDotClass(provider)"></span>
-                  {{ provider.name }}
-                </div>
-                @if (!last) {
-                  <svg class="w-4 h-4 flex-shrink-0" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                  </svg>
-                }
-              </div>
-            }
-          </div>
+      <!-- Loading Skeleton -->
+      @if (isLoading() && llmProviders().length === 0) {
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8" aria-busy="true" aria-live="polite" role="status">
+          <span class="sr-only">Loading provider health data...</span>
+          @for (i of [1,2,3,4]; track i) {
+            <div class="skeleton h-36 rounded-xl"></div>
+          }
         </div>
       }
 
-      <!-- LLM Providers Grid -->
-      <div class="mb-8">
-        <h2 class="text-sm font-bold uppercase tracking-wider mb-4" [style.color]="'var(--text-muted)'">
-          LLM Providers ({{ llmProviders().length }})
-        </h2>
+      <!-- ==================== 1. LLM Providers ==================== -->
+      @if (llmProviders().length > 0) {
+        <div class="mb-6 animate-fade-in-up stagger-1">
+          <!-- Collapsible Header -->
+          <button (click)="toggleSection('llm')" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+                  [attr.aria-expanded]="isSectionExpanded('llm')" aria-controls="section-llm" aria-label="Toggle LLM Providers section">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              </div>
+              <h2 class="text-sm font-bold uppercase tracking-wider" [style.color]="'var(--text-primary)'">
+                LLM Providers ({{ llmProviders().length }})
+              </h2>
+            </div>
+            <svg class="w-5 h-5 transition-transform duration-200" [class.rotate-180]="isSectionExpanded('llm')" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
 
-        @if (isLoading() && llmProviders().length === 0) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <div class="skeleton h-36 rounded-xl"></div>
-            }
-          </div>
-        }
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          @for (provider of llmProviders(); track provider.name; let i = $index) {
-            <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + Math.min(i + 1, 5)">
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-bold" [style.color]="'var(--text-primary)'">{{ provider.name }}</h3>
-                <div class="flex items-center gap-1.5">
-                  <span class="w-2.5 h-2.5 rounded-full" [class]="getStatusDotClass(provider)"
-                        [class.animate-pulse]="provider.status === 'Down'"></span>
-                  <span class="text-[10px] font-semibold" [class]="getStatusTextClass(provider)">{{ provider.status }}</span>
-                </div>
+          @if (isSectionExpanded('llm')) {
+            <div id="section-llm" class="glass-card-static rounded-t-none border-t-0 p-5">
+              <!-- LLM Fallback Chain -->
+              <p class="text-xs font-bold uppercase tracking-wider mb-3" [style.color]="'var(--text-muted)'">LLM Fallback Chain</p>
+              <div class="flex items-center gap-1 overflow-x-auto pb-3 mb-4 custom-scrollbar" tabindex="0" role="region" aria-label="LLM provider fallback chain">
+                @for (provider of llmProviders(); track provider.name; let last = $last) {
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <div class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                         [class]="getLlmChainClass(provider)">
+                      <span class="w-2 h-2 rounded-full" [class]="getLlmStatusDotClass(provider)"></span>
+                      {{ provider.name }}
+                    </div>
+                    @if (!last) {
+                      <svg class="w-4 h-4 flex-shrink-0" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                      </svg>
+                    }
+                  </div>
+                }
               </div>
 
-              <div class="space-y-2">
-                <div class="flex justify-between text-xs">
-                  <span [style.color]="'var(--text-muted)'">Available</span>
-                  <span class="font-medium" [class]="provider.isAvailable ? 'text-emerald-400' : 'text-rose-400'">
-                    {{ provider.isAvailable ? 'Yes' : 'No' }}
-                  </span>
-                </div>
-                <div class="flex justify-between text-xs">
-                  <span [style.color]="'var(--text-muted)'">Failures</span>
-                  <span class="font-mono font-medium" [class]="provider.consecutiveFailures > 0 ? 'text-amber-400' : ''" [style.color]="provider.consecutiveFailures === 0 ? 'var(--text-secondary)' : ''">
-                    {{ provider.consecutiveFailures }}
-                  </span>
-                </div>
-                @if (provider.cooldownSeconds > 0) {
-                  <div class="flex justify-between text-xs">
-                    <span [style.color]="'var(--text-muted)'">Cooldown</span>
-                    <span class="font-mono text-orange-400">{{ provider.cooldownSeconds.toFixed(0) }}s</span>
-                  </div>
-                  <div class="progress-track mt-1">
-                    <div class="progress-fill bg-orange-500" [style.width.%]="Math.min((provider.cooldownSeconds / 300) * 100, 100)"></div>
+              <!-- LLM Provider Cards -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                @for (provider of llmProviders(); track provider.name; let i = $index) {
+                  <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + mathMin(i + 1, 5)">
+                    <div class="flex items-center justify-between mb-3">
+                      <h3 class="text-sm font-bold" [style.color]="'var(--text-primary)'">{{ provider.name }}</h3>
+                      <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full" [class]="getLlmStatusDotClass(provider)"
+                              [class.animate-pulse]="provider.status === 'Down'"></span>
+                        <span class="text-[10px] font-semibold" [class]="getLlmStatusTextClass(provider)">{{ provider.status }}</span>
+                      </div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="flex justify-between text-xs">
+                        <span [style.color]="'var(--text-muted)'">Available</span>
+                        <span class="font-medium" [class]="provider.isAvailable ? 'text-emerald-400' : 'text-rose-400'">
+                          {{ provider.isAvailable ? 'Yes' : 'No' }}
+                        </span>
+                      </div>
+                      <div class="flex justify-between text-xs">
+                        <span [style.color]="'var(--text-muted)'">Failures</span>
+                        <span class="font-mono font-medium" [class]="provider.consecutiveFailures > 0 ? 'text-amber-400' : ''" [style.color]="provider.consecutiveFailures === 0 ? 'var(--text-secondary)' : ''">
+                          {{ provider.consecutiveFailures }}
+                        </span>
+                      </div>
+                      @if (provider.cooldownSeconds > 0) {
+                        <div class="flex justify-between text-xs">
+                          <span [style.color]="'var(--text-muted)'">Cooldown</span>
+                          <span class="font-mono text-orange-400">{{ provider.cooldownSeconds.toFixed(0) }}s</span>
+                        </div>
+                        <div class="progress-track mt-1">
+                          <div class="progress-fill bg-orange-500" [style.width.%]="mathMin((provider.cooldownSeconds / 300) * 100, 100)"></div>
+                        </div>
+                      }
+                    </div>
                   </div>
                 }
               </div>
             </div>
           }
         </div>
-      </div>
+      }
 
-      <!-- Multimodal Services Grid -->
-      <div>
-        <h2 class="text-sm font-bold uppercase tracking-wider mb-4" [style.color]="'var(--text-muted)'">
-          Multimodal Services ({{ multimodalServices().length }})
-        </h2>
+      <!-- ==================== 2. Embedding Providers ==================== -->
+      @if (embeddingProviders().length > 0) {
+        <ng-container *ngTemplateOutlet="chainSection; context: { $implicit: 'embedding', label: 'Embedding Providers', subtitle: 'Vector search & document similarity', providers: embeddingProviders(), icon: 'embedding', gradient: 'from-cyan-500 to-blue-600' }"></ng-container>
+      }
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          @for (svc of multimodalServices(); track svc.name; let i = $index) {
-            <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + Math.min(i + 1, 5)">
-              <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                     [class]="svc.isConfigured ? 'bg-emerald-500/15' : 'bg-slate-500/15'">
-                  @switch (getServiceIcon(svc)) {
-                    @case ('microphone') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
-                    }
-                    @case ('eye') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
-                    }
-                    @case ('cloud') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"/></svg>
-                    }
-                    @case ('document') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
-                    }
-                    @case ('cpu') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
-                    }
-                    @case ('compass') {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 2a10 10 0 110 20 10 10 0 010-20zm0 0l3.5 6.5L12 12l-3.5-3.5L12 2z"/><polygon stroke-linecap="round" stroke-linejoin="round" points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88"/></svg>
-                    }
-                    @default {
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                    }
+      <!-- ==================== 3. OCR Providers ==================== -->
+      @if (ocrProviders().length > 0) {
+        <ng-container *ngTemplateOutlet="chainSection; context: { $implicit: 'ocr', label: 'OCR Providers', subtitle: 'Optical Character Recognition — text extraction from documents', providers: ocrProviders(), icon: 'document', gradient: 'from-amber-500 to-orange-600' }"></ng-container>
+      }
+
+      <!-- ==================== 4. NER Providers ==================== -->
+      @if (nerProviders().length > 0) {
+        <ng-container *ngTemplateOutlet="chainSection; context: { $implicit: 'ner', label: 'NER Providers', subtitle: 'Named Entity Recognition — extracting people, orgs, locations', providers: nerProviders(), icon: 'cpu', gradient: 'from-emerald-500 to-green-600' }"></ng-container>
+      }
+
+      <!-- ==================== 5. STT Providers ==================== -->
+      @if (sttProviders().length > 0) {
+        <ng-container *ngTemplateOutlet="chainSection; context: { $implicit: 'stt', label: 'STT Providers', subtitle: 'Speech-to-Text — audio transcription for evidence', providers: sttProviders(), icon: 'microphone', gradient: 'from-rose-500 to-pink-600' }"></ng-container>
+      }
+
+      <!-- ==================== 6. Content Safety ==================== -->
+      @if (contentSafety().length > 0) {
+        <ng-container *ngTemplateOutlet="serviceSection; context: { $implicit: 'contentSafety', label: 'Content Safety', services: contentSafety(), gradient: 'from-violet-500 to-purple-600' }"></ng-container>
+      }
+
+      <!-- ==================== 7. Translation ==================== -->
+      @if (translation().length > 0) {
+        <ng-container *ngTemplateOutlet="serviceSection; context: { $implicit: 'translation', label: 'Translation', services: translation(), gradient: 'from-sky-500 to-indigo-600' }"></ng-container>
+      }
+
+      <!-- Chain Section Template (for Embedding, OCR, NER, STT) -->
+      <ng-template #chainSection let-section let-label="label" let-subtitle="subtitle" let-providers="providers" let-icon="icon" let-gradient="gradient">
+        <div class="mb-6 animate-fade-in-up">
+          <button (click)="toggleSection(section)" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+                  [attr.aria-expanded]="isSectionExpanded(section)" [attr.aria-controls]="'section-' + section" [attr.aria-label]="'Toggle ' + label + ' section'">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center" [ngClass]="gradient">
+                @switch (icon) {
+                  @case ('embedding') {
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
                   }
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm font-semibold truncate" [style.color]="'var(--text-primary)'">{{ svc.name }}</p>
-                  <div class="flex items-center gap-1.5 mt-0.5">
-                    @if (svc.isConfigured) {
-                      <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                  @case ('document') {
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                  }
+                  @case ('cpu') {
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                  }
+                  @case ('microphone') {
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/></svg>
+                  }
+                  @default {
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                  }
+                }
+              </div>
+              <div>
+                <h2 class="text-sm font-bold uppercase tracking-wider" [style.color]="'var(--text-primary)'">
+                  {{ label }} ({{ providers.length }})
+                </h2>
+                @if (subtitle) {
+                  <p class="text-[10px] font-normal normal-case tracking-normal" [style.color]="'var(--text-muted)'">{{ subtitle }}</p>
+                }
+              </div>
+            </div>
+            <svg class="w-5 h-5 transition-transform duration-200" [class.rotate-180]="isSectionExpanded(section)" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          @if (isSectionExpanded(section)) {
+            <div [id]="'section-' + section" class="glass-card-static rounded-t-none border-t-0 p-5">
+              <!-- Chain Visualization -->
+              <p class="text-xs font-bold uppercase tracking-wider mb-3" [style.color]="'var(--text-muted)'">Fallback Chain</p>
+              <div class="flex items-center gap-1 overflow-x-auto pb-3 mb-4 custom-scrollbar" tabindex="0" role="region" [attr.aria-label]="label + ' fallback chain'">
+                @for (p of providers; track p.name; let last = $last) {
+                  <div class="flex items-center gap-1 flex-shrink-0">
+                    <div class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+                         [class]="getChainHealthClass(p)">
+                      <span class="w-2 h-2 rounded-full" [class]="getChainStatusDotClass(p)"></span>
+                      {{ p.name }}
+                    </div>
+                    @if (!last) {
+                      <svg class="w-4 h-4 flex-shrink-0" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                       </svg>
-                      <span class="text-[10px] font-medium text-emerald-400">Configured</span>
-                    } @else {
-                      <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                      </svg>
-                      <span class="text-[10px] font-medium text-slate-400">Not Configured</span>
                     }
                   </div>
-                </div>
-                <span class="badge text-[10px]" [class]="svc.status === 'Available' ? 'badge-success' : 'badge-neutral'">
-                  {{ svc.status }}
-                </span>
+                }
+              </div>
+
+              <!-- Provider Cards -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                @for (p of providers; track p.name; let i = $index) {
+                  <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + mathMin(i + 1, 5)">
+                    <div class="flex items-center justify-between mb-3">
+                      <h3 class="text-sm font-bold" [style.color]="'var(--text-primary)'">{{ p.name }}</h3>
+                      <div class="flex items-center gap-1.5">
+                        <span class="w-2.5 h-2.5 rounded-full" [class]="getChainStatusDotClass(p)"
+                              [class.animate-pulse]="p.status === 'Down'"></span>
+                        <span class="text-[10px] font-semibold" [class]="getChainStatusTextClass(p)">{{ p.status }}</span>
+                      </div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="flex justify-between text-xs">
+                        <span [style.color]="'var(--text-muted)'">Chain Order</span>
+                        <span class="font-mono font-semibold px-2 py-0.5 rounded bg-indigo-500/15 text-indigo-400">#{{ p.chainOrder }}</span>
+                      </div>
+                      <div class="flex justify-between text-xs">
+                        <span [style.color]="'var(--text-muted)'">Configured</span>
+                        @if (p.isConfigured) {
+                          <span class="font-medium text-emerald-400 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            Yes
+                          </span>
+                        } @else {
+                          <span class="font-medium text-slate-400 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                            No
+                          </span>
+                        }
+                      </div>
+                      <div class="flex justify-between text-xs">
+                        <span [style.color]="'var(--text-muted)'">Available</span>
+                        <span class="font-medium" [class]="p.isAvailable ? 'text-emerald-400' : 'text-rose-400'">
+                          {{ p.isAvailable ? 'Yes' : 'No' }}
+                        </span>
+                      </div>
+                      @if (p.freeTierLimit) {
+                        <div class="flex justify-between text-xs">
+                          <span [style.color]="'var(--text-muted)'">Free Tier</span>
+                          <span class="font-medium text-sky-400">{{ p.freeTierLimit }}</span>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
               </div>
             </div>
           }
         </div>
-      </div>
+      </ng-template>
+
+      <!-- Service Section Template (for Content Safety, Translation) -->
+      <ng-template #serviceSection let-section let-label="label" let-services="services" let-gradient="gradient">
+        <div class="mb-6 animate-fade-in-up">
+          <button (click)="toggleSection(section)" class="w-full flex items-center justify-between p-4 glass-card-static mb-0 rounded-b-none cursor-pointer hover:bg-white/5 transition-colors"
+                  [attr.aria-expanded]="isSectionExpanded(section)" [attr.aria-controls]="'section-' + section" [attr.aria-label]="'Toggle ' + label + ' section'">
+            <div class="flex items-center gap-3">
+              <div class="w-8 h-8 rounded-lg bg-gradient-to-br flex items-center justify-center" [ngClass]="gradient">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              </div>
+              <h2 class="text-sm font-bold uppercase tracking-wider" [style.color]="'var(--text-primary)'">
+                {{ label }} ({{ services.length }})
+              </h2>
+            </div>
+            <svg class="w-5 h-5 transition-transform duration-200" [class.rotate-180]="isSectionExpanded(section)" [style.color]="'var(--text-muted)'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </button>
+
+          @if (isSectionExpanded(section)) {
+            <div [id]="'section-' + section" class="glass-card-static rounded-t-none border-t-0 p-5">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                @for (svc of services; track svc.name; let i = $index) {
+                  <div class="glass-card p-5 animate-fade-in-up" [class]="'stagger-' + mathMin(i + 1, 5)">
+                    <div class="flex items-center gap-3">
+                      <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                           [class]="svc.isConfigured ? 'bg-emerald-500/15' : 'bg-slate-500/15'">
+                        <svg class="w-5 h-5" [class]="svc.isConfigured ? 'text-emerald-400' : 'text-slate-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold truncate" [style.color]="'var(--text-primary)'">{{ svc.name }}</p>
+                        <div class="flex items-center gap-1.5 mt-0.5">
+                          @if (svc.isConfigured) {
+                            <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                            </svg>
+                            <span class="text-[10px] font-medium text-emerald-400">Configured</span>
+                          } @else {
+                            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                            <span class="text-[10px] font-medium text-slate-400">Not Configured</span>
+                          }
+                        </div>
+                      </div>
+                      <span class="badge text-[10px]" [class]="svc.status === 'Available' ? 'badge-success' : 'badge-neutral'">
+                        {{ svc.status }}
+                      </span>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </ng-template>
 
       <!-- Back Link -->
       <div class="mt-8">
@@ -200,13 +360,19 @@ export class ProviderHealthComponent implements OnInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
   private claimsService = inject(ClaimsService);
 
-  Math = Math;
-
   llmProviders = signal<LlmProviderHealth[]>([]);
-  multimodalServices = signal<ServiceHealth[]>([]);
+  embeddingProviders = signal<ProviderChainHealth[]>([]);
+  ocrProviders = signal<ProviderChainHealth[]>([]);
+  nerProviders = signal<ProviderChainHealth[]>([]);
+  sttProviders = signal<ProviderChainHealth[]>([]);
+  contentSafety = signal<ServiceHealth[]>([]);
+  translation = signal<ServiceHealth[]>([]);
   lastChecked = signal<string | null>(null);
   isLoading = signal(true);
   error = signal<string | null>(null);
+
+  /** Tracks which sections are expanded. LLM is expanded by default. */
+  expandedSections = signal<Set<string>>(new Set(['llm']));
 
   ngOnInit(): void {
     this.refresh();
@@ -220,13 +386,18 @@ export class ProviderHealthComponent implements OnInit, OnDestroy {
   refresh(): void {
     this.isLoading.set(true);
     this.error.set(null);
-    this.claimsService.getProviderHealth()
+    this.claimsService.getExtendedProviderHealth()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          this.llmProviders.set(res.llmProviders);
-          this.multimodalServices.set(res.multimodalServices);
-          this.lastChecked.set(res.checkedAt);
+          this.llmProviders.set(res.llmProviders ?? []);
+          this.embeddingProviders.set(res.embeddingProviders ?? []);
+          this.ocrProviders.set(res.ocrProviders ?? []);
+          this.nerProviders.set(res.nerProviders ?? []);
+          this.sttProviders.set(res.sttProviders ?? []);
+          this.contentSafety.set(res.contentSafety ?? []);
+          this.translation.set(res.translation ?? []);
+          this.lastChecked.set(res.checkedAt ?? null);
           this.isLoading.set(false);
         },
         error: () => {
@@ -236,11 +407,31 @@ export class ProviderHealthComponent implements OnInit, OnDestroy {
       });
   }
 
+  toggleSection(section: string): void {
+    const current = new Set(this.expandedSections());
+    if (current.has(section)) {
+      current.delete(section);
+    } else {
+      current.add(section);
+    }
+    this.expandedSections.set(current);
+  }
+
+  isSectionExpanded(section: string): boolean {
+    return this.expandedSections().has(section);
+  }
+
+  mathMin(a: number, b: number): number {
+    return Math.min(a, b);
+  }
+
   formatTime(dateStr: string): string {
     return new Date(dateStr).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   }
 
-  getStatusDotClass(provider: LlmProviderHealth): string {
+  // ---- LLM Provider helpers ----
+
+  getLlmStatusDotClass(provider: LlmProviderHealth): string {
     switch (provider.status) {
       case 'Healthy': return 'bg-emerald-400';
       case 'Degraded': return 'bg-amber-400';
@@ -249,7 +440,7 @@ export class ProviderHealthComponent implements OnInit, OnDestroy {
     }
   }
 
-  getStatusTextClass(provider: LlmProviderHealth): string {
+  getLlmStatusTextClass(provider: LlmProviderHealth): string {
     switch (provider.status) {
       case 'Healthy': return 'text-emerald-400';
       case 'Degraded': return 'text-amber-400';
@@ -258,19 +449,38 @@ export class ProviderHealthComponent implements OnInit, OnDestroy {
     }
   }
 
-  getChainClass(provider: LlmProviderHealth): string {
+  getLlmChainClass(provider: LlmProviderHealth): string {
     if (provider.status === 'Healthy') return 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
     if (provider.status === 'Degraded') return 'bg-amber-500/10 border border-amber-500/20 text-amber-400';
     return 'bg-rose-500/10 border border-rose-500/20 text-rose-400';
   }
 
-  getServiceIcon(svc: ServiceHealth): string {
-    if (svc.name.includes('Deepgram')) return 'microphone';
-    if (svc.name.includes('Azure')) return 'eye';
-    if (svc.name.includes('Cloudflare')) return 'cloud';
-    if (svc.name.includes('Ocr') || svc.name.includes('OCR')) return 'document';
-    if (svc.name.includes('Hugging')) return 'cpu';
-    if (svc.name.includes('Voyage')) return 'compass';
-    return 'gear';
+  // ---- Chain (ProviderChainHealth) helpers ----
+
+  getChainStatusDotClass(provider: ProviderChainHealth): string {
+    switch (provider.status) {
+      case 'Healthy': return 'bg-emerald-400';
+      case 'Degraded': return 'bg-amber-400';
+      case 'Down': return 'bg-rose-500';
+      case 'NotConfigured': return 'bg-slate-400';
+      default: return 'bg-slate-400';
+    }
+  }
+
+  getChainStatusTextClass(provider: ProviderChainHealth): string {
+    switch (provider.status) {
+      case 'Healthy': return 'text-emerald-400';
+      case 'Degraded': return 'text-amber-400';
+      case 'Down': return 'text-rose-400';
+      case 'NotConfigured': return 'text-slate-400';
+      default: return '';
+    }
+  }
+
+  getChainHealthClass(provider: ProviderChainHealth): string {
+    if (provider.status === 'Healthy') return 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+    if (provider.status === 'Degraded') return 'bg-amber-500/10 border border-amber-500/20 text-amber-400';
+    if (provider.status === 'NotConfigured') return 'bg-slate-500/10 border border-slate-500/20 text-slate-400';
+    return 'bg-rose-500/10 border border-rose-500/20 text-rose-400';
   }
 }

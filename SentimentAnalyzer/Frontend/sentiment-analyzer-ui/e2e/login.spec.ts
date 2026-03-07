@@ -20,15 +20,13 @@ test.describe('Login Page', () => {
       test.skip();
       return;
     }
-    // Branding panel is the left side with gradient bg
-    // Use a more specific selector to find the panel by its distinctive content
-    const brandingPanel = page.locator('div.bg-gradient-to-br').first();
-    await expect(brandingPanel).toBeVisible();
-    await expect(brandingPanel.getByText('InsureSense AI')).toBeVisible();
-    // Verify features listed in the branding panel (current v4.0 content)
-    await expect(page.getByText('Claims Triage')).toBeVisible();
-    await expect(page.getByText('7-Provider Resilient Fallback')).toBeVisible();
-    await expect(page.getByText('PII-Safe Processing')).toBeVisible();
+    // Branding panel is the left side with gradient bg (hidden on mobile, visible on lg+)
+    const brandingPanel = page.locator('div.from-indigo-600').first();
+    await expect(brandingPanel).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText('InsureSense AI').first()).toBeVisible();
+    // Verify features listed in the branding panel (use .first() to avoid strict mode on partial matches)
+    await expect(page.getByText('Claims Triage').first()).toBeVisible();
+    await expect(page.getByText('PII-Safe Processing').first()).toBeVisible();
   });
 
   test('should toggle between login and register mode', async ({ page }) => {

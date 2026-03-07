@@ -192,6 +192,49 @@ export const MOCK_PROVIDER_HEALTH_RESPONSE = {
   checkedAt: '2026-02-24T10:00:00Z'
 };
 
+export const MOCK_EXTENDED_PROVIDER_HEALTH = {
+  llmProviders: [
+    { name: 'Groq', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Cerebras', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Mistral', status: 'Degraded', isAvailable: true, consecutiveFailures: 2, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Gemini', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'OpenRouter', status: 'Down', isAvailable: false, consecutiveFailures: 5, cooldownSeconds: 120, cooldownExpiresUtc: '2026-02-24T10:05:00Z' },
+    { name: 'OpenAI', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null },
+    { name: 'Ollama', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null }
+  ],
+  embeddingProviders: [
+    { name: 'Voyage AI', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: '50M tokens' },
+    { name: 'Cohere', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 2, freeTierLimit: '100 req/min' },
+    { name: 'Gemini', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 3, freeTierLimit: '1,500 req/day' },
+    { name: 'HuggingFace', status: 'NotConfigured', isConfigured: false, isAvailable: false, chainOrder: 4, freeTierLimit: '300 req/hr' },
+    { name: 'Jina', status: 'NotConfigured', isConfigured: false, isAvailable: false, chainOrder: 5, freeTierLimit: '1M tokens' },
+    { name: 'Ollama (Local)', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 6, freeTierLimit: 'Unlimited (local)' }
+  ],
+  ocrProviders: [
+    { name: 'PdfPig (Local)', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: 'Unlimited (local)' },
+    { name: 'Tesseract (Local)', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 2, freeTierLimit: 'Unlimited (local)' },
+    { name: 'Azure Document Intelligence', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 3, freeTierLimit: '500 pages/month' },
+    { name: 'Mistral OCR', status: 'NotConfigured', isConfigured: false, isAvailable: false, chainOrder: 4, freeTierLimit: '1B tokens/month' },
+    { name: 'OCR Space', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 5, freeTierLimit: '500 req/day' },
+    { name: 'Gemini Vision', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 6, freeTierLimit: '1,500 req/day' }
+  ],
+  nerProviders: [
+    { name: 'HuggingFace BERT', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: '300 req/hr' },
+    { name: 'Azure AI Language', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 2, freeTierLimit: '5K/month' }
+  ],
+  sttProviders: [
+    { name: 'Deepgram', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: '$200 credit' },
+    { name: 'Azure AI Speech', status: 'NotConfigured', isConfigured: false, isAvailable: false, chainOrder: 2, freeTierLimit: '5 hrs/month' }
+  ],
+  contentSafety: [
+    { name: 'Azure AI Content Safety', isConfigured: true, status: 'Available' }
+  ],
+  translation: [
+    { name: 'Azure AI Translator', isConfigured: true, status: 'Available' }
+  ],
+  checkedAt: '2026-02-24T10:00:00Z'
+};
+
 export const MOCK_EVIDENCE_RESPONSE = {
   evidenceType: 'image',
   provider: 'Azure Vision',
@@ -255,7 +298,11 @@ export const MOCK_DOCUMENT_QUERY_RESULT = {
   ],
   llmProvider: 'Groq',
   elapsedMilliseconds: 1842,
-  answerSafety: null
+  answerSafety: null,
+  queryReformulated: false,
+  answerQualityScore: 0.92,
+  isGrounded: true,
+  crossDocConflicts: []
 };
 
 export const MOCK_DOCUMENT_DETAIL = {
@@ -283,9 +330,10 @@ export const MOCK_DOCUMENT_HISTORY_RESPONSE = {
   items: [
     { id: 501, fileName: 'homeowners-policy-2024.pdf', mimeType: 'application/pdf', category: 'Policy', status: 'Processed', pageCount: 18, chunkCount: 42, createdAt: '2026-02-25T09:30:00Z' },
     { id: 502, fileName: 'auto-claim-CLM-2024-001.pdf', mimeType: 'application/pdf', category: 'Claim', status: 'Processed', pageCount: 2, chunkCount: 6, createdAt: '2026-02-24T14:15:00Z' },
-    { id: 503, fileName: 'endorsement-amendment-003.pdf', mimeType: 'application/pdf', category: 'Endorsement', status: 'Processed', pageCount: 1, chunkCount: 3, createdAt: '2026-02-23T11:00:00Z' }
+    { id: 503, fileName: 'endorsement-amendment-003.pdf', mimeType: 'application/pdf', category: 'Endorsement', status: 'Processed', pageCount: 1, chunkCount: 3, createdAt: '2026-02-23T11:00:00Z' },
+    { id: 504, fileName: 'adjuster-correspondence.png', mimeType: 'image/png', category: 'Correspondence', status: 'Processed', pageCount: 1, chunkCount: 2, createdAt: '2026-02-22T16:45:00Z' }
   ],
-  totalCount: 3, page: 1, pageSize: 20, totalPages: 1
+  totalCount: 4, page: 1, pageSize: 12, totalPages: 1
 };
 
 /** Pre-composed SSE event stream for document upload progress mock. */
@@ -320,7 +368,8 @@ export const MOCK_CX_CHAT_RESPONSE = {
   escalationReason: null,
   llmProvider: 'Groq',
   elapsedMilliseconds: 2150,
-  disclaimer: 'This response is AI-generated and does not constitute a binding commitment. Please verify all policy details with your licensed insurance agent.'
+  disclaimer: 'This response is AI-generated and does not constitute a binding commitment. Please verify all policy details with your licensed insurance agent.',
+  contentSafetyScreened: true
 };
 
 export const MOCK_CX_ESCALATION_RESPONSE = {
@@ -330,7 +379,8 @@ export const MOCK_CX_ESCALATION_RESPONSE = {
   escalationReason: 'Claim processing time exceeds 30-day SLA with active property damage risk',
   llmProvider: 'Groq',
   elapsedMilliseconds: 1890,
-  disclaimer: 'This response is AI-generated and does not constitute a binding commitment. Please verify all policy details with your licensed insurance agent.'
+  disclaimer: 'This response is AI-generated and does not constitute a binding commitment. Please verify all policy details with your licensed insurance agent.',
+  contentSafetyScreened: true
 };
 
 /** Pre-composed SSE event stream for CX streaming mock. */

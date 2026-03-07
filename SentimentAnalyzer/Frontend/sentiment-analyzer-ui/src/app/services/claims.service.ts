@@ -6,6 +6,7 @@ import {
   ClaimEvidenceResponse,
   FraudAnalysisResponse,
   ProviderHealthResponse,
+  ExtendedProviderHealthResponse,
   PaginatedResponse,
   ClaimsHistoryFilter,
   BatchClaimUploadResult
@@ -69,6 +70,11 @@ export class ClaimsService {
   /** Get health status of all LLM providers and multimodal services. */
   getProviderHealth(): Observable<ProviderHealthResponse> {
     return this.http.get<ProviderHealthResponse>(`${this.apiUrl}/health/providers`);
+  }
+
+  /** Get extended health status of all provider chains (LLM, Embedding, OCR, NER, STT, Content Safety, Translation). */
+  getExtendedProviderHealth(): Observable<ExtendedProviderHealthResponse> {
+    return this.http.get<ExtendedProviderHealthResponse>(`${this.apiUrl}/health/providers/extended`);
   }
 
   /** Upload a CSV file for batch claim triage processing. */

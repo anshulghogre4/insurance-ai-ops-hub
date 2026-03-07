@@ -54,3 +54,59 @@ public class ServiceHealth
     /// <summary>Current status: Available, NotConfigured.</summary>
     public string Status { get; set; } = "Available";
 }
+
+/// <summary>
+/// Extended provider health response with categorized service groups.
+/// Returns all providers organized by service type (LLM, Embedding, OCR, NER, STT, etc.).
+/// </summary>
+public class ExtendedProviderHealthResponse
+{
+    /// <summary>Health status of LLM providers in the fallback chain.</summary>
+    public List<LlmProviderHealth> LlmProviders { get; set; } = [];
+
+    /// <summary>Health status of embedding providers in the fallback chain.</summary>
+    public List<ProviderChainHealth> EmbeddingProviders { get; set; } = [];
+
+    /// <summary>Health status of OCR providers in the fallback chain.</summary>
+    public List<ProviderChainHealth> OcrProviders { get; set; } = [];
+
+    /// <summary>Health status of NER (named entity recognition) providers in the fallback chain.</summary>
+    public List<ProviderChainHealth> NerProviders { get; set; } = [];
+
+    /// <summary>Health status of STT (speech-to-text) providers in the fallback chain.</summary>
+    public List<ProviderChainHealth> SttProviders { get; set; } = [];
+
+    /// <summary>Health status of content safety services.</summary>
+    public List<ServiceHealth> ContentSafety { get; set; } = [];
+
+    /// <summary>Health status of translation services.</summary>
+    public List<ServiceHealth> Translation { get; set; } = [];
+
+    /// <summary>When this health check was performed.</summary>
+    public DateTime CheckedAt { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Health of a provider in a resilient chain (embeddings, OCR, NER, STT).
+/// Includes chain order position and free tier limit information.
+/// </summary>
+public class ProviderChainHealth
+{
+    /// <summary>Provider name (e.g., "Voyage AI", "PdfPig", "Deepgram").</summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Current status: Healthy, Degraded, Down, NotConfigured.</summary>
+    public string Status { get; set; } = "Healthy";
+
+    /// <summary>Whether this provider has the required API key or configuration present.</summary>
+    public bool IsConfigured { get; set; }
+
+    /// <summary>Whether this provider is currently available for use.</summary>
+    public bool IsAvailable { get; set; } = true;
+
+    /// <summary>Position in the fallback chain (1 = first tried).</summary>
+    public int ChainOrder { get; set; }
+
+    /// <summary>Human-readable free tier limit (e.g., "300 req/hr", "5K/month").</summary>
+    public string? FreeTierLimit { get; set; }
+}

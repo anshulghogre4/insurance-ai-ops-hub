@@ -76,6 +76,9 @@ public class CustomerExperienceResponse
 
     /// <summary>Regulatory disclaimer appended to all AI-generated insurance responses. Required for compliance.</summary>
     public string? Disclaimer { get; set; }
+
+    /// <summary>Whether the response was screened by Azure AI Content Safety and passed.</summary>
+    public bool ContentSafetyScreened { get; set; }
 }
 
 /// <summary>

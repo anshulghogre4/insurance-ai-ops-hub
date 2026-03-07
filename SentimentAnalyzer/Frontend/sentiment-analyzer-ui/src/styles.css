@@ -85,10 +85,15 @@ body {
     border-radius: 1rem;
     transition: all 0.2s ease;
   }
-  .glass-card:hover {
+  .glass-card:hover,
+  .glass-card:focus-visible {
     background: var(--bg-surface-hover);
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  .glass-card:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
   }
   .glass-card-static {
     background: var(--bg-surface);
@@ -98,9 +103,14 @@ body {
     border-radius: 1rem;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
-  .glass-card-static:hover {
+  .glass-card-static:hover,
+  .glass-card-static:focus-visible {
     transform: translateY(-2px);
     box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  .glass-card-static:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
   }
   .elevated-card {
     background: var(--bg-elevated);
@@ -167,10 +177,16 @@ body {
     border: 1px solid var(--border-secondary);
     transition: all 0.2s ease;
   }
-  .metric-card:hover {
+  .metric-card:hover,
+  .metric-card:focus-visible {
     background: var(--bg-surface-hover);
     border-color: var(--border-primary);
     transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+  .metric-card:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
   }
   .badge { @apply px-3 py-1 rounded-full text-xs font-semibold; }
   .badge-success { @apply bg-emerald-500/15 text-emerald-400 border border-emerald-500/25; }

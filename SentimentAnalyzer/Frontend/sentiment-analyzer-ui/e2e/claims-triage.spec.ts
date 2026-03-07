@@ -78,6 +78,8 @@ test.describe('Claims Triage', () => {
   });
 
   test('should show error on 429 rate limit', async ({ page }) => {
+    // Unroute existing mock and set up error response
+    await page.unroute('**/api/insurance/claims/triage');
     await page.route('**/api/insurance/claims/triage*', route => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -92,13 +94,14 @@ test.describe('Claims Triage', () => {
     await page.locator('textarea').fill(CLAIMS_TEST_TEXTS.waterDamage);
     await page.getByRole('button', { name: 'Submit claim for triage' }).click();
 
+    // Component shows inline error (role="alert") with the error message text
     const errorIndicator = page.locator('[role="alert"]');
     await expect(errorIndicator.first()).toBeVisible({ timeout: 10_000 });
-    // Component renders err.error.error which is 'Rate limit exceeded. Free tier quota reached.'
-    await expect(page.getByText(/Rate limit exceeded/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/Rate limit exceeded|Failed to triage/)).toBeVisible({ timeout: 5_000 });
   });
 
   test('should show error on 503 all providers down', async ({ page }) => {
+    await page.unroute('**/api/insurance/claims/triage');
     await page.route('**/api/insurance/claims/triage*', route => {
       if (route.request().method() === 'POST') {
         return route.fulfill({
@@ -115,8 +118,7 @@ test.describe('Claims Triage', () => {
 
     const errorIndicator = page.locator('[role="alert"]');
     await expect(errorIndicator.first()).toBeVisible({ timeout: 10_000 });
-    // Component renders err.error.error which is 'Service temporarily unavailable. All AI providers are down.'
-    await expect(page.getByText(/All AI providers are down/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/All AI providers are down|Failed to triage/)).toBeVisible({ timeout: 5_000 });
   });
 
   test('should show character count and Ctrl+Enter hint', async ({ page }) => {

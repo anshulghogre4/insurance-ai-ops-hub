@@ -1,4 +1,4 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -136,37 +136,57 @@ import { DocumentUploadResult, DocumentCategory, DocumentProgressEvent } from '.
             </div>
           </div>
 
-          <!-- Phase Steps -->
-          <div class="space-y-3 mb-6">
-            @for (phase of phases; track phase.key) {
-              <div class="flex items-center gap-3"
+          <!-- Phase Timeline -->
+          <div class="relative mb-6">
+            <!-- Vertical connector line -->
+            <div class="absolute left-4 top-4 bottom-4 w-0.5 rounded-full" [style.background]="'var(--border-secondary)'"></div>
+
+            @for (phase of phases; track phase.key; let i = $index) {
+              <div class="relative flex items-start gap-4 py-3 transition-all duration-500"
+                   [class.opacity-40]="!completedPhases().includes(phase.key) && currentPhase() !== phase.key"
                    [attr.aria-current]="currentPhase() === phase.key ? 'step' : null">
-                <!-- Phase Icon -->
-                <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-500"
-                     [class]="getPhaseIconClass(phase.key)">
+
+                <!-- Phase node -->
+                <div class="relative z-10 w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all duration-500 ring-2"
+                     [class]="getPhaseNodeClass(phase.key)">
                   @if (completedPhases().includes(phase.key)) {
-                    <svg class="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                    <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                     </svg>
                   } @else if (currentPhase() === phase.key) {
-                    <span class="text-sm" [innerHTML]="phase.icon" aria-hidden="true"></span>
+                    <div class="w-3 h-3 rounded-full bg-indigo-400 animate-ping"></div>
                   } @else {
-                    <span class="text-sm opacity-40" [innerHTML]="phase.icon" aria-hidden="true"></span>
+                    <div class="w-2 h-2 rounded-full" [style.background]="'var(--text-muted)'"></div>
                   }
                 </div>
-                <!-- Phase Label -->
-                <div class="flex-1 min-w-0">
-                  <p class="text-xs font-medium truncate"
-                     [style.color]="currentPhase() === phase.key ? 'var(--text-primary)' : completedPhases().includes(phase.key) ? 'var(--text-secondary)' : 'var(--text-muted)'">
-                    {{ phase.label }}
-                  </p>
-                </div>
-                <!-- Phase Status -->
-                <div class="shrink-0">
-                  @if (completedPhases().includes(phase.key)) {
-                    <span class="text-[10px] text-emerald-400 font-medium">Done</span>
-                  } @else if (currentPhase() === phase.key) {
-                    <span class="text-[10px] text-indigo-400 font-medium animate-pulse">In Progress</span>
+
+                <!-- Phase content -->
+                <div class="flex-1 min-w-0 pt-0.5">
+                  <div class="flex items-center gap-2">
+                    <p class="text-sm font-semibold transition-colors duration-300"
+                       [style.color]="currentPhase() === phase.key ? 'var(--text-primary)' : completedPhases().includes(phase.key) ? 'var(--text-secondary)' : 'var(--text-muted)'">
+                      {{ phase.label }}
+                    </p>
+                    @if (completedPhases().includes(phase.key) && phaseDurations()[phase.key]) {
+                      <span class="text-[10px] text-emerald-400 font-medium">
+                        {{ (phaseDurations()[phase.key] / 1000).toFixed(1) }}s
+                      </span>
+                    }
+                    @if (currentPhase() === phase.key) {
+                      <span class="text-[10px] text-indigo-400 font-medium animate-pulse">Processing</span>
+                    }
+                  </div>
+
+                  <!-- Sub-progress bar for active phase -->
+                  @if (currentPhase() === phase.key && progressPercent() > 0) {
+                    <div class="mt-2 w-full h-1 rounded-full overflow-hidden" [style.background]="'var(--border-secondary)'">
+                      <div class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-700"
+                           [style.width.%]="getPhaseSubProgress(phase.key)">
+                      </div>
+                    </div>
+                    @if (progressMessage()) {
+                      <p class="text-[10px] mt-1" [style.color]="'var(--text-muted)'">{{ progressMessage() }}</p>
+                    }
                   }
                 </div>
               </div>
@@ -184,7 +204,14 @@ import { DocumentUploadResult, DocumentCategory, DocumentProgressEvent } from '.
                  aria-valuemax="100">
             </div>
           </div>
-          <p class="text-[10px] mt-2 text-right" [style.color]="'var(--text-muted)'">{{ progressPercent() }}%</p>
+          <div class="flex items-center justify-between mt-2">
+            <p class="text-[10px]" [style.color]="'var(--text-muted)'">
+              @if (estimatedTimeRemaining() !== null) {
+                {{ formatTimeRemaining(estimatedTimeRemaining()) }}
+              }
+            </p>
+            <p class="text-[10px]" [style.color]="'var(--text-muted)'">{{ progressPercent() }}%</p>
+          </div>
         </div>
       }
 
@@ -264,6 +291,12 @@ import { DocumentUploadResult, DocumentCategory, DocumentProgressEvent } from '.
               </svg>
               Upload Another
             </button>
+            <a routerLink="/documents" class="btn-ghost text-sm flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+              </svg>
+              View Library
+            </a>
           </div>
         </div>
       }
@@ -277,7 +310,6 @@ export class DocumentUploadComponent {
 
   categories: DocumentCategory[] = ['Policy', 'Claim', 'Endorsement', 'Correspondence', 'Other'];
   category: DocumentCategory = 'Other';
-  selectedCategory = signal<DocumentCategory>('Other');
 
   selectedFile = signal<File | null>(null);
   isDragOver = signal(false);
@@ -290,6 +322,38 @@ export class DocumentUploadComponent {
   progressPercent = signal(0);
   progressMessage = signal('');
   completedPhases = signal<string[]>([]);
+
+  // Phase timing for ETA calculation
+  phaseStartTime = signal<number>(0);
+  phaseDurations = signal<Record<string, number>>({});
+  estimatedTimeRemaining = computed(() => {
+    const current = this.currentPhase();
+    const startTime = this.phaseStartTime();
+    if (!startTime || current === 'idle' || current === 'Done' || current === 'Error') return null;
+
+    // Average phase durations (in ms) based on typical processing
+    const avgDurations: Record<string, number> = {
+      'Uploading': 2000,
+      'OCR': 8000,
+      'Chunking': 3000,
+      'Embedding': 12000,
+      'Safety': 5000,
+    };
+
+    const elapsed = Date.now() - startTime;
+    const estimatedTotal = avgDurations[current] ?? 5000;
+    const remaining = Math.max(0, estimatedTotal - elapsed);
+
+    // Add remaining phases
+    const phaseOrder = ['Uploading', 'OCR', 'Chunking', 'Embedding', 'Safety', 'Done'];
+    const currentIdx = phaseOrder.indexOf(current);
+    let futureTime = 0;
+    for (let i = currentIdx + 1; i < phaseOrder.length - 1; i++) {
+      futureTime += avgDurations[phaseOrder[i]] ?? 5000;
+    }
+
+    return remaining + futureTime;
+  });
 
   /** Upload processing phases for the progress UI. */
   readonly phases = [
@@ -311,6 +375,44 @@ export class DocumentUploadComponent {
     return 'bg-white/5 border border-white/10';
   }
 
+  getPhaseNodeClass(phaseKey: string): string {
+    if (this.completedPhases().includes(phaseKey)) {
+      return 'bg-emerald-500 ring-emerald-500/30';
+    }
+    if (this.currentPhase() === phaseKey) {
+      return 'bg-indigo-500/20 ring-indigo-500/50';
+    }
+    return 'ring-[var(--border-secondary)]';
+  }
+
+  getPhaseSubProgress(phaseKey: string): number {
+    // Map overall progress to per-phase sub-progress
+    const phaseRanges: Record<string, [number, number]> = {
+      'Uploading': [0, 15],
+      'OCR': [15, 45],
+      'Chunking': [45, 60],
+      'Embedding': [60, 85],
+      'Safety': [85, 98],
+      'Done': [98, 100],
+    };
+    const range = phaseRanges[phaseKey];
+    if (!range) return 0;
+    const [start, end] = range;
+    const overall = this.progressPercent();
+    if (overall <= start) return 0;
+    if (overall >= end) return 100;
+    return ((overall - start) / (end - start)) * 100;
+  }
+
+  formatTimeRemaining(ms: number | null): string {
+    if (!ms || ms <= 0) return '';
+    const seconds = Math.ceil(ms / 1000);
+    if (seconds < 60) return `~${seconds}s remaining`;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `~${minutes}m ${secs}s remaining`;
+  }
+
   uploadDocument(): void {
     const file = this.selectedFile();
     if (!file) return;
@@ -322,6 +424,8 @@ export class DocumentUploadComponent {
     this.progressPercent.set(0);
     this.progressMessage.set('Starting upload...');
     this.completedPhases.set([]);
+    this.phaseStartTime.set(Date.now());
+    this.phaseDurations.set({});
 
     this.documentService.uploadDocumentWithProgress(file, this.category)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -338,6 +442,11 @@ export class DocumentUploadComponent {
           // Track completed phases
           const prevPhase = this.currentPhase();
           if (prevPhase !== event.phase && prevPhase !== 'idle' && prevPhase !== 'Error') {
+            // Record duration of completed phase
+            const duration = Date.now() - this.phaseStartTime();
+            this.phaseDurations.update(d => ({ ...d, [prevPhase]: duration }));
+            this.phaseStartTime.set(Date.now());
+
             this.completedPhases.update(phases =>
               phases.includes(prevPhase) ? phases : [...phases, prevPhase]
             );
@@ -377,6 +486,8 @@ export class DocumentUploadComponent {
     this.progressPercent.set(0);
     this.progressMessage.set('');
     this.completedPhases.set([]);
+    this.phaseStartTime.set(0);
+    this.phaseDurations.set({});
   }
 
   onDragOver(event: DragEvent): void {

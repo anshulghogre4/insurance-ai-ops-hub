@@ -23,6 +23,7 @@ import {
   MOCK_CORRELATIONS_PAGINATED,
   MOCK_BATCH_CLAIM_UPLOAD_RESULT,
   MOCK_QA_PAIRS,
+  MOCK_EXTENDED_PROVIDER_HEALTH,
 } from '../fixtures/mock-data';
 
 /** Set up all API mock routes so e2e tests don't need a running backend. */
@@ -85,6 +86,35 @@ export async function mockAllApis(page: Page): Promise<void> {
     }),
   );
 
+  // Liveness + readiness probes (Sprint 6)
+  await page.route('**/health/ready', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        status: 'Ready',
+        timestamp: new Date().toISOString(),
+        checks: {
+          database: 'Connected',
+          llmProviders: ['Groq', 'Ollama'],
+          llmProviderCount: 2,
+          multimodal: { ner: 'HuggingFace', contentSafety: 'AzureContentSafety', stt: 'Deepgram', translation: 'AzureTranslator', ocr: 'PdfPig' }
+        }
+      }),
+    }),
+  );
+  await page.route('**/health', (route) => {
+    const url = route.request().url();
+    if (url.includes('/health/ready') || url.includes('/health/providers')) {
+      return route.fallback();
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ status: 'Healthy', timestamp: new Date().toISOString() }),
+    });
+  });
+
   // Claims triage endpoint
   await page.route('**/api/insurance/claims/triage', (route) => {
     if (route.request().method() === 'POST') {
@@ -132,10 +162,19 @@ export async function mockAllApis(page: Page): Promise<void> {
     route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_FRAUD_ANALYSIS_RESPONSE) })
   );
 
-  // Provider health endpoint
-  await page.route('**/api/insurance/health/providers', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PROVIDER_HEALTH_RESPONSE) })
+  // Extended provider health endpoint (must be before /providers to avoid route conflict)
+  await page.route('**/api/insurance/health/providers/extended*', (route) =>
+    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_EXTENDED_PROVIDER_HEALTH) })
   );
+
+  // Provider health endpoint (legacy)
+  await page.route('**/api/insurance/health/providers', (route) => {
+    const url = route.request().url();
+    if (url.includes('/extended')) {
+      return route.fallback();
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(MOCK_PROVIDER_HEALTH_RESPONSE) });
+  });
 
   // Claims by ID endpoint (must be after more specific claims routes)
   // Use route.fallback() so more-specific handlers (history, triage, upload) get priority

@@ -89,10 +89,20 @@ const SESSION_STORAGE_KEY = 'cx-copilot-session-id';
             <!-- Assistant Message -->
             <div class="flex justify-start animate-fade-in">
               <div class="max-w-[85%]">
-                <!-- Tone Badge -->
-                @if (msg.tone) {
+                <!-- Tone & Safety Badges -->
+                @if (msg.tone || msg.contentSafetyScreened) {
                   <div class="flex items-center gap-2 mb-1.5">
-                    <span class="badge text-[10px]" [class]="getToneBadgeClass(msg.tone)">{{ msg.tone }}</span>
+                    @if (msg.tone) {
+                      <span class="badge text-[10px]" [class]="getToneBadgeClass(msg.tone)">{{ msg.tone }}</span>
+                    }
+                    @if (msg.contentSafetyScreened) {
+                      <span class="text-xs text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Screened
+                      </span>
+                    }
                     @if (msg.escalationRecommended) {
                       <span class="badge badge-danger text-[10px] animate-pulse flex items-center gap-1">
                         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -365,6 +375,7 @@ export class CxCopilotComponent implements OnInit {
               llmProvider: chunk.metadata?.llmProvider,
               elapsedMs: chunk.metadata?.elapsedMilliseconds,
               disclaimer: chunk.metadata?.disclaimer,
+              contentSafetyScreened: chunk.metadata?.contentSafetyScreened ?? false,
               timestamp: new Date()
             };
             this.messages.update(msgs => [...msgs, assistantMsg]);

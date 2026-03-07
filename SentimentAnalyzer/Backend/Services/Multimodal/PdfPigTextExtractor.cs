@@ -65,6 +65,18 @@ public class PdfPigTextExtractor : IDocumentOcrService
                 cancellationToken.ThrowIfCancellationRequested();
                 pageCount++;
                 var pageText = page.Text ?? string.Empty;
+
+                // Fallback: if page.Text is empty/too short, try page.Letters collection.
+                // Some PDFs use CID or Type3 fonts where page.Text returns nothing,
+                // but individual Letter objects are still accessible.
+                if (pageText.Length < 10 && page.Letters.Count > 0)
+                {
+                    _logger.LogInformation(
+                        "PdfPig page {Page}: Text property empty ({TextLen} chars) but {LetterCount} Letters found — using Letters fallback (CID/Type3 font)",
+                        pageCount, pageText.Length, page.Letters.Count);
+                    pageText = string.Concat(page.Letters.Select(l => l.Value));
+                }
+
                 pageTexts.Add(pageText);
             }
 

@@ -36,6 +36,10 @@ export interface DocumentQueryResult {
   llmProvider: string;
   elapsedMilliseconds: number;
   answerSafety: ContentSafetyInfo | null;
+  queryReformulated?: boolean | null;
+  answerQualityScore?: number | null;
+  isGrounded?: boolean | null;
+  crossDocConflicts?: string[];
 }
 
 /** Citation pointing to a document chunk. */
@@ -164,6 +168,7 @@ export interface CustomerExperienceResponse {
   llmProvider: string;
   elapsedMilliseconds: number;
   disclaimer: string | null;
+  contentSafetyScreened?: boolean;
 }
 
 /** SSE stream chunk from CX Copilot. */
@@ -184,6 +189,7 @@ export interface ChatMessage {
   llmProvider?: string;
   elapsedMs?: number;
   disclaimer?: string | null;
+  contentSafetyScreened?: boolean;
   timestamp: Date;
 }
 

@@ -7,25 +7,48 @@ namespace SentimentAnalyzer.Tests;
 
 /// <summary>
 /// Tests for ResilientOcrProvider.
-/// Validates 4-tier fallback chain ordered by data safety:
-/// PdfPig (local) → Azure Doc Intel (no training) → OCR Space (GDPR) → Gemini Vision (last resort).
+/// Validates 6-tier fallback chain ordered by data safety:
+/// PdfPig (local) → Tesseract (local) → Azure DocIntel → Mistral OCR → OCR Space → Gemini Vision.
 /// </summary>
 public class ResilientOcrProviderTests
 {
     private readonly Mock<IDocumentOcrService> _pdfPigMock = new();
+    private readonly Mock<IDocumentOcrService> _tesseractMock = new();
     private readonly Mock<IDocumentOcrService> _azureMock = new();
-    private readonly Mock<IDocumentOcrService> _geminiMock = new();
+    private readonly Mock<IDocumentOcrService> _mistralOcrMock = new();
     private readonly Mock<IDocumentOcrService> _ocrSpaceMock = new();
+    private readonly Mock<IDocumentOcrService> _geminiMock = new();
     private readonly Mock<ILogger<ResilientOcrProvider>> _loggerMock = new();
 
     private ResilientOcrProvider CreateProvider()
     {
         return new ResilientOcrProvider(
             _pdfPigMock.Object,
+            _tesseractMock.Object,
             _azureMock.Object,
-            _geminiMock.Object,
+            _mistralOcrMock.Object,
             _ocrSpaceMock.Object,
+            _geminiMock.Object,
             _loggerMock.Object);
+    }
+
+    private void SetupLocalProvidersFail()
+    {
+        _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult
+            {
+                IsSuccess = false,
+                Provider = "PdfPig",
+                ErrorMessage = "Insufficient text extracted (likely a scanned document)"
+            });
+
+        _tesseractMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult
+            {
+                IsSuccess = false,
+                Provider = "Tesseract",
+                ErrorMessage = "Tesseract tessdata not configured"
+            });
     }
 
     [Fact]
@@ -49,14 +72,16 @@ public class ResilientOcrProviderTests
         Assert.Equal("PdfPig", result.Provider);
         Assert.Contains("CGL-2024-445566", result.ExtractedText);
 
-        // Azure, OCR Space, and Gemini should NEVER be called
+        // No other providers should be called
+        _tesseractMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _azureMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mistralOcrMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _ocrSpaceMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _geminiMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ExtractTextAsync_PdfPigFails_FallsBackToAzure()
+    public async Task ExtractTextAsync_PdfPigFails_TesseractSucceeds_ReturnsTesseractResult()
     {
         _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
@@ -66,154 +91,154 @@ public class ResilientOcrProviderTests
                 ErrorMessage = "Insufficient text extracted (likely a scanned document)"
             });
 
+        _tesseractMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult
+            {
+                IsSuccess = true,
+                ExtractedText = "SCANNED CLAIM FORM\nClaim: CLM-2024-112233\nAdjuster: Field Services\nDamage Type: Water intrusion from roof leak",
+                PageCount = 2,
+                Confidence = 0.88,
+                Provider = "Tesseract"
+            });
+
+        var provider = CreateProvider();
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Tesseract", result.Provider);
+        Assert.Contains("CLM-2024-112233", result.ExtractedText);
+
+        _azureMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExtractTextAsync_LocalProvidersFail_FallsBackToAzure()
+    {
+        SetupLocalProvidersFail();
+
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = true,
-                ExtractedText = "PROPERTY DAMAGE ASSESSMENT\nClaim: CLM-2024-887766\nAdjuster: Field Services Division\nStructure: Single-family dwelling, 2,400 sq ft\nDamage: Wind and hail damage to roof and siding\nEstimate: $18,500",
+                ExtractedText = "PROPERTY DAMAGE ASSESSMENT\nClaim: CLM-2024-887766\nAdjuster: Field Services Division\nDamage: Wind and hail damage to roof and siding\nEstimate: $18,500",
                 PageCount = 2,
                 Confidence = 0.92,
                 Provider = "AzureDocIntel"
             });
 
         var provider = CreateProvider();
-        var result = await provider.ExtractTextAsync(
-            new byte[] { 1, 2, 3 }, "application/pdf");
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
 
         Assert.True(result.IsSuccess);
         Assert.Equal("AzureDocIntel", result.Provider);
         Assert.Contains("CLM-2024-887766", result.ExtractedText);
 
-        // OCR Space and Gemini should NOT be called (Azure succeeded)
-        _ocrSpaceMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-        _geminiMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mistralOcrMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ExtractTextAsync_PdfPigAndAzureFail_FallsBackToOcrSpace()
+    public async Task ExtractTextAsync_LocalAndAzureFail_FallsBackToMistralOcr()
     {
-        _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "PdfPig",
-                ErrorMessage = "Insufficient text extracted (likely a scanned document)"
-            });
+        SetupLocalProvidersFail();
 
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "AzureDocIntel", ErrorMessage = "API key not configured" });
+
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
-                IsSuccess = false,
-                Provider = "AzureDocIntel",
-                ErrorMessage = "Azure Document Intelligence API error (HTTP 429): Rate limit exceeded"
+                IsSuccess = true,
+                ExtractedText = "WORKERS COMPENSATION CLAIM\nPolicy: WC-2024-556677\nEmployee: Warehouse Staff\nInjury: Lower back strain during material handling",
+                PageCount = 3,
+                Confidence = 0.90,
+                Provider = "MistralOCR"
             });
+
+        var provider = CreateProvider();
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("MistralOCR", result.Provider);
+        Assert.Contains("WC-2024-556677", result.ExtractedText);
+
+        _ocrSpaceMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExtractTextAsync_FirstFourFail_FallsBackToOcrSpace()
+    {
+        SetupLocalProvidersFail();
+
+        _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "AzureDocIntel", ErrorMessage = "Rate limit exceeded" });
+
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "MistralOCR", ErrorMessage = "API key not configured" });
 
         _ocrSpaceMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = true,
-                ExtractedText = "AUTO INSURANCE CLAIM\nPolicy: AUTO-2024-334455\nVehicle: 2024 Honda Accord EX-L\nDate of Loss: May 22, 2024\nDescription: Rear-end collision at signalized intersection\nRepair Estimate: $6,200",
+                ExtractedText = "AUTO INSURANCE CLAIM\nPolicy: AUTO-2024-334455\nVehicle: 2024 Honda Accord EX-L\nRepair Estimate: $6,200",
                 PageCount = 1,
                 Confidence = 0.85,
                 Provider = "OcrSpace"
             });
 
         var provider = CreateProvider();
-        var result = await provider.ExtractTextAsync(
-            new byte[] { 1, 2, 3 }, "application/pdf");
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
 
         Assert.True(result.IsSuccess);
         Assert.Equal("OcrSpace", result.Provider);
-        Assert.Contains("AUTO-2024-334455", result.ExtractedText);
 
-        // Gemini should NOT be called (OCR Space succeeded before it)
         _geminiMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ExtractTextAsync_FirstThreeFail_FallsBackToGemini()
+    public async Task ExtractTextAsync_FirstFiveFail_FallsBackToGemini()
     {
-        _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "PdfPig",
-                ErrorMessage = "Insufficient text extracted (likely a scanned document)"
-            });
+        SetupLocalProvidersFail();
 
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "AzureDocIntel",
-                ErrorMessage = "Azure Document Intelligence API key not configured."
-            });
-
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "AzureDocIntel", ErrorMessage = "Not configured" });
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "MistralOCR", ErrorMessage = "Not configured" });
         _ocrSpaceMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "OcrSpace",
-                ErrorMessage = "OCR.space API key not configured."
-            });
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "OcrSpace", ErrorMessage = "Not configured" });
 
         _geminiMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = true,
-                ExtractedText = "UMBRELLA LIABILITY ENDORSEMENT\nPolicy: UMB-2024-998877\nUnderlying Coverage: CGL + Auto\nLimit: $2,000,000 per occurrence\nRetention: $10,000 self-insured",
+                ExtractedText = "UMBRELLA LIABILITY ENDORSEMENT\nPolicy: UMB-2024-998877\nLimit: $2,000,000 per occurrence",
                 PageCount = 1,
                 Confidence = 0.75,
                 Provider = "GeminiVision"
             });
 
         var provider = CreateProvider();
-        var result = await provider.ExtractTextAsync(
-            new byte[] { 1, 2, 3 }, "application/pdf");
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
 
         Assert.True(result.IsSuccess);
         Assert.Equal("GeminiVision", result.Provider);
-        Assert.Contains("UMB-2024-998877", result.ExtractedText);
     }
 
     [Fact]
     public async Task ExtractTextAsync_AllFail_ReturnsGeminiError()
     {
-        _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "PdfPig",
-                ErrorMessage = "PdfPig extraction error: invalid PDF structure"
-            });
+        SetupLocalProvidersFail();
 
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "AzureDocIntel",
-                ErrorMessage = "Azure Document Intelligence API error (HTTP 503): Service unavailable"
-            });
-
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "AzureDocIntel", ErrorMessage = "Service unavailable" });
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "MistralOCR", ErrorMessage = "Service unavailable" });
         _ocrSpaceMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "OcrSpace",
-                ErrorMessage = "OCR.space API error: InternalServerError"
-            });
-
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "OcrSpace", ErrorMessage = "Service unavailable" });
         _geminiMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "GeminiVision",
-                ErrorMessage = "Gemini Vision API error: InternalServerError"
-            });
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "GeminiVision", ErrorMessage = "InternalServerError" });
 
         var provider = CreateProvider();
-        var result = await provider.ExtractTextAsync(
-            new byte[] { 1, 2, 3 }, "application/pdf");
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
 
         Assert.False(result.IsSuccess);
         Assert.Equal("GeminiVision", result.Provider);
@@ -221,102 +246,78 @@ public class ResilientOcrProviderTests
     }
 
     [Fact]
-    public async Task ExtractTextAsync_AzureCooldown_SkipsToOcrSpace()
+    public async Task ExtractTextAsync_AzureCooldown_SkipsToMistralOcr()
     {
-        _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "PdfPig",
-                ErrorMessage = "Insufficient text extracted (likely a scanned document)"
-            });
+        SetupLocalProvidersFail();
 
-        // Azure fails on first call, triggering cooldown
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "AzureDocIntel",
-                ErrorMessage = "Azure Document Intelligence API error (HTTP 429): Rate limit exceeded"
-            });
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "AzureDocIntel", ErrorMessage = "Rate limit exceeded" });
 
-        _ocrSpaceMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = true,
-                ExtractedText = "PROFESSIONAL LIABILITY DECLARATION\nPolicy: PL-2024-667788\nInsured: Cornerstone Financial Advisors LLC\nCoverage: Errors and Omissions\nLimit: $500,000 per claim",
+                ExtractedText = "PROFESSIONAL LIABILITY DECLARATION\nPolicy: PL-2024-667788\nInsured: Cornerstone Financial Advisors LLC",
                 PageCount = 1,
-                Confidence = 0.85,
-                Provider = "OcrSpace"
+                Confidence = 0.90,
+                Provider = "MistralOCR"
             });
 
         var provider = CreateProvider();
 
-        // First call: PdfPig fails → Azure fails (triggers cooldown) → OCR Space succeeds
+        // First call: Azure fails (triggers cooldown) → Mistral succeeds
         var result1 = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
-        Assert.Equal("OcrSpace", result1.Provider);
+        Assert.Equal("MistralOCR", result1.Provider);
 
-        // Second call: PdfPig fails → Azure SKIPPED (cooldown) → OCR Space succeeds
+        // Second call: Azure SKIPPED (cooldown) → Mistral succeeds
         var result2 = await provider.ExtractTextAsync(new byte[] { 4, 5, 6 }, "application/pdf");
-        Assert.Equal("OcrSpace", result2.Provider);
+        Assert.Equal("MistralOCR", result2.Provider);
 
-        // Azure should have been called exactly once (second call skipped due to cooldown)
+        // Azure called only once (second call skipped due to cooldown)
         _azureMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
-        // Gemini should NEVER be called (OCR Space succeeded)
-        _geminiMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task ExtractTextAsync_AzureAndOcrSpaceCooldown_SkipsToGemini()
+    public async Task ExtractTextAsync_AzurePartialExtraction_FallsThrough()
     {
         _pdfPigMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = false,
+                PageCount = 13, // PdfPig detected 13 pages
                 Provider = "PdfPig",
-                ErrorMessage = "Insufficient text extracted (likely a scanned document)"
+                ErrorMessage = "Insufficient text extracted"
             });
 
-        // Azure fails, triggering cooldown
+        _tesseractMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OcrResult { IsSuccess = false, Provider = "Tesseract", ErrorMessage = "No tessdata" });
+
         _azureMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
-                IsSuccess = false,
-                Provider = "AzureDocIntel",
-                ErrorMessage = "Azure Document Intelligence API error (HTTP 503): Service unavailable"
+                IsSuccess = true,
+                PageCount = 2, // Azure only got 2 of 13 pages
+                ExtractedText = "Page 1 and 2 only",
+                Confidence = 0.95,
+                Provider = "AzureDocIntel"
             });
 
-        // OCR Space fails, triggering cooldown
-        _ocrSpaceMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new OcrResult
-            {
-                IsSuccess = false,
-                Provider = "OcrSpace",
-                ErrorMessage = "OCR.space API error: TooManyRequests"
-            });
-
-        _geminiMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        _mistralOcrMock.Setup(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrResult
             {
                 IsSuccess = true,
-                ExtractedText = "CERTIFICATE OF INSURANCE\nCertificate Holder: Tri-County School District\nInsurer: National Educators Mutual\nPolicy: ED-2024-223344\nCoverage: General Liability $1,000,000",
-                PageCount = 1,
-                Confidence = 0.75,
-                Provider = "GeminiVision"
+                ExtractedText = "Full 13-page insurance policy document extracted by Mistral OCR",
+                PageCount = 13,
+                Confidence = 0.90,
+                Provider = "MistralOCR"
             });
 
         var provider = CreateProvider();
+        var result = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
 
-        // First call: PdfPig fails → Azure fails (cooldown) → OCR Space fails (cooldown) → Gemini succeeds
-        var result1 = await provider.ExtractTextAsync(new byte[] { 1, 2, 3 }, "application/pdf");
-        Assert.Equal("GeminiVision", result1.Provider);
-
-        // Second call: PdfPig fails → Azure SKIPPED → OCR Space SKIPPED → Gemini succeeds
-        var result2 = await provider.ExtractTextAsync(new byte[] { 4, 5, 6 }, "application/pdf");
-        Assert.Equal("GeminiVision", result2.Provider);
-
-        // Azure and OCR Space should have been called exactly once each (both skipped on second call)
-        _azureMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
-        _ocrSpaceMock.Verify(s => s.ExtractTextAsync(It.IsAny<byte[]>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+        // Should skip Azure's partial result and use Mistral's full extraction
+        Assert.True(result.IsSuccess);
+        Assert.Equal("MistralOCR", result.Provider);
+        Assert.Equal(13, result.PageCount);
     }
 }

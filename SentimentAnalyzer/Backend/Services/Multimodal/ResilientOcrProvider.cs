@@ -1,22 +1,25 @@
 namespace SentimentAnalyzer.API.Services.Multimodal;
 
 /// <summary>
-/// Resilient OCR provider with automatic 4-tier fallback chain ordered by DATA SAFETY:
-/// PdfPig (local) → Azure Document Intelligence → OCR Space → Gemini Vision.
+/// Resilient OCR provider with automatic 6-tier fallback chain ordered by DATA SAFETY:
+/// PdfPig (local) → Tesseract (local) → Azure Document Intelligence → Mistral OCR → OCR Space → Gemini Vision.
 /// Follows the Chain of Responsibility pattern (consistent with ResilientEmbeddingProvider and IResilientKernelProvider).
 ///
 /// Data privacy ranking (safest first):
-/// Tier 1: PdfPig — 100% local, zero data transfer, open-source
-/// Tier 2: Azure Document Intelligence — Microsoft does NOT train on customer data (any tier), 24h auto-delete
-/// Tier 3: OCR Space — Immediate document deletion, no stated training, GDPR compliant
-/// Tier 4: Gemini Vision — WARNING: Google free tier trains on data, human reviewers may read input/output
+/// Tier 1:  PdfPig — 100% local, zero data transfer, open-source, digital/native PDFs only
+/// Tier 1b: Tesseract — 100% local, zero data transfer, open-source, handles scanned docs PdfPig can't
+/// Tier 2:  Azure Document Intelligence — Microsoft does NOT train on customer data (any tier), 24h auto-delete
+/// Tier 2b: Mistral OCR — WARNING: Free tier may train on data. Best-in-class accuracy, 1000 pages/doc
+/// Tier 3:  OCR Space — Immediate document deletion, no stated training, GDPR compliant
+/// Tier 4:  Gemini Vision — WARNING: Google free tier trains on data, human reviewers may read input/output
 ///
 /// Responsibilities:
 /// 1. Always try PdfPig first (local, instant, zero API calls — no cooldown needed).
-/// 2. Automatic fallback through cloud OCR providers when native PDF text is insufficient.
-/// 3. Per-provider exponential backoff cooldown for Azure and OCR Space on repeated failures.
-/// 4. Gemini Vision as last resort (always attempted, no cooldown) — least safe for PII.
-/// 5. PII redaction is NOT done here — each individual provider handles it.
+/// 2. Try Tesseract for scanned docs (local, no data transfer — no cooldown needed).
+/// 3. Automatic fallback through cloud OCR providers when local providers fail.
+/// 4. Per-provider exponential backoff cooldown for Azure, Mistral, and OCR Space on repeated failures.
+/// 5. Gemini Vision as last resort (always attempted, no cooldown) — least safe for PII.
+/// 6. PII redaction is NOT done here — each individual provider handles it.
 ///
 /// Insurance use case: ensures document text extraction always succeeds for claims processing,
 /// while prioritizing providers that do NOT train on policyholder data.
@@ -24,15 +27,19 @@ namespace SentimentAnalyzer.API.Services.Multimodal;
 public class ResilientOcrProvider : IDocumentOcrService
 {
     private readonly IDocumentOcrService _pdfPigService;
+    private readonly IDocumentOcrService _tesseractService;
     private readonly IDocumentOcrService _azureService;
-    private readonly IDocumentOcrService _geminiService;
+    private readonly IDocumentOcrService _mistralOcrService;
     private readonly IDocumentOcrService _ocrSpaceService;
+    private readonly IDocumentOcrService _geminiService;
     private readonly ILogger<ResilientOcrProvider> _logger;
 
     private readonly object _lock = new();
 
     private DateTime? _azureCooldownExpiresUtc;
     private int _azureConsecutiveFailures;
+    private DateTime? _mistralOcrCooldownExpiresUtc;
+    private int _mistralOcrConsecutiveFailures;
     private DateTime? _ocrSpaceCooldownExpiresUtc;
     private int _ocrSpaceConsecutiveFailures;
 
@@ -40,24 +47,23 @@ public class ResilientOcrProvider : IDocumentOcrService
     private static readonly TimeSpan _maxCooldown = TimeSpan.FromSeconds(300);
 
     /// <summary>
-    /// Initializes the resilient OCR provider with 4-tier fallback chain.
+    /// Initializes the resilient OCR provider with 6-tier fallback chain.
     /// </summary>
-    /// <param name="pdfPigService">PdfPig native text extractor (Tier 1, local).</param>
-    /// <param name="azureService">Azure Document Intelligence OCR (Tier 2, cloud).</param>
-    /// <param name="ocrSpaceService">OCR Space OCR (Tier 3, cloud, GDPR compliant, no training).</param>
-    /// <param name="geminiService">Gemini Vision OCR (Tier 4, cloud, last resort — free tier trains on data).</param>
-    /// <param name="logger">Logger instance.</param>
     public ResilientOcrProvider(
         [Microsoft.Extensions.DependencyInjection.FromKeyedServices("PdfPig")] IDocumentOcrService pdfPigService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("Tesseract")] IDocumentOcrService tesseractService,
         [Microsoft.Extensions.DependencyInjection.FromKeyedServices("AzureDocIntel")] IDocumentOcrService azureService,
-        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("GeminiOcr")] IDocumentOcrService geminiService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("MistralOcr")] IDocumentOcrService mistralOcrService,
         [Microsoft.Extensions.DependencyInjection.FromKeyedServices("OcrSpace")] IDocumentOcrService ocrSpaceService,
+        [Microsoft.Extensions.DependencyInjection.FromKeyedServices("GeminiOcr")] IDocumentOcrService geminiService,
         ILogger<ResilientOcrProvider> logger)
     {
         _pdfPigService = pdfPigService ?? throw new ArgumentNullException(nameof(pdfPigService));
+        _tesseractService = tesseractService ?? throw new ArgumentNullException(nameof(tesseractService));
         _azureService = azureService ?? throw new ArgumentNullException(nameof(azureService));
-        _geminiService = geminiService ?? throw new ArgumentNullException(nameof(geminiService));
+        _mistralOcrService = mistralOcrService ?? throw new ArgumentNullException(nameof(mistralOcrService));
         _ocrSpaceService = ocrSpaceService ?? throw new ArgumentNullException(nameof(ocrSpaceService));
+        _geminiService = geminiService ?? throw new ArgumentNullException(nameof(geminiService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -83,24 +89,34 @@ public class ResilientOcrProvider : IDocumentOcrService
             "Native PDF text extraction insufficient ({Error}), detected {ExpectedPages} pages, trying OCR providers",
             pdfPigResult.ErrorMessage ?? "unknown", expectedPageCount);
 
+        // Tier 1b: Tesseract (always attempted, no cooldown — 100% local, handles scanned docs)
+        var tesseractResult = await _tesseractService.ExtractTextAsync(documentData, mimeType, cancellationToken);
+        if (tesseractResult.IsSuccess)
+        {
+            _logger.LogInformation("OCR completed via Tesseract (Tier 1b) — local scanned document OCR");
+            return tesseractResult;
+        }
+
+        _logger.LogInformation(
+            "Tesseract OCR insufficient ({Error}), trying cloud providers",
+            tesseractResult.ErrorMessage ?? "unknown");
+
         // Tier 2: Azure Document Intelligence (if not in cooldown)
-        // IMPORTANT: Azure F0 tier hard-limits to 2 pages per document. If PdfPig detected more
-        // pages, Azure's "success" is actually a partial extraction — fall through to next provider.
         if (!IsInCooldown(ref _azureCooldownExpiresUtc, "AzureDocIntel"))
         {
             var azureResult = await _azureService.ExtractTextAsync(documentData, mimeType, cancellationToken);
             if (azureResult.IsSuccess)
             {
                 // Detect partial page extraction: Azure F0 caps at 2 pages per document.
-                // If PdfPig detected more pages, Azure only processed a subset — try next provider.
+                // With batching, this should now extract all pages, but verify.
                 if (expectedPageCount > 0 && azureResult.PageCount < expectedPageCount)
                 {
                     _logger.LogWarning(
-                        "Azure DocIntel F0 only processed {Actual} of {Expected} pages (F0 tier: 2 pages/document). " +
+                        "Azure DocIntel only processed {Actual} of {Expected} pages. " +
                         "Falling through to next OCR provider for full extraction.",
                         azureResult.PageCount, expectedPageCount);
                     ReportFailure(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel",
-                        $"Partial extraction: {azureResult.PageCount}/{expectedPageCount} pages (F0 tier limit)");
+                        $"Partial extraction: {azureResult.PageCount}/{expectedPageCount} pages");
                 }
                 else
                 {
@@ -113,6 +129,20 @@ public class ResilientOcrProvider : IDocumentOcrService
             {
                 ReportFailure(ref _azureConsecutiveFailures, ref _azureCooldownExpiresUtc, "AzureDocIntel", azureResult.ErrorMessage);
             }
+        }
+
+        // Tier 2b: Mistral OCR (if not in cooldown) — high accuracy, but free tier trains on data
+        if (!IsInCooldown(ref _mistralOcrCooldownExpiresUtc, "MistralOCR"))
+        {
+            var mistralResult = await _mistralOcrService.ExtractTextAsync(documentData, mimeType, cancellationToken);
+            if (mistralResult.IsSuccess)
+            {
+                ResetFailures(ref _mistralOcrConsecutiveFailures, ref _mistralOcrCooldownExpiresUtc, "MistralOCR");
+                _logger.LogInformation("OCR completed via Mistral OCR (Tier 2b)");
+                return mistralResult;
+            }
+
+            ReportFailure(ref _mistralOcrConsecutiveFailures, ref _mistralOcrCooldownExpiresUtc, "MistralOCR", mistralResult.ErrorMessage);
         }
 
         // Tier 3: OCR Space (if not in cooldown) — safer than Gemini (no data training, GDPR compliant)
@@ -141,8 +171,8 @@ public class ResilientOcrProvider : IDocumentOcrService
         }
         else
         {
-            _logger.LogError("All 4 OCR tiers failed. PdfPig: {PdfPigError}, Gemini: {GeminiError}",
-                pdfPigResult.ErrorMessage, geminiResult.ErrorMessage);
+            _logger.LogError("All 6 OCR tiers failed. PdfPig: {PdfPigError}, Tesseract: {TesseractError}, Gemini: {GeminiError}",
+                pdfPigResult.ErrorMessage, tesseractResult.ErrorMessage, geminiResult.ErrorMessage);
         }
 
         return geminiResult;
@@ -151,9 +181,6 @@ public class ResilientOcrProvider : IDocumentOcrService
     /// <summary>
     /// Checks whether a provider is currently in cooldown. Thread-safe.
     /// </summary>
-    /// <param name="cooldownExpires">Reference to the provider's cooldown expiration timestamp.</param>
-    /// <param name="providerName">Provider name for logging.</param>
-    /// <returns>True if the provider is in cooldown and should be skipped.</returns>
     private bool IsInCooldown(ref DateTime? cooldownExpires, string providerName)
     {
         lock (_lock)
@@ -178,10 +205,6 @@ public class ResilientOcrProvider : IDocumentOcrService
     /// Reports a provider failure and applies exponential backoff cooldown.
     /// Cooldown schedule: 30s, 60s, 120s, 240s, capped at 300s.
     /// </summary>
-    /// <param name="consecutiveFailures">Reference to the provider's consecutive failure counter.</param>
-    /// <param name="cooldownExpires">Reference to the provider's cooldown expiration timestamp.</param>
-    /// <param name="providerName">Provider name for logging.</param>
-    /// <param name="errorMessage">Error message from the failed attempt.</param>
     private void ReportFailure(ref int consecutiveFailures, ref DateTime? cooldownExpires, string providerName, string? errorMessage)
     {
         lock (_lock)
@@ -207,9 +230,6 @@ public class ResilientOcrProvider : IDocumentOcrService
     /// <summary>
     /// Resets a provider's failure counter after a successful request.
     /// </summary>
-    /// <param name="consecutiveFailures">Reference to the provider's consecutive failure counter.</param>
-    /// <param name="cooldownExpires">Reference to the provider's cooldown expiration timestamp.</param>
-    /// <param name="providerName">Provider name for logging.</param>
     private void ResetFailures(ref int consecutiveFailures, ref DateTime? cooldownExpires, string providerName)
     {
         lock (_lock)

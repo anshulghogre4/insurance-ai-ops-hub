@@ -60,12 +60,12 @@ public class HybridRetrievalService : IHybridRetrievalService
 
         if (vectorResults.Count == 0)
         {
-            return bm25Results.Take(topK).ToList();
+            return NormalizeScores(bm25Results.Take(topK).ToList());
         }
 
         if (bm25Results.Count == 0)
         {
-            return vectorResults.Take(topK).ToList();
+            return NormalizeScores(vectorResults.Take(topK).ToList());
         }
 
         // RRF: assign rank-based scores to each chunk from each result list
@@ -109,10 +109,41 @@ public class HybridRetrievalService : IHybridRetrievalService
             .Take(topK)
             .ToList();
 
+        // Normalize RRF scores to 0-1 range for meaningful display.
+        // Raw RRF scores are ~0.001-0.033 which display as "0-3%" — misleading.
+        // Normalize relative to max score so top result = 1.0, others proportional.
+        if (fusedResults.Count > 0)
+        {
+            var maxScore = fusedResults[0].Score; // Already sorted descending
+            if (maxScore > 0)
+            {
+                fusedResults = fusedResults
+                    .Select(r => (r.Chunk, Score: Math.Round(r.Score / maxScore, 4)))
+                    .ToList();
+            }
+        }
+
         _logger.LogInformation(
-            "Hybrid retrieval: {VectorCount} vector + {BM25Count} BM25 candidates → {FusedCount} fused results (top-{TopK})",
+            "Hybrid retrieval: {VectorCount} vector + {BM25Count} BM25 candidates → {FusedCount} fused results (top-{TopK}), scores normalized to 0-1",
             vectorResults.Count, bm25Results.Count, fusedResults.Count, topK);
 
         return fusedResults;
+    }
+
+    /// <summary>
+    /// Normalizes scores to 0-1 range relative to the max score in the result set.
+    /// Prevents unbounded BM25 scores or raw RRF scores from displaying as misleading percentages.
+    /// </summary>
+    private static List<(DocumentChunkRecord Chunk, double Score)> NormalizeScores(
+        List<(DocumentChunkRecord Chunk, double Score)> results)
+    {
+        if (results.Count == 0) return results;
+
+        var maxScore = results.Max(r => r.Score);
+        if (maxScore <= 0) return results;
+
+        return results
+            .Select(r => (r.Chunk, Score: Math.Round(r.Score / maxScore, 4)))
+            .ToList();
     }
 }

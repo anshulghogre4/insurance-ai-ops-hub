@@ -7,6 +7,7 @@ import {
   ClaimEvidenceResponse,
   FraudAnalysisResponse,
   ProviderHealthResponse,
+  ExtendedProviderHealthResponse,
   PaginatedResponse
 } from '../models/claims.model';
 
@@ -222,6 +223,39 @@ describe('ClaimsService', () => {
     const req = httpMock.expectOne('http://localhost:5143/api/insurance/health/providers');
     expect(req.request.method).toBe('GET');
     req.flush(mockHealthResponse);
+  });
+
+  it('should get extended provider health', () => {
+    const mockExtended: ExtendedProviderHealthResponse = {
+      llmProviders: [
+        { name: 'Groq', status: 'Healthy', isAvailable: true, consecutiveFailures: 0, cooldownSeconds: 0, cooldownExpiresUtc: null }
+      ],
+      embeddingProviders: [
+        { name: 'Voyage AI', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: '50M tokens' }
+      ],
+      ocrProviders: [
+        { name: 'PdfPig (Local)', status: 'Healthy', isConfigured: true, isAvailable: true, chainOrder: 1, freeTierLimit: 'Unlimited (local)' }
+      ],
+      nerProviders: [],
+      sttProviders: [],
+      contentSafety: [
+        { name: 'Azure AI Content Safety', isConfigured: true, status: 'Available' }
+      ],
+      translation: [],
+      checkedAt: '2026-02-24T10:00:00Z'
+    };
+
+    service.getExtendedProviderHealth().subscribe(res => {
+      expect(res.llmProviders.length).toBe(1);
+      expect(res.embeddingProviders.length).toBe(1);
+      expect(res.embeddingProviders[0].name).toBe('Voyage AI');
+      expect(res.embeddingProviders[0].chainOrder).toBe(1);
+      expect(res.contentSafety.length).toBe(1);
+    });
+
+    const req = httpMock.expectOne('http://localhost:5143/api/insurance/health/providers/extended');
+    expect(req.request.method).toBe('GET');
+    req.flush(mockExtended);
   });
 
   it('should handle triage error response', () => {

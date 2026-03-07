@@ -1,8 +1,0 @@
-ClaimId,ClaimType,Description,EstimatedAmount,IncidentDate
-CLM-2024-001,Water Damage,Burst pipe in basement causing flooding,12000,2024-01-15
-CLM-2024-002,Auto Collision,Rear-end collision on Highway 101,8500,2024-01-20
-CLM-2024-003,Structure Fire,Fire destroyed garage and part of home,75000,2024-02-01
-CLM-2024-004,Theft,Electronics stolen from home during vacation,5000,2024-02-05
-,Auto,Missing claim ID,3000,2024-02-10
-CLM-2024-006,Liability,Guest injured on property,not-a-number,2024-02-12
-CLM-2024-007,Theft,Jewelry and cash stolen from hotel safe,18000,2024-02-15

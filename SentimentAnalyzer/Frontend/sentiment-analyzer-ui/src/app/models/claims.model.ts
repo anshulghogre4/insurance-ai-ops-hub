@@ -79,6 +79,28 @@ export interface ServiceHealth {
   status: string;
 }
 
+/** Extended provider health response with all 7 categorized provider groups. */
+export interface ExtendedProviderHealthResponse {
+  llmProviders: LlmProviderHealth[];
+  embeddingProviders: ProviderChainHealth[];
+  ocrProviders: ProviderChainHealth[];
+  nerProviders: ProviderChainHealth[];
+  sttProviders: ProviderChainHealth[];
+  contentSafety: ServiceHealth[];
+  translation: ServiceHealth[];
+  checkedAt: string;
+}
+
+/** Health of a provider in a resilient fallback chain (embeddings, OCR, NER, STT). */
+export interface ProviderChainHealth {
+  name: string;
+  status: string;
+  isConfigured: boolean;
+  isAvailable: boolean;
+  chainOrder: number;
+  freeTierLimit: string | null;
+}
+
 /** Generic pagination wrapper matching backend PaginatedResponse<T>. */
 export interface PaginatedResponse<T> {
   items: T[];
