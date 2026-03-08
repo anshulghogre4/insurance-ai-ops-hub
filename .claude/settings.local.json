@@ -48,7 +48,11 @@
       "WebSearch",
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
-      "Bash(ls /c/Dev/AI_Cohort_AnAr/SentimentAnalyzer/Tests/*.cs)"
+      "Bash(ls /c/Dev/AI_Cohort_AnAr/SentimentAnalyzer/Tests/*.cs)",
+      "Bash(sed 's/\\(.*//')",
+      "Bash(sed 's/:.*//')",
+      "Bash(grep -oP \"e2e\\\\\\\\[^:]+\\\\.spec\\\\.ts\")",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")"
     ]
   }
 }

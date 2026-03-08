@@ -305,7 +305,7 @@ Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30
 
 ---
 
-## Sprint 7: Real-Time Analytics + Cloud Deployment + Advanced Fraud (PLANNED)
+## Sprint 7: Real-Time Analytics + Cloud Deployment + Advanced Fraud (IN PROGRESS)
 
 **Goal:** Add real-time dashboards via SignalR, deploy to production via VPS (Hetzner/Netcup ~$4.51/mo) + Cloudflare Pages ($0) + PostgreSQL+pgvector, implement advanced fraud detection with anomaly patterns, and add email alerts via Resend (3K/mo free).
 
@@ -328,7 +328,7 @@ Supabase (FREE - auth only)          VPS (~$4.51/mo)
 
 ---
 
-### Week 1: SignalR Real-Time Dashboards (P1)
+### Week 1: SignalR Real-Time Dashboards (COMPLETE)
 
 #### 7.1.1 — SignalR Infrastructure + NuGet
 
@@ -426,11 +426,20 @@ Supabase (FREE - auth only)          VPS (~$4.51/mo)
 | `notification.service.spec.ts` | 6 | Count, read, clear, persist, cap, creation |
 | **Week 1 Total** | **30** | |
 
-**Week 1 Gate:** SignalR hubs broadcast on claim/fraud/provider events. Live dashboard updates without page refresh. Notification bell shows real-time alerts. 30 tests pass.
+**Week 1 Gate:** PASSED. SignalR hubs broadcast on claim/fraud/provider events. Live dashboard updates without page refresh. Notification bell shows real-time alerts. 30+ tests pass.
+
+**Week 1 Bug Fixes (QA iterations):**
+- `AnalyticsAggregator.cs`: RollingCounter `Snapshot()` method — snapshot-then-compute in `ExecuteAsync` prevents stale data
+- `DocumentIntelligenceService.cs`: Added `_analyticsAggregator?.RecordDocQuery()` to track document queries
+- `signalr.service.ts`: Deferred handler registration in `connect()`, Subject completion in `disconnect()`
+- `live-dashboard.ts`: `Promise.allSettled` for graceful multi-hub disconnect, per-hub cleanup in `ngOnDestroy`
+- `live-dashboard.html`: `aria-hidden` on provider status dots for accessibility
+- `e2e/live-dashboard.spec.ts`: Rewritten with SignalR negotiate mocks, assertive test structure
+- `Tests/AnalyticsHubTests.cs`: 2 new tests — RollingCounter Snapshot + ExpiredEntries
 
 ---
 
-### Week 2: Cloud Deployment — VPS + Cloudflare Pages ($4-5/mo) (P1)
+### Week 2: Cloud Deployment — VPS + Cloudflare Pages ($4-5/mo) (IN PROGRESS)
 
 **Architecture Decision:** After researching free-forever options, we chose a VPS + free services hybrid over Azure App Service B1 ($13/mo). This gives us always-on hosting with no cold starts, self-hosted PostgreSQL+pgvector with no storage caps, and unlimited SSE connections — all for ~$4.51/mo total.
 
@@ -547,6 +556,34 @@ GitHub Actions ($0) → Build → Push to ghcr.io → SSH deploy to VPS
 | `Tests/EnvConfigTests.cs` | 2 | Load + fallback |
 | `Tests/SmokeTestScriptTests.cs` | 2 | Validate + timeout |
 | **Week 2 Total** | **4** | |
+
+**Week 2 Progress:**
+- [x] `docker-compose.yml` — 3 services (backend, postgres+pgvector, caddy), healthchecks, env_file
+- [x] `Caddyfile` — Reverse proxy `api1.anshulghogre.co.in` → `backend:8080`, auto HTTPS, security headers, gzip
+- [x] `.github/workflows/cd.yml` — CD pipeline: CI gate → parallel frontend/backend deploy → smoke tests
+- [x] `.github/workflows/ci.yml` — Added `workflow_call` trigger for CD reuse
+- [x] `Backend/Program.cs` — Sentry swap (`UseSentry` replaces App Insights), config-driven CORS from `AllowedOrigins` array
+- [x] `Backend/SentimentAnalyzer.API.csproj` — Swapped `Microsoft.ApplicationInsights.AspNetCore` for `Sentry.AspNetCore` v5.6.0
+- [x] `Backend/Dockerfile` — Added curl for healthcheck
+- [x] `appsettings.Production.json` — `AllowedOrigins` array, `Database.Provider: PostgreSQL`
+- [x] `environment.ts` — Production apiUrl: `https://api1.anshulghogre.co.in`
+- [x] `environment.development.ts` — Tracked in git (public Supabase keys only)
+- [x] `_redirects` + `_headers` — SPA routing + security headers for Cloudflare Pages
+- [x] `.env.example` — Template with 25+ secret keys (DB, LLM, embedding, multimodal, Azure, Cloudflare AI, auth, monitoring)
+- [x] `scripts/smoke-test.sh` — Post-deploy health checks (liveness, readiness, providers, frontend)
+- [x] `Tests/EnvConfigTests.cs` + `Tests/SmokeTestScriptTests.cs` — 4 deployment tests
+- [x] VPS provisioned (Hetzner CX22), Docker installed, deploy user created
+- [x] PostgreSQL running on VPS (`docker compose up -d postgres`)
+- [x] Cloudflare DNS active, `api1` A record (DNS only), `app1` CNAME (Cloudflare Pages)
+- [x] Cloudflare Pages project created, custom domain `app1.anshulghogre.co.in` added
+- [x] GitHub Secrets configured: `VPS_HOST`, `VPS_SSH_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- [x] `.env` file on VPS with API keys, `chmod 600`
+- [x] Deployment files copied to VPS: `docker-compose.yml`, `Caddyfile`, `smoke-test.sh`
+- [ ] First successful CD pipeline run (frontend + backend deploy)
+- [ ] Caddy auto-HTTPS working
+- [ ] Smoke tests green
+- [ ] Sentry DSN configured (deferred — sign up later)
+- [ ] Grafana Cloud setup (deferred)
 
 **Week 2 Gate:** Frontend accessible via Cloudflare Pages URL. Backend API responds on VPS (Docker Compose). Secrets managed via env file. CD pipeline deploys on push to main. Sentry + Grafana collecting telemetry. Caddy auto-HTTPS working. PostgreSQL+pgvector running. Smoke tests green. **Total cost: ~$4.51/mo.**
 
