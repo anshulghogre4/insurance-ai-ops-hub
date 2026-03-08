@@ -61,7 +61,6 @@ appsettings.Local.json
 !.env.example
 
 # Frontend secrets
-**/environments/environment.development.ts
 **/environments/environment.local.ts
 
 # Test credentials
