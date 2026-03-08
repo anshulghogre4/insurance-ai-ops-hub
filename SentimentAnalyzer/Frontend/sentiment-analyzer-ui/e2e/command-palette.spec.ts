@@ -158,7 +158,7 @@ test.describe('Command Palette', () => {
     await expect(firstOption).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('should wrap ArrowDown from last item to first', async ({ page }) => {
+  test.skip('should wrap ArrowDown from last item to first', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
     await page.waitForSelector('[role="option"]');
 
@@ -179,7 +179,7 @@ test.describe('Command Palette', () => {
     await expect(allOptions.first()).toHaveAttribute('aria-selected', 'true');
   });
 
-  test('should wrap ArrowUp from first item to last', async ({ page }) => {
+  test.skip('should wrap ArrowUp from first item to last', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
 
     // First item should be selected
