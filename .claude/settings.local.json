@@ -52,7 +52,9 @@
       "Bash(sed 's/\\(.*//')",
       "Bash(sed 's/:.*//')",
       "Bash(grep -oP \"e2e\\\\\\\\[^:]+\\\\.spec\\\\.ts\")",
-      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")"
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(npx playwright test e2e/command-palette.spec.ts -g \"should navigate between items with ArrowDown and ArrowUp|should wrap ArrowDown from last item to first\" e2e/live-dashboard.spec.ts -g \"should show all 3 feed section headers with icons|should show error or disconnected banner when SignalR unavailable\")",
+      "Bash(npx playwright test e2e/live-dashboard.spec.ts -g \"should show error or disconnected banner when SignalR unavailable|should show all 3 feed section headers with icons\")"
     ]
   }
 }

@@ -139,6 +139,7 @@ test.describe('Command Palette', () => {
 
   test('should navigate between items with ArrowDown and ArrowUp', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
+    await page.waitForSelector('[role="option"]');
 
     // First item should be selected
     const firstOption = page.locator('[role="option"]').first();
@@ -146,23 +147,27 @@ test.describe('Command Palette', () => {
 
     // Press ArrowDown to move to second
     await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(100);
     const secondOption = page.locator('[role="option"]').nth(1);
     await expect(secondOption).toHaveAttribute('aria-selected', 'true');
     await expect(firstOption).toHaveAttribute('aria-selected', 'false');
 
     // Press ArrowUp to move back to first
     await page.keyboard.press('ArrowUp');
+    await page.waitForTimeout(100);
     await expect(firstOption).toHaveAttribute('aria-selected', 'true');
   });
 
   test('should wrap ArrowDown from last item to first', async ({ page }) => {
     await page.keyboard.press('ControlOrMeta+k');
+    await page.waitForSelector('[role="option"]');
 
     // Navigate to the last item
     const allOptions = page.locator('[role="option"]');
     const count = await allOptions.count();
     for (let i = 0; i < count - 1; i++) {
       await page.keyboard.press('ArrowDown');
+      await page.waitForTimeout(50);
     }
 
     // Last item should be selected
@@ -170,6 +175,7 @@ test.describe('Command Palette', () => {
 
     // Press ArrowDown again to wrap to first
     await page.keyboard.press('ArrowDown');
+    await page.waitForTimeout(100);
     await expect(allOptions.first()).toHaveAttribute('aria-selected', 'true');
   });
 

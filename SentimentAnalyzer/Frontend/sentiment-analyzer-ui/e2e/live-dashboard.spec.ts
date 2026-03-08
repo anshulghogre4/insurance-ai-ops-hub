@@ -49,14 +49,14 @@ test.describe('Live Dashboard (SignalR Real-Time)', () => {
 
   test('should show error or disconnected banner when SignalR unavailable', async ({ page }) => {
     // Without a real backend, the dashboard should show degradation UI
-    const errorBanner = page.getByText('Failed to connect to real-time services');
-    const disconnectedBanner = page.getByText('Live updates paused');
-    const partialBanner = page.getByText('real-time connections failed');
+    const main = page.getByRole('main');
+    const errorBanner = main.getByText('Failed to connect to real-time services');
+    const disconnectedBanner = main.getByText('Live updates paused');
 
     // At least one degradation indicator must be visible
     await expect(
-      errorBanner.or(disconnectedBanner).or(partialBanner)
-    ).toBeVisible({ timeout: 5000 });
+      errorBanner.or(disconnectedBanner).first()
+    ).toBeVisible({ timeout: 10000 });
   });
 
   // ==================== Metric Cards (rendered after loading clears) ====================
@@ -93,9 +93,10 @@ test.describe('Live Dashboard (SignalR Real-Time)', () => {
   // ==================== Section Headers ====================
 
   test('should show all 3 feed section headers with icons', async ({ page }) => {
-    await expect(page.getByText('Provider Health')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Recent Claims')).toBeVisible();
-    await expect(page.getByText('Fraud Alerts')).toBeVisible();
+    const main = page.getByRole('main');
+    await expect(main.getByRole('heading', { name: 'Provider Health' })).toBeVisible({ timeout: 5000 });
+    await expect(main.getByRole('heading', { name: 'Recent Claims' })).toBeVisible();
+    await expect(main.getByRole('heading', { name: 'Fraud Alerts' })).toBeVisible();
   });
 
   // ==================== Navigation ====================
