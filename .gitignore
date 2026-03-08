@@ -81,5 +81,8 @@ Desktop.ini
 # ===== Logs =====
 *.log
 
+# ===== Deployment Guides (contain infra-specific config) =====
+SentimentAnalyzer/plans/vps-deployment-guide.md
+
 # ===== Claude Code =====
 .claude/projects/
