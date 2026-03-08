@@ -1,10 +1,12 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using SentimentAnalyzer.Agents.Configuration;
 using SentimentAnalyzer.Agents.Models;
 using SentimentAnalyzer.Agents.Orchestration;
 using SentimentAnalyzer.API.Data;
 using SentimentAnalyzer.API.Data.Entities;
+using SentimentAnalyzer.API.Hubs;
 using SentimentAnalyzer.API.Models;
 using SentimentAnalyzer.Domain.Enums;
 
@@ -19,15 +21,21 @@ public class FraudAnalysisService : IFraudAnalysisService
     private readonly IAnalysisOrchestrator _orchestrator;
     private readonly IClaimsRepository _claimsRepo;
     private readonly ILogger<FraudAnalysisService> _logger;
+    private readonly IHubContext<ClaimsHub, IClaimsHubClient>? _claimsHubContext;
+    private readonly Services.Notifications.AnalyticsAggregator? _analyticsAggregator;
 
     public FraudAnalysisService(
         IAnalysisOrchestrator orchestrator,
         IClaimsRepository claimsRepo,
-        ILogger<FraudAnalysisService> logger)
+        ILogger<FraudAnalysisService> logger,
+        IHubContext<ClaimsHub, IClaimsHubClient>? claimsHubContext = null,
+        Services.Notifications.AnalyticsAggregator? analyticsAggregator = null)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _claimsRepo = claimsRepo ?? throw new ArgumentNullException(nameof(claimsRepo));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _claimsHubContext = claimsHubContext;
+        _analyticsAggregator = analyticsAggregator;
     }
 
     /// <inheritdoc />
@@ -75,8 +83,22 @@ public class FraudAnalysisService : IFraudAnalysisService
                     claimId, claim.FraudScore, fraud.SiuReferralReason ?? "High fraud probability score");
             }
 
+            // Sprint 7: Broadcast fraud alert via SignalR
+            if (_claimsHubContext != null)
+            {
+                var flags = fraud.Indicators?.Select(i => i.Description).ToList() ?? [];
+                await _claimsHubContext.Clients.All.FraudAlertRaised(new FraudAlertEvent(
+                    claimId, claim.FraudScore, flags, claim.FraudRiskLevel, DateTime.UtcNow));
+            }
+
             _logger.LogInformation("Fraud analysis completed for claim {ClaimId}: Score={Score}, RiskLevel={Risk}",
                 claimId, claim.FraudScore, claim.FraudRiskLevel);
+
+            // Sprint 7: Record fraud detection for analytics
+            if (claim.FraudScore >= 55)
+            {
+                _analyticsAggregator?.RecordFraudDetected();
+            }
         }
         else
         {

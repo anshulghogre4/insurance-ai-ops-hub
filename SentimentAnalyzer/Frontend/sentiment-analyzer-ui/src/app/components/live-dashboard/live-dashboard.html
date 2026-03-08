@@ -1,0 +1,200 @@
+<div class="min-h-screen p-4 md:p-6 lg:p-8" [style.background]="'var(--bg-primary)'" [style.color]="'var(--text-primary)'">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <div>
+      <h1 class="text-2xl font-bold">Live Dashboard</h1>
+      <p class="text-sm mt-1" [style.color]="'var(--text-muted)'">Real-time claims, fraud alerts, and provider health</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <!-- Connection indicator -->
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium"
+           role="status" aria-live="polite"
+           [class]="isConnected() ? 'bg-emerald-500/10 text-emerald-400' : connectionState() === 'reconnecting' ? 'bg-amber-500/10 text-amber-400' : 'bg-rose-500/10 text-rose-400'">
+        <span class="w-2 h-2 rounded-full" [class]="isConnected() ? 'bg-emerald-400 animate-pulse' : connectionState() === 'reconnecting' ? 'bg-amber-400 animate-pulse' : 'bg-rose-400'" aria-hidden="true"></span>
+        {{ isConnected() ? 'Live' : connectionState() === 'reconnecting' ? 'Reconnecting...' : 'Disconnected' }}
+      </div>
+      <a routerLink="/dashboard" class="text-sm px-3 py-1.5 rounded-lg transition-colors"
+         [style.color]="'var(--text-muted)'" [style.background]="'var(--bg-surface)'">
+        Static Dashboard
+      </a>
+    </div>
+  </div>
+
+  <!-- Disconnected banner -->
+  @if (!isConnected() && connectionState() !== 'reconnecting') {
+    <div class="mb-6 p-4 rounded-xl border bg-rose-500/5 border-rose-500/20 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+        <span class="text-sm text-rose-300">Live updates paused. Real-time connection lost.</span>
+      </div>
+      <button (click)="reconnect()" aria-label="Reconnect to real-time services" class="px-4 py-1.5 rounded-lg text-sm font-medium bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 transition-colors">
+        Reconnect
+      </button>
+    </div>
+  }
+
+  <!-- Error banner -->
+  @if (error()) {
+    <div class="mb-6 p-4 rounded-xl border bg-amber-500/5 border-amber-500/20">
+      <p class="text-sm text-amber-300">{{ error() }}</p>
+    </div>
+  }
+
+  <!-- Loading skeleton -->
+  @if (isLoading()) {
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      @for (i of [1,2,3,4]; track i) {
+        <div class="rounded-xl p-5 animate-pulse" [style.background]="'var(--bg-secondary)'" [style.border]="'1px solid var(--border-primary)'">
+          <div class="h-3 w-24 rounded" [style.background]="'var(--bg-surface)'"></div>
+          <div class="h-8 w-16 rounded mt-3" [style.background]="'var(--bg-surface)'"></div>
+        </div>
+      }
+    </div>
+  } @else {
+    <!-- Metric Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <!-- Claims/hr -->
+      <div class="rounded-xl p-5 border transition-all hover:shadow-lg" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <p class="text-xs font-medium uppercase tracking-wider" [style.color]="'var(--text-muted)'">Claims / Hour</p>
+        <p class="text-3xl font-bold mt-2 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          {{ metrics()?.claimsPerHour ?? 0 }}
+        </p>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Rolling 1hr window</p>
+      </div>
+
+      <!-- Avg Triage Time -->
+      <div class="rounded-xl p-5 border transition-all hover:shadow-lg" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <p class="text-xs font-medium uppercase tracking-wider" [style.color]="'var(--text-muted)'">Avg Triage Time</p>
+        <p class="text-3xl font-bold mt-2 bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+          {{ metrics()?.avgTriageMs ? (metrics()!.avgTriageMs / 1000).toFixed(1) + 's' : '—' }}
+        </p>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Agent pipeline latency</p>
+      </div>
+
+      <!-- Fraud Rate -->
+      <div class="rounded-xl p-5 border transition-all hover:shadow-lg" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <p class="text-xs font-medium uppercase tracking-wider" [style.color]="'var(--text-muted)'">Fraud Detection Rate</p>
+        <p class="text-3xl font-bold mt-2 bg-gradient-to-r from-rose-400 to-amber-400 bg-clip-text text-transparent">
+          {{ metrics()?.fraudDetectionRate ?? 0 }}%
+        </p>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">Of processed claims</p>
+      </div>
+
+      <!-- Doc Queries -->
+      <div class="rounded-xl p-5 border transition-all hover:shadow-lg" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <p class="text-xs font-medium uppercase tracking-wider" [style.color]="'var(--text-muted)'">Doc Queries / Hour</p>
+        <p class="text-3xl font-bold mt-2 bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+          {{ metrics()?.docQueriesPerHour ?? 0 }}
+        </p>
+        <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">RAG pipeline queries</p>
+      </div>
+    </div>
+
+    <!-- Provider Health + Feeds Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+      <!-- Provider Status Grid -->
+      <div class="rounded-xl border p-5" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <h2 class="text-sm font-semibold mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2"/>
+          </svg>
+          Provider Health
+        </h2>
+        @if (providerStatuses().length === 0) {
+          <p class="text-sm" [style.color]="'var(--text-muted)'">Waiting for health data...</p>
+        } @else {
+          <div class="space-y-2 max-h-[400px] overflow-y-auto">
+            @for (provider of providerStatuses(); track provider.providerName) {
+              <div class="flex items-center justify-between py-2 px-3 rounded-lg" [style.background]="'var(--bg-surface)'">
+                <div class="flex items-center gap-2.5">
+                  <span class="w-2.5 h-2.5 rounded-full" aria-hidden="true" [class]="getProviderStatusColor(provider.newStatus) + ' ' + getProviderStatusPulse(provider.newStatus)"></span>
+                  <span class="text-sm font-medium">{{ provider.providerName }}</span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full"
+                      [class]="provider.newStatus === 'Available' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'">
+                  {{ provider.newStatus }}
+                  @if (provider.cooldownSeconds) {
+                    <span> ({{ provider.cooldownSeconds }}s)</span>
+                  }
+                </span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Recent Claims Feed -->
+      <div class="rounded-xl border p-5" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <h2 class="text-sm font-semibold mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          Recent Claims
+        </h2>
+        @if (recentClaims().length === 0) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <p class="text-sm" [style.color]="'var(--text-muted)'">No recent claims. Waiting for triage events...</p>
+          </div>
+        } @else {
+          <div class="space-y-2 max-h-[400px] overflow-y-auto">
+            @for (claim of recentClaims(); track $index) {
+              <button (click)="navigateToClaim(claim.claimId)"
+                      [attr.aria-label]="'View claim ' + claim.claimId + ', ' + (claim.severity || 'Unknown') + ' severity'"
+                      class="w-full text-left p-3 rounded-lg border transition-all hover:scale-[1.01] cursor-pointer"
+                      [class]="getSeverityBgColor(claim.severity)">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-medium">#{{ claim.claimId }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-medium" [class]="getSeverityColor(claim.severity)">
+                    {{ claim.severity }}
+                  </span>
+                </div>
+                <p class="text-xs mt-1" [style.color]="'var(--text-muted)'">{{ claim.claimType || 'General' }} &middot; {{ formatTime(claim.triagedAt) }}</p>
+              </button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- Fraud Alert Feed -->
+      <div class="rounded-xl border p-5" [style.background]="'var(--bg-secondary)'" [style.border-color]="'var(--border-primary)'">
+        <h2 class="text-sm font-semibold mb-4 flex items-center gap-2">
+          <svg class="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+          </svg>
+          Fraud Alerts
+        </h2>
+        @if (recentFraudAlerts().length === 0) {
+          <div class="text-center py-8">
+            <svg class="w-12 h-12 mx-auto mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <p class="text-sm" [style.color]="'var(--text-muted)'">No fraud alerts detected yet.</p>
+          </div>
+        } @else {
+          <div class="space-y-2 max-h-[400px] overflow-y-auto">
+            @for (alert of recentFraudAlerts(); track $index) {
+              <button (click)="navigateToClaim(alert.claimId)"
+                      [attr.aria-label]="'Fraud alert for claim ' + alert.claimId + ', score ' + alert.fraudScore"
+                      class="w-full text-left p-3 rounded-lg border transition-all hover:scale-[1.01] cursor-pointer bg-rose-500/5 border-rose-500/20">
+                <div class="flex items-center justify-between">
+                  <span class="text-sm font-medium text-rose-300">Claim #{{ alert.claimId }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-bold"
+                        [class]="alert.fraudScore >= 80 ? 'bg-rose-500/20 text-rose-300' : 'bg-amber-500/20 text-amber-300'">
+                    {{ alert.fraudScore }}
+                  </span>
+                </div>
+                <p class="text-xs mt-1 text-rose-400/70">{{ alert.riskLevel }} &middot; {{ (alert.flags?.length ?? 0) }} flag{{ (alert.flags?.length ?? 0) !== 1 ? 's' : '' }} &middot; {{ formatTime(alert.detectedAt) }}</p>
+              </button>
+            }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

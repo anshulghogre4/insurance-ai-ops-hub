@@ -208,6 +208,14 @@ import { CommandRegistryService } from '../../services/command-registry.service'
                       </svg>
                       Overview
                     </a>
+                    <a routerLink="/dashboard/live" (click)="showDashMenu.set(false)"
+                       class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
+                       [style.color]="'var(--text-secondary)'">
+                      <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                      </svg>
+                      Live
+                    </a>
                     <a routerLink="/dashboard/providers" (click)="showDashMenu.set(false)"
                        class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors hover:bg-[var(--bg-surface-hover)]"
                        [style.color]="'var(--text-secondary)'">
@@ -426,6 +434,13 @@ import { CommandRegistryService } from '../../services/command-registry.service'
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                   </svg>
                   Overview
+                </a>
+                <a routerLink="/dashboard/live" routerLinkActive="nav-link-active"
+                   (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">
+                  <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  </svg>
+                  Live
                 </a>
                 <a routerLink="/dashboard/providers" routerLinkActive="nav-link-active"
                    (click)="showMobileMenu.set(false)" class="nav-link w-full py-3 flex items-center gap-3">

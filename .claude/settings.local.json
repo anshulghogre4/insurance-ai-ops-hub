@@ -44,7 +44,11 @@
       "Bash(npx playwright test --reporter=line)",
       "Bash(npx playwright test e2e/document-library.spec.ts:27 e2e/document-query.spec.ts:21 --project=chromium --reporter=list)",
       "Bash(npx playwright test e2e/document-library.spec.ts:27 --project=chromium --reporter=list)",
-      "Bash(tasklist)"
+      "Bash(tasklist)",
+      "WebSearch",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(ls /c/Dev/AI_Cohort_AnAr/SentimentAnalyzer/Tests/*.cs)"
     ]
   }
 }

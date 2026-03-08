@@ -18,7 +18,9 @@ using SentimentAnalyzer.API.Services.CustomerExperience;
 using SentimentAnalyzer.API.Services.Documents;
 using SentimentAnalyzer.API.Services.Documents.RAGQuery;
 using SentimentAnalyzer.API.Services.Embeddings;
+using SentimentAnalyzer.API.Services.Notifications;
 using SentimentAnalyzer.API.Services.Providers;
+using SentimentAnalyzer.API.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +30,9 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
+
+// SignalR real-time hubs (Sprint 7)
+builder.Services.AddSignalR();
 
 // Register MediatR for CQRS (scans this assembly for handlers)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
@@ -211,6 +216,11 @@ builder.Services.AddSingleton<IQueryReformulator, QueryReformulatorService>();
 builder.Services.AddSingleton<IAnswerEvaluator, AnswerEvaluatorService>();
 builder.Services.AddSingleton<ICrossDocReasoner, CrossDocReasonerService>();
 
+// Sprint 7: Real-time analytics background services
+builder.Services.AddSingleton<AnalyticsAggregator>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<AnalyticsAggregator>());
+builder.Services.AddHostedService<ProviderHealthBroadcaster>();
+
 // Supabase JWT Authentication (optional - requires BOTH Url AND JwtSecret)
 // Supabase access tokens use HS256 (symmetric), so JWKS/OIDC discovery cannot validate them.
 // The JWT secret is required: Supabase Dashboard > Settings > API > JWT Secret
@@ -310,7 +320,7 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins("http://localhost:4200")
               .AllowAnyHeader()
-              .AllowAnyMethod();
+              .AllowAnyMethod().AllowCredentials();
     });
 });
 
@@ -592,5 +602,10 @@ app.MapCustomerExperienceEndpoints(requireAuth: supabaseAuthEnabled);
 
 // Health check endpoints (liveness + readiness probes)
 app.MapHealthEndpoints();
+
+// Sprint 7: SignalR real-time hubs
+app.MapHub<ClaimsHub>("/hubs/claims");
+app.MapHub<ProviderHealthHub>("/hubs/provider-health");
+app.MapHub<AnalyticsHub>("/hubs/analytics");
 
 app.Run();

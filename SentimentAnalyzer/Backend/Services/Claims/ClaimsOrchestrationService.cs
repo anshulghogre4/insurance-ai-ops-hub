@@ -1,11 +1,14 @@
 using System.Text.Json;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.Logging;
 using SentimentAnalyzer.Agents.Configuration;
 using SentimentAnalyzer.Agents.Models;
 using SentimentAnalyzer.Agents.Orchestration;
 using SentimentAnalyzer.API.Data;
 using SentimentAnalyzer.API.Data.Entities;
+using SentimentAnalyzer.API.Hubs;
 using SentimentAnalyzer.API.Models;
+using SentimentAnalyzer.API.Services.Notifications;
 using SentimentAnalyzer.Domain.Enums;
 
 namespace SentimentAnalyzer.API.Services.Claims;
@@ -20,17 +23,23 @@ public class ClaimsOrchestrationService : IClaimsOrchestrationService
     private readonly IClaimsRepository _claimsRepo;
     private readonly IPIIRedactor _piiRedactor;
     private readonly ILogger<ClaimsOrchestrationService> _logger;
+    private readonly IHubContext<ClaimsHub, IClaimsHubClient>? _claimsHubContext;
+    private readonly AnalyticsAggregator? _analyticsAggregator;
 
     public ClaimsOrchestrationService(
         IAnalysisOrchestrator orchestrator,
         IClaimsRepository claimsRepo,
         IPIIRedactor piiRedactor,
-        ILogger<ClaimsOrchestrationService> logger)
+        ILogger<ClaimsOrchestrationService> logger,
+        IHubContext<ClaimsHub, IClaimsHubClient>? claimsHubContext = null,
+        AnalyticsAggregator? analyticsAggregator = null)
     {
         _orchestrator = orchestrator ?? throw new ArgumentNullException(nameof(orchestrator));
         _claimsRepo = claimsRepo ?? throw new ArgumentNullException(nameof(claimsRepo));
         _piiRedactor = piiRedactor ?? throw new ArgumentNullException(nameof(piiRedactor));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _claimsHubContext = claimsHubContext;
+        _analyticsAggregator = analyticsAggregator;
     }
 
     /// <inheritdoc />
@@ -79,6 +88,32 @@ public class ClaimsOrchestrationService : IClaimsOrchestrationService
 
         _logger.LogInformation("Claims triage completed. ClaimId={ClaimId}, Severity={Severity}, FraudScore={FraudScore}",
             saved.Id, saved.Severity, saved.FraudScore);
+
+        // Sprint 7: Broadcast real-time events via SignalR
+        if (_claimsHubContext != null)
+        {
+            var triageEvent = new ClaimTriagedEvent(
+                saved.Id, saved.Severity, "Policyholder", saved.ClaimType,
+                saved.FraudScore, DateTime.UtcNow);
+            await _claimsHubContext.Clients.All.ClaimTriaged(triageEvent);
+
+            // Broadcast to severity group
+            await _claimsHubContext.Clients.Group($"severity-{saved.Severity}").ClaimTriaged(triageEvent);
+
+            // Fraud alert if score is high
+            if (saved.FraudScore >= 55)
+            {
+                var fraudFlags = new List<string>();
+                try { fraudFlags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(saved.FraudFlagsJson) ?? []; }
+                catch (System.Text.Json.JsonException) { }
+
+                await _claimsHubContext.Clients.All.FraudAlertRaised(new FraudAlertEvent(
+                    saved.Id, saved.FraudScore, fraudFlags, saved.FraudRiskLevel, DateTime.UtcNow));
+            }
+        }
+
+        // Sprint 7: Record analytics
+        _analyticsAggregator?.RecordClaimProcessed(0); // TODO: measure actual triage time
 
         return MapToTriageResponse(saved, triage?.EstimatedLossRange ?? "");
     }

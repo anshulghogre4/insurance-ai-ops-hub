@@ -16,6 +16,7 @@ import { CxCopilotComponent } from './components/cx-copilot/cx-copilot';
 import { FraudCorrelationComponent } from './components/fraud-correlation/fraud-correlation';
 import { BatchUploadComponent } from './components/batch-upload/batch-upload';
 import { DocumentLibraryComponent } from './components/document-library/document-library';
+import { LiveDashboardComponent } from './components/live-dashboard/live-dashboard';
 import { authGuard } from './guards/auth.guard';
 import { guestGuard } from './guards/guest.guard';
 
@@ -37,5 +38,6 @@ export const routes: Routes = [
   { path: 'documents/:id', component: DocumentResultComponent, canActivate: [authGuard], data: { breadcrumb: 'Document :id' } },
   { path: 'cx/copilot', component: CxCopilotComponent, canActivate: [authGuard], data: { breadcrumb: 'CX Copilot' } },
   { path: 'fraud/correlations/:claimId', component: FraudCorrelationComponent, canActivate: [authGuard], data: { breadcrumb: 'Correlations' } },
+  { path: 'dashboard/live', component: LiveDashboardComponent, canActivate: [authGuard], data: { breadcrumb: 'Live' } },
   { path: '**', redirectTo: '' },
 ];

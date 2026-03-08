@@ -294,13 +294,12 @@ Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30
 | **Sprint 3** | Frontend + Dashboard + E2E | **COMPLETE** | 8 components, landing page, Chart.js dashboard, 239 E2E tests |
 | **Sprint 4** | Document Intelligence RAG | **COMPLETE** | RAG pipeline, CX Copilot (SSE), fraud correlation, 1,053 tests |
 | **Sprint 5** | UI Revamp + Enhanced RAG | **COMPLETE** | Parallax landing, batch claims, hybrid RAG, 4 embedding providers, ~1,555 tests |
-| **Sprint 6** | Azure AI + Docker + RAG Agents + Hardening | **COMPLETE** (Weeks 1-4 ✅) | 6 Azure AI services, 2 resilient chains, RAG query pipeline, Docker, health endpoints, provider health UI, document library, 704 backend + 462 frontend tests |
-| **Sprint 7** | Real-Time Analytics + Cloud Deploy + Advanced Fraud | **PLANNED** | SignalR dashboards, Azure deployment, anomaly detection, email alerts, ~1,850 tests |
+| **Sprint 6** | Azure AI + Docker + RAG Agents + Hardening | **COMPLETE** | 6 Azure AI services, 2 resilient chains, RAG query pipeline, Docker, health endpoints, provider health UI, document library, ~1,832 total tests |
+| **Sprint 7** | Real-Time Analytics + Cloud Deploy + Advanced Fraud | **PLANNED** | SignalR dashboards, VPS+Cloudflare deployment (~$4.51/mo), anomaly detection, Resend email alerts, ~1,954 projected tests |
 
 ### Deferred to Sprint 8+
-- Azure AI Search (replace in-memory vector search)
-- Custom domain + SSL certificate
-- Azure SQL Free as alternate DB provider
+- Azure AI Search or self-hosted Meilisearch (replace in-memory vector search)
+- Custom domain + SSL certificate (Caddy auto-HTTPS ready)
 - Multi-tenant support
 - Webhook integrations for external claims systems
 
@@ -308,124 +307,610 @@ Both follow the `ResilientOcrProvider` pattern: exponential backoff cooldown (30
 
 ## Sprint 7: Real-Time Analytics + Cloud Deployment + Advanced Fraud (PLANNED)
 
-**Goal:** Add real-time dashboards via SignalR, deploy to Azure cloud (Static Web Apps + App Service), implement advanced fraud detection with anomaly patterns, and add email/notification alerts for critical events.
+**Goal:** Add real-time dashboards via SignalR, deploy to production via VPS (Hetzner/Netcup ~$4.51/mo) + Cloudflare Pages ($0) + PostgreSQL+pgvector, implement advanced fraud detection with anomaly patterns, and add email alerts via Resend (3K/mo free).
 
-**Prerequisites:** Sprint 6 Weeks 1-3 must be complete (Azure AI services, Docker, health endpoints, EF migrations).
+**Prerequisites:** Sprint 6 COMPLETE (Azure AI services, Docker, health endpoints, ~1,832 tests passing).
+
+**Starting State:** 22 components, 17 routes, 8 endpoint groups, 704 backend + 462 frontend + ~666 E2E = ~1,832 total tests.
+
+**Architecture Decision — Auth + Database Split:**
+Supabase Auth (free, 50K MAU) is kept for authentication — it's frontend-only via `@supabase/supabase-js` and independent of the app database. App data moves to self-hosted PostgreSQL+pgvector on the VPS. Zero code changes to `AuthService`, guards, or login component. The `authEnabled` computed signal checks `supabaseUrl`/`supabaseAnonKey` environment vars — when empty, auth is disabled (E2E/local dev mode).
+
+```
+Supabase (FREE - auth only)          VPS (~$4.51/mo)
+├── User sign-up/sign-in             ├── .NET Backend (Docker)
+├── JWT tokens                       ├── PostgreSQL 16 + pgvector (app data)
+├── Email verification               └── Caddy (reverse proxy, auto HTTPS)
+└── 50K monthly active users
+                                     Cloudflare Pages ($0)
+                                     └── Angular frontend (CDN)
+```
+
+---
 
 ### Week 1: SignalR Real-Time Dashboards (P1)
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 7.1.1 | NuGet Package | `Microsoft.AspNetCore.SignalR` (included in ASP.NET Core) — no new package needed |
-| 7.1.2 | Claims Hub | `ClaimsHub.cs` — real-time push for new claims, status changes, triage completions. Groups by severity (Critical/High subscribers get instant alerts). Methods: `ClaimTriaged`, `ClaimStatusChanged`, `FraudAlertRaised` |
-| 7.1.3 | Provider Health Hub | `ProviderHealthHub.cs` — real-time provider status updates. Push cooldown state changes, failover events, usage counter ticks. Auto-broadcast every 30s or on state change |
-| 7.1.4 | Analytics Hub | `AnalyticsHub.cs` — live dashboard metrics. Claims processed/hour, avg triage time, fraud detection rate, provider response times. Rolling 1-hour window with 10s granularity |
-| 7.1.5 | Angular SignalR Service | `signalr.service.ts` — `@microsoft/signalr` npm package, auto-reconnect with exponential backoff, connection state signal, typed event handlers |
-| 7.1.6 | Live Dashboard Component | `live-dashboard` component — real-time charts (claims/hour line chart, provider status cards with live pulse indicators, fraud alert feed with auto-scroll) |
-| 7.1.7 | Notification Bell | Global notification bell in nav bar — unread count badge, dropdown with recent alerts (claims triaged, fraud detected, provider failovers), mark-as-read, link to relevant detail pages |
-| 7.1.8 | Backend Tests | ~12 tests: Hub unit tests (message broadcasting, group management), SignalR service integration |
+#### 7.1.1 — SignalR Infrastructure + NuGet
 
-**Gate:** SignalR hubs broadcast on claim/fraud/provider events. Live dashboard updates without page refresh. Notification bell shows real-time alerts. 12 tests pass.
+| Layer | Detail |
+|-------|--------|
+| **NuGet** | `Microsoft.AspNetCore.SignalR` (included in ASP.NET Core — no new package) |
+| **npm** | `@microsoft/signalr` ^8.0.0 |
+| **Config** | Add `SignalR` section to `appsettings.json`: `KeepAliveIntervalSeconds: 15`, `ClientTimeoutSeconds: 30`, `MaximumReceiveMessageSize: 65536` |
+| **Program.cs** | `builder.Services.AddSignalR()`, `app.MapHub<ClaimsHub>("/hubs/claims")`, `app.MapHub<ProviderHealthHub>("/hubs/provider-health")`, `app.MapHub<AnalyticsHub>("/hubs/analytics")` |
+| **CORS** | Add SignalR origins to existing CORS policy (WebSocket + SSE transports) |
 
-### Week 2: Azure Cloud Deployment (P1)
+#### 7.1.2 — Claims Hub
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 7.2.1 | Azure Static Web Apps | Frontend deployment — Angular build output to Azure SWA, `staticwebapp.config.json` for SPA routing, environment-based API proxy |
-| 7.2.2 | Azure App Service B1 | Backend deployment — Docker container from Sprint 6, App Service plan B1 ($13/mo or free trial), health check path `/health` |
-| 7.2.3 | Azure Key Vault | Replace user-secrets with Key Vault references. `Azure.Extensions.AspNetCore.Configuration.Secrets` NuGet. All 20+ API keys moved to vault. Managed identity access |
-| 7.2.4 | GitHub Actions CD | Extend CI pipeline with deploy jobs: `deploy-frontend` (SWA), `deploy-backend` (App Service). Environment secrets for Azure credentials. Deploy on `main` push only |
-| 7.2.5 | CORS Configuration | Production CORS policy: allow SWA domain only. Dev: localhost:4200. `appsettings.Production.json` CORS origins |
-| 7.2.6 | Azure Application Insights | Wire up App Insights from Sprint 6 config to actual Azure resource. Dashboard with request metrics, failure rates, dependency tracking, custom events for LLM provider usage |
-| 7.2.7 | SSL + Custom Domain | Optional: custom domain on SWA + App Service. Azure-managed SSL certificates |
-| 7.2.8 | Smoke Tests | Post-deploy health check script: verify `/health`, `/health/ready`, sample API calls, frontend loads |
+| Layer | Detail |
+|-------|--------|
+| **File** | `Backend/Hubs/ClaimsHub.cs` |
+| **Interface** | `IClaimsHubClient`: `ClaimTriaged(ClaimTriagedEvent)`, `ClaimStatusChanged(ClaimStatusEvent)`, `FraudAlertRaised(FraudAlertEvent)` |
+| **Groups** | `JoinSeverityGroup(string severity)` — subscribe to Critical/High/Medium/Low groups |
+| **Event models** | `ClaimTriagedEvent { ClaimId, Severity, PersonaType, TriagedAt }`, `ClaimStatusEvent { ClaimId, OldStatus, NewStatus }`, `FraudAlertEvent { ClaimId, FraudScore, Flags[], DetectedAt }` |
+| **Integration** | Inject `IHubContext<ClaimsHub>` into `ClaimsOrchestrationService` + `FraudAnalysisService` — broadcast after triage/fraud operations |
+| **Tests** | 4 tests: broadcast on triage, severity group filtering, status change event, fraud alert event |
 
-**Gate:** Frontend accessible via Azure SWA URL. Backend API responds on App Service. Key Vault provides all secrets. CD pipeline deploys on push to main. App Insights collecting telemetry.
+#### 7.1.3 — Provider Health Hub
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `Backend/Hubs/ProviderHealthHub.cs` |
+| **Interface** | `IProviderHealthHubClient`: `ProviderStatusChanged(ProviderStatusEvent)`, `HealthSnapshot(HealthSnapshotEvent)` |
+| **Background service** | `ProviderHealthBroadcaster : BackgroundService` — polls `IResilientKernelProvider.GetHealthStatus()` every 30s, broadcasts only on state change (diff detection) |
+| **Event models** | `ProviderStatusEvent { ProviderName, OldStatus, NewStatus, CooldownSeconds, ChangedAt }`, `HealthSnapshotEvent { Providers[], CheckedAt }` |
+| **Integration** | `ResilientKernelProvider` raises status change → broadcaster pushes to all connected clients |
+| **Tests** | 3 tests: periodic broadcast, state-change-only filtering, cooldown event |
+
+#### 7.1.4 — Analytics Hub
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `Backend/Hubs/AnalyticsHub.cs` |
+| **Interface** | `IAnalyticsHubClient`: `MetricsUpdate(AnalyticsMetrics)` |
+| **Background service** | `AnalyticsAggregator : BackgroundService` — rolling 1-hour window with 10s granularity. Tracks: claims processed/hour, avg triage time (ms), fraud detection rate (%), provider response times (ms), document queries/hour |
+| **In-memory store** | `ConcurrentDictionary<string, RollingCounter>` — thread-safe counters per metric. 360 buckets (1hr ÷ 10s) |
+| **Event model** | `AnalyticsMetrics { ClaimsPerHour, AvgTriageMs, FraudDetectionRate, ProviderResponseMs, DocQueriesPerHour, WindowStart, WindowEnd }` |
+| **Tests** | 3 tests: rolling window calculation, counter thread safety, metrics aggregation |
+
+#### 7.1.5 — Angular SignalR Service
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `Frontend/.../services/signalr.service.ts` |
+| **Spec** | `Frontend/.../services/signalr.service.spec.ts` |
+| **DI** | `providedIn: 'root'`, injectable via `inject(SignalRService)` |
+| **Signals** | `connectionState: signal<'connected' \| 'reconnecting' \| 'disconnected'>`, `isConnected: computed(() => connectionState() === 'connected')` |
+| **Methods** | `connect()`, `disconnect()`, `on<T>(hubName, eventName): Observable<T>`, `joinGroup(hubName, group)`, `leaveGroup(hubName, group)` |
+| **Reconnect** | Exponential backoff: 0s → 2s → 10s → 30s → 60s (max). Auto-reconnect on disconnect |
+| **Hub connections** | Lazy-create per hub URL (`/hubs/claims`, `/hubs/provider-health`, `/hubs/analytics`). Shared connection pool |
+| **Tests** | 6 tests: connect/disconnect, reconnect backoff, event subscription, group join/leave, connection state signal, error handling |
+
+#### 7.1.6 — Live Dashboard Component (Full Stack)
+
+| Layer | Detail |
+|-------|--------|
+| **C# Model** | `AnalyticsMetrics` (reuse from 7.1.4 hub event model) |
+| **TS Interface** | `Frontend/.../models/analytics.ts`: `AnalyticsMetrics`, `ClaimTriagedEvent`, `FraudAlertEvent`, `ProviderStatusEvent` |
+| **Component** | `Frontend/.../components/live-dashboard/live-dashboard.ts` |
+| **Route** | `{ path: 'dashboard/live', component: LiveDashboardComponent, canActivate: [authGuard], data: { breadcrumb: 'Live' } }` |
+| **UI sections** | (1) **Claims velocity** — Chart.js line chart (claims/hour, 1hr window, auto-scroll), (2) **Provider status grid** — cards with live pulse dot (green/amber/red), cooldown timer, (3) **Fraud alert feed** — auto-scrolling list of recent fraud events with severity badges, (4) **Key metrics** — 4 metric cards (Claims/hr, Avg triage, Fraud rate, Doc queries) with animated counters |
+| **Signals** | `metrics = signal<AnalyticsMetrics \| null>(null)`, `recentFraudAlerts = signal<FraudAlertEvent[]>([])`, `providerStatuses = signal<ProviderStatusEvent[]>([])` |
+| **Subscriptions** | On init: subscribe to all 3 hubs via `SignalRService.on()`. Cleanup in `ngOnDestroy` |
+| **Fallback** | If SignalR disconnected, show "Live updates paused" banner with reconnect button. Fall back to polling `/api/insurance/health/providers/extended` every 30s |
+| **Unit tests** | 8 tests: render metrics cards, chart updates on signal, fraud feed auto-scroll, provider status pulse, disconnected banner, reconnect button, empty state, cleanup on destroy |
+| **E2E tests** | 5 tests: page loads with metrics, provider cards visible, fraud feed renders, navigation from dashboard, accessibility scan |
+
+#### 7.1.7 — Notification Bell (Full Stack)
+
+| Layer | Detail |
+|-------|--------|
+| **C# Model** | `NotificationEvent { Id, Type, Title, Message, Severity, CreatedAt, IsRead }` |
+| **TS Interface** | `Frontend/.../models/notification.ts`: `NotificationEvent`, `NotificationType` enum |
+| **Service** | `Frontend/.../services/notification.service.ts` — manages notification store (signal array), unread count (computed), `markAsRead(id)`, `clearAll()`, persist to `localStorage` (max 50) |
+| **Component** | Embedded in `nav.ts` — bell icon SVG, unread count badge (red circle), click toggles dropdown panel |
+| **Dropdown** | Max 10 recent notifications, grouped by type (Claims/Fraud/Provider), timestamp relative ("2m ago"), click navigates to detail page (`/claims/:id`, `/dashboard/providers`, etc.) |
+| **Integration** | `NotificationService` subscribes to all 3 SignalR hubs, creates `NotificationEvent` for each event |
+| **Unit tests** | 6 tests: unread count, mark as read, clear all, localStorage persistence, max 50 cap, notification creation from hub events |
+| **E2E tests** | 4 tests: bell visible in nav, unread badge count, dropdown opens/closes, notification click navigates |
+
+#### 7.1.8 — Week 1 Backend Tests Summary
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `Tests/ClaimsHubTests.cs` | 4 | Broadcast, groups, status change, fraud alert |
+| `Tests/ProviderHealthHubTests.cs` | 3 | Periodic broadcast, state diff, cooldown |
+| `Tests/AnalyticsHubTests.cs` | 3 | Rolling window, thread safety, aggregation |
+| `signalr.service.spec.ts` | 6 | Connect, reconnect, events, groups, state, errors |
+| `live-dashboard.spec.ts` | 8 | Metrics, chart, feed, status, banner, empty, cleanup |
+| `notification.service.spec.ts` | 6 | Count, read, clear, persist, cap, creation |
+| **Week 1 Total** | **30** | |
+
+**Week 1 Gate:** SignalR hubs broadcast on claim/fraud/provider events. Live dashboard updates without page refresh. Notification bell shows real-time alerts. 30 tests pass.
+
+---
+
+### Week 2: Cloud Deployment — VPS + Cloudflare Pages ($4-5/mo) (P1)
+
+**Architecture Decision:** After researching free-forever options, we chose a VPS + free services hybrid over Azure App Service B1 ($13/mo). This gives us always-on hosting with no cold starts, self-hosted PostgreSQL+pgvector with no storage caps, and unlimited SSE connections — all for ~$4.51/mo total.
+
+```
+VPS (~$4.51/mo)                        Cloudflare Pages ($0)
+├── Docker Compose                    └── Angular frontend (CDN-distributed)
+│   ├── .NET Backend (port 8080)
+│   ├── PostgreSQL + pgvector
+│   └── Caddy (reverse proxy + auto HTTPS)
+│
+GitHub Actions ($0) → Build → Push to ghcr.io → SSH deploy to VPS
+```
+
+#### 7.2.1 — Cloudflare Pages (Frontend)
+
+| Layer | Detail |
+|-------|--------|
+| **Platform** | Cloudflare Pages — unlimited bandwidth, 500 builds/mo, global CDN |
+| **Build** | `ng build --configuration production` → `dist/sentiment-analyzer-ui/browser/` output |
+| **Config** | `_redirects` file for SPA routing: `/* /index.html 200` |
+| **Headers** | `_headers` file: CSP, X-Frame-Options, HSTS, X-Content-Type-Options |
+| **Environment** | `environment.prod.ts`: `apiUrl` points to VPS backend URL (`https://api.yourdomain.com`), SSE endpoints on same origin |
+| **GitHub Actions** | `deploy-frontend` job: checkout → setup Node 22 → `npm ci` → `ng build` → deploy via `cloudflare/wrangler-action@v3` |
+| **Advantages over Azure SWA** | Unlimited bandwidth (vs 100GB/mo), faster global CDN, simpler config |
+
+#### 7.2.2 — VPS Backend Deployment (Docker Compose)
+
+| Layer | Detail |
+|-------|--------|
+| **VPS provider** | Hetzner CX22 (~€4.15/mo) or Netcup RS 1000 (~€4/mo). 2 vCPU, 4GB RAM, 40-80GB NVMe |
+| **Docker Compose** | 3 services: (1) `backend` — .NET 10 from Sprint 6 Dockerfile, (2) `postgres` — PostgreSQL 16 + pgvector extension, (3) `caddy` — reverse proxy with automatic HTTPS (Let's Encrypt) |
+| **Container registry** | GitHub Container Registry (ghcr.io) — free for public images |
+| **Health check** | Caddy proxies `/health` and `/health/ready` (Sprint 6 liveness/readiness endpoints) |
+| **Volumes** | `postgres-data` (persistent DB), `caddy-data` (TLS certs), `caddy-config` |
+| **Startup** | `ASPNETCORE_ENVIRONMENT=Production`, `ASPNETCORE_URLS=http://+:8080` |
+| **No cold starts** | Always-on VPS — no sleep/wake cycles like serverless or free-tier PaaS |
+
+#### 7.2.3 — Secrets Management (dotenv + Azure Key Vault Backup)
+
+| Layer | Detail |
+|-------|--------|
+| **Primary** | `.env` file on VPS — loaded by Docker Compose `env_file: .env`. All 20+ API keys live here |
+| **No NuGet** | Zero runtime dependency on Azure — app starts instantly with local env vars only |
+| **Secrets stored** | 20+ API keys in `.env`: Groq, Cerebras, Mistral, Gemini, OpenRouter, OpenAI, Deepgram, Azure (Vision, DocIntel, ContentSafety, Language, Speech, Translator), Voyage, Cohere, HuggingFace, Jina, OcrSpace, Supabase, Resend, Sentry DSN |
+| **Permissions** | `chmod 600 .env`, owned by deploy user only. Never committed to git (`.gitignore`) |
+| **Backup** | Azure Key Vault (Free tier) as **disaster recovery only** — secrets copied there manually via Azure Portal/CLI. No runtime integration, no NuGet packages. If VPS dies, secrets are recoverable from Key Vault |
+| **Local dev** | Unchanged — continues using `dotnet user-secrets` or local `.env` |
+| **Rotation** | Update `.env` on VPS → `docker compose up -d` to reload. Mirror changes to Key Vault manually for backup |
+
+#### 7.2.4 — GitHub Actions CD Pipeline
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `.github/workflows/cd.yml` (separate from existing `ci.yml`) |
+| **Trigger** | Push to `main` branch only (not PRs) |
+| **Jobs** | (1) `build-and-test` — run existing CI, (2) `deploy-frontend` — build Angular + deploy to Cloudflare Pages via `wrangler-action`, (3) `deploy-backend` — build Docker image + push to ghcr.io + SSH into VPS + `docker compose pull && docker compose up -d` |
+| **Secrets** | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `VPS_HOST`, `VPS_SSH_KEY`, `GHCR_TOKEN` |
+| **Environments** | GitHub Environments: `production` with required reviewers (optional) |
+| **Dependency** | `deploy-*` jobs depend on `build-and-test` passing |
+
+#### 7.2.5 — CORS + Caddy Configuration
+
+| Layer | Detail |
+|-------|--------|
+| **Caddyfile** | Reverse proxy `api.yourdomain.com` → `backend:8080`, auto HTTPS via Let's Encrypt, gzip compression |
+| **Production** | `appsettings.Production.json`: `AllowedOrigins: ["https://yourdomain.pages.dev", "https://yourdomain.com"]` |
+| **Development** | `appsettings.Development.json`: `AllowedOrigins: ["http://localhost:4200"]` |
+| **Program.cs** | Named CORS policy `"InsuranceHub"` with `WithOrigins()`, `AllowCredentials()` (required for SSE), `WithHeaders("*")`, `WithMethods("GET","POST","PUT","DELETE")` |
+| **SSE** | CORS must allow credentials for SSE streaming (CX Copilot, document processing) |
+
+#### 7.2.6 — Monitoring (Grafana Cloud + Sentry)
+
+| Layer | Detail |
+|-------|--------|
+| **Grafana Cloud** | Free tier: 50GB logs/mo, 10K metrics series, 50GB traces. Replaces Azure App Insights |
+| **Sentry** | Free tier: 5K errors/mo, performance monitoring. `Sentry.AspNetCore` NuGet for .NET |
+| **Custom events** | Sentry breadcrumbs: `LlmProviderUsed { provider, latencyMs }`, `ClaimTriaged { severity, elapsedMs }`, `FraudDetected { score, flagCount }`, `DocumentQueried { confidence, provider }` |
+| **Dashboard** | Grafana Cloud dashboard: request rate, error rate, provider health, custom metrics |
+| **NuGet swap** | Remove `Microsoft.ApplicationInsights.AspNetCore` → add `Sentry.AspNetCore` (conditional on `Sentry:Dsn` being set) |
+
+#### 7.2.7 — SSL + Custom Domain
+
+| Layer | Detail |
+|-------|--------|
+| **Backend** | Caddy auto-provisions Let's Encrypt TLS certificates — zero config HTTPS |
+| **Frontend** | Cloudflare Pages provides free SSL on `*.pages.dev` + custom domains with Cloudflare DNS |
+| **DNS** | CNAME: `app.yourdomain.com` → `<project>.pages.dev`, A record: `api.yourdomain.com` → VPS IP |
+| **Cost** | $0 — Let's Encrypt + Cloudflare SSL are both free |
+
+#### 7.2.8 — Post-Deploy Smoke Tests
+
+| Layer | Detail |
+|-------|--------|
+| **Script** | `scripts/smoke-test.sh` — bash script run after CD deploy |
+| **Checks** | (1) `GET /health` returns 200, (2) `GET /health/ready` returns 200 with `isReady: true`, (3) `GET /api/insurance/health/providers` returns provider list, (4) Frontend root URL returns 200 with `<app-root>`, (5) SSE endpoint returns 200 |
+| **GitHub Actions** | Add smoke test step after deploy-backend, fail pipeline if any check fails |
+| **Tests** | 2 tests: smoke test script validates endpoints, handles timeout gracefully |
+
+#### 7.2.9 — PostgreSQL Migration (SQLite → PostgreSQL+pgvector)
+
+| Layer | Detail |
+|-------|--------|
+| **Docker image** | `pgvector/pgvector:pg16` — PostgreSQL 16 with pgvector extension pre-installed |
+| **Connection string** | `Host=postgres;Database=insurancehub;Username=app;Password=${POSTGRES_PASSWORD}` |
+| **EF Core** | Add `Npgsql.EntityFrameworkCore.PostgreSQL` + `Npgsql.EntityFrameworkCore.PostgreSQL.NetTopologySuite` NuGet |
+| **Migration** | Auto-migration block adapts to PostgreSQL syntax. Vector columns use `vector(1024)` type natively |
+| **Dev mode** | SQLite remains for local development (`appsettings.Development.json`). PostgreSQL for production only |
+| **Advantage** | Native pgvector replaces in-memory cosine similarity — faster RAG queries at scale |
+
+#### Week 2 Tests Summary
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `Tests/EnvConfigTests.cs` | 2 | Load + fallback |
+| `Tests/SmokeTestScriptTests.cs` | 2 | Validate + timeout |
+| **Week 2 Total** | **4** | |
+
+**Week 2 Gate:** Frontend accessible via Cloudflare Pages URL. Backend API responds on VPS (Docker Compose). Secrets managed via env file. CD pipeline deploys on push to main. Sentry + Grafana collecting telemetry. Caddy auto-HTTPS working. PostgreSQL+pgvector running. Smoke tests green. **Total cost: ~$4.51/mo.**
+
+---
 
 ### Week 3: Advanced Fraud Detection + Email Alerts (P2)
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 7.3.1 | Anomaly Detection Service | `IAnomalyDetectionService` + `StatisticalAnomalyService` — Z-score based anomaly detection on claim patterns ($ amount, frequency, timing). Rolling 90-day baseline per claim category. No Azure dependency (statistical approach). Flag claims >2σ from mean |
-| 7.3.2 | Fraud Pattern Engine | `FraudPatternEngine.cs` — extends Sprint 4 correlation with temporal patterns: (1) **Velocity check** — same claimant filing >3 claims in 30 days, (2) **Amount escalation** — progressive claim value increases, (3) **Geographic clustering** — multiple claims from same location, (4) **Holiday proximity** — claims filed within 48hrs of holidays/weekends |
-| 7.3.3 | Email Alert Service | `IEmailAlertService` + `AzureCommunicationEmailService` — Azure Communication Services Email (free: 100 emails/day). Templates: fraud alert, critical claim, provider down. HTML email with deep links to app |
-| 7.3.4 | Alert Rules Engine | `AlertRulesEngine.cs` — configurable rules: severity threshold triggers, fraud score triggers, provider cooldown alerts. Rules stored in DB (`AlertRuleRecord`). Enable/disable per rule |
-| 7.3.5 | Alert Management UI | `alert-management` component — CRUD for alert rules (severity, threshold, email recipients). Test alert button. Alert history log with delivery status |
-| 7.3.6 | Fraud Analytics Dashboard | `fraud-analytics` component — charts: fraud detection rate over time, correlation network graph (D3.js or Chart.js scatter), top fraud patterns, anomaly heatmap by category |
-| 7.3.7 | Backend Tests | ~18 tests: Anomaly detection (6), Fraud patterns (6), Email service (3), Alert rules (3) |
-| 7.3.8 | E2E Tests | ~12 tests: Alert management CRUD, fraud analytics charts render, email test button |
+#### 7.3.1 — Anomaly Detection Service
 
-**Gate:** Anomaly detection flags statistical outliers. Fraud patterns detect velocity/escalation. Email alerts sent for critical events. Alert rules configurable via UI. 30 tests pass.
+| Layer | Detail |
+|-------|--------|
+| **Interface** | `Backend/Services/Fraud/IAnomalyDetectionService.cs` — `DetectAnomaliesAsync(ClaimRecord claim): Task<AnomalyResult>` |
+| **Implementation** | `Backend/Services/Fraud/StatisticalAnomalyService.cs` |
+| **Algorithm** | Z-score based: (1) Query 90-day rolling baseline per claim category from DB, (2) Calculate mean + stddev for claim amount, (3) Flag if Z > 2.0 (configurable threshold), (4) Also check filing frequency (claims per claimant in 30 days) |
+| **Model** | `AnomalyResult { IsAnomaly, ZScore, Metric, BaselineMean, BaselineStdDev, Threshold, Explanation }` |
+| **DB query** | `IClaimRepository.GetClaimsByCategory(category, dateRange)` — new repository method |
+| **DI** | `services.AddScoped<IAnomalyDetectionService, StatisticalAnomalyService>()` |
+| **Tests** | 6 tests: normal claim (no anomaly), high-amount anomaly (Z>2), frequency anomaly, empty baseline (first claim), configurable threshold, edge case (stddev=0) |
+
+#### 7.3.2 — Fraud Pattern Engine
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `Backend/Services/Fraud/FraudPatternEngine.cs` |
+| **Interface** | `IFraudPatternEngine` — `AnalyzePatternsAsync(ClaimRecord): Task<List<FraudPattern>>` |
+| **Patterns** | 4 new detection strategies (extends Sprint 4's 4 correlation strategies): |
+| | (1) **Velocity Check** — same claimant filing >3 claims in 30 days. Query: `GetClaimsByClaimant(name, last30Days)` |
+| | (2) **Amount Escalation** — progressive claim value increases across consecutive claims. Detect: each claim >= 1.5x previous |
+| | (3) **Geographic Clustering** — multiple claims from same postal code/region within 60 days. Query: `GetClaimsByLocation(postalCode, last60Days)` |
+| | (4) **Holiday Proximity** — claims filed within 48hrs of US federal holidays or weekends. Hardcoded holiday list + `DayOfWeek` check |
+| **Model** | `FraudPattern { PatternType, Severity, Description, RelatedClaimIds[], Confidence, DetectedAt }` |
+| **Integration** | Called from `FraudAnalysisService` alongside existing correlation strategies |
+| **Tests** | 8 tests: velocity detected, velocity normal, escalation detected, escalation flat, geographic cluster, geographic spread, holiday match, weekday normal |
+
+#### 7.3.3 — Email Alert Service (Resend)
+
+| Layer | Detail |
+|-------|--------|
+| **NuGet** | `Resend` (official .NET SDK) — lightweight REST-based email API |
+| **Interface** | `Backend/Services/Notifications/IEmailAlertService.cs` — `SendAlertAsync(AlertEmail): Task<bool>` |
+| **Implementation** | `Backend/Services/Notifications/ResendEmailService.cs` — uses `ResendClient` SDK |
+| **Config** | `AgentSystem:Resend: { ApiKey, SenderAddress }` in `appsettings.json` |
+| **Templates** | 3 HTML email templates (embedded resources): (1) `fraud-alert.html` — fraud score, flags, deep link to `/claims/:id`, (2) `critical-claim.html` — severity, persona, triage summary, (3) `provider-down.html` — provider name, cooldown duration, failover chain |
+| **Model** | `AlertEmail { To[], Subject, TemplateName, TemplateData (Dictionary), Priority }` |
+| **Free tier** | 3,000 emails/month (100/day). Log send count, skip if exhausted (graceful degradation) |
+| **Why Resend over Azure Communication Email** | Better DX (simpler SDK), more generous free tier (3K/mo vs 100/day with complex setup), modern REST API, no Azure resource provisioning needed |
+| **Tests** | 4 tests: send success, template rendering, daily limit skip, API key missing (graceful) |
+
+#### 7.3.4 — Alert Rules Engine
+
+| Layer | Detail |
+|-------|--------|
+| **File** | `Backend/Services/Notifications/AlertRulesEngine.cs` |
+| **Interface** | `IAlertRulesEngine` — `EvaluateAsync(AlertContext): Task`, `GetRulesAsync(): Task<List<AlertRule>>`, `CreateRuleAsync(AlertRule)`, `UpdateRuleAsync(AlertRule)`, `DeleteRuleAsync(int id)` |
+| **DB entity** | `Backend/Data/Entities/AlertRuleRecord.cs` — `Id, Name, RuleType (Severity/FraudScore/ProviderDown/AnomalyDetected), Threshold, EmailRecipients (JSON), IsEnabled, CreatedAt, UpdatedAt` |
+| **Rule types** | (1) `SeverityThreshold` — trigger on claims with severity >= threshold (Critical, High), (2) `FraudScoreThreshold` — trigger when fraud score >= N (0-100), (3) `ProviderDown` — trigger when provider enters cooldown, (4) `AnomalyDetected` — trigger when anomaly Z-score exceeds threshold |
+| **Evaluation** | Called from service facades after operations. Matches context against enabled rules → calls `IEmailAlertService` for matches |
+| **API endpoints** | `Backend/Endpoints/AlertEndpoints.cs`: `GET /api/insurance/alerts/rules`, `POST /api/insurance/alerts/rules`, `PUT /api/insurance/alerts/rules/{id}`, `DELETE /api/insurance/alerts/rules/{id}`, `POST /api/insurance/alerts/test` (send test email) |
+| **Tests** | 5 tests: severity rule match, fraud score rule match, disabled rule skip, CRUD operations, test email endpoint |
+
+#### 7.3.5 — Alert Management UI (Full Stack)
+
+| Layer | Detail |
+|-------|--------|
+| **C# Model** | `AlertRuleResponse { Id, Name, RuleType, Threshold, EmailRecipients[], IsEnabled, CreatedAt }` |
+| **TS Interface** | `Frontend/.../models/alert.ts`: `AlertRule`, `AlertRuleType` enum, `CreateAlertRuleRequest` |
+| **Service** | `Frontend/.../services/alert.service.ts` — `getRules()`, `createRule()`, `updateRule()`, `deleteRule()`, `sendTestAlert()` |
+| **Component** | `Frontend/.../components/alert-management/alert-management.ts` |
+| **Route** | `{ path: 'alerts/manage', component: AlertManagementComponent, canActivate: [authGuard], data: { breadcrumb: 'Alert Rules' } }` |
+| **UI** | (1) Rules table — name, type badge, threshold, recipients, enabled toggle, edit/delete buttons, (2) Create/edit modal — form with rule type dropdown, threshold input, email chips input, (3) Test alert button — sends test email, shows success/failure toast, (4) Empty state — "No alert rules configured" with create CTA |
+| **Unit tests** | 8 tests: rules list renders, create rule form, edit rule, delete rule confirmation, toggle enabled, test alert button, empty state, form validation |
+| **E2E tests** | 6 tests: page loads with rules, create rule flow, edit rule, delete rule, toggle enabled, test alert button |
+
+#### 7.3.6 — Fraud Analytics Dashboard (Full Stack)
+
+| Layer | Detail |
+|-------|--------|
+| **C# Model** | `FraudAnalyticsResponse { DetectionRateOverTime[], PatternDistribution[], TopPatterns[], AnomalyHeatmap[], TotalClaimsAnalyzed, TotalFraudDetected, AvgFraudScore }` |
+| **Endpoint** | `GET /api/insurance/fraud/analytics?days=30` in `FraudEndpoints.cs` |
+| **TS Interface** | `Frontend/.../models/fraud-analytics.ts` |
+| **Service** | Add `getAnalytics(days)` to existing `fraud-correlation.service.ts` |
+| **Component** | `Frontend/.../components/fraud-analytics/fraud-analytics.ts` |
+| **Route** | `{ path: 'fraud/analytics', component: FraudAnalyticsComponent, canActivate: [authGuard], data: { breadcrumb: 'Fraud Analytics' } }` |
+| **Charts** | (1) **Detection rate** — Chart.js line chart (fraud detections/day over 30 days), (2) **Pattern distribution** — doughnut chart (velocity/escalation/geographic/holiday/correlation), (3) **Top patterns** — table with pattern type, count, avg confidence, example claim IDs, (4) **Anomaly heatmap** — bar chart grouped by claim category (Policy/Claim/Endorsement/Correspondence) with anomaly count |
+| **Date range** | Dropdown: 7 days / 30 days / 90 days — re-fetches on change |
+| **Unit tests** | 8 tests: charts render, date range change, empty state, metric cards, pattern table, loading state, error state, responsive layout |
+| **E2E tests** | 5 tests: page loads with charts, date range filter, pattern table visible, navigation from fraud alerts, accessibility scan |
+
+#### 7.3.7 — Week 3 Backend Tests Summary
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `Tests/AnomalyDetectionTests.cs` | 6 | Z-score, frequency, baseline, threshold, edge cases |
+| `Tests/FraudPatternEngineTests.cs` | 8 | All 4 patterns × detected + normal |
+| `Tests/EmailAlertServiceTests.cs` | 4 | Send, template, limit, missing config |
+| `Tests/AlertRulesEngineTests.cs` | 5 | Match, skip, CRUD, test email |
+| `alert.service.spec.ts` | 4 | getRules, create, update, delete |
+| `alert-management.spec.ts` | 8 | List, create, edit, delete, toggle, test, empty, validation |
+| `fraud-analytics.spec.ts` | 8 | Charts, date range, empty, metrics, table, loading, error, responsive |
+| **Week 3 Total** | **43** | |
+
+#### 7.3.8 — Week 3 E2E Tests Summary
+
+| Spec File | Count | Scenarios |
+|-----------|-------|-----------|
+| `e2e/alert-management.spec.ts` | 6 | Page load, create, edit, delete, toggle, test alert |
+| `e2e/fraud-analytics.spec.ts` | 5 | Page load, date filter, pattern table, navigation, a11y |
+| **Week 3 E2E Total** | **11** | |
+
+**Week 3 Gate:** Anomaly detection flags statistical outliers. 4 fraud patterns detect velocity/escalation/geographic/holiday. Email alerts sent for critical events. Alert rules configurable via CRUD UI. 54 new tests pass (43 unit + 11 E2E).
+
+---
 
 ### Week 4: Polish + Documentation + Performance (P3)
 
-| # | Item | Deliverable |
-|---|------|-------------|
-| 7.4.1 | Performance Profiling | Profile hot paths: RAG query latency, batch claims throughput, SignalR message rate. Optimize: add response caching for document list, chunk embedding lookup memoization |
-| 7.4.2 | Rate Limit Dashboard | `rate-limits` component — visual display of all free-tier usage vs limits. Progress bars with color coding (green <50%, yellow 50-80%, red >80%). Auto-refresh every 60s via SignalR |
-| 7.4.3 | API Documentation | Swagger/OpenAPI via `Swashbuckle.AspNetCore` — auto-generated API docs with XML comment integration. Available at `/swagger` in dev mode only |
-| 7.4.4 | User Preferences | `user-preferences` component — theme (light/dark), default LLM provider override, notification preferences, dashboard layout persistence (localStorage) |
-| 7.4.5 | Accessibility Audit v2 | Full axe-core sweep on all ~24 routes including new SignalR components. Fix ARIA live regions for real-time updates. Screen reader announcements for notifications |
-| 7.4.6 | Documentation Update | Update all docs: CLAUDE.md (new services), architecture.md (SignalR, deployment), api-reference.md (new endpoints), testing.md (updated counts), security.md (Key Vault) |
-| 7.4.7 | E2E Full Regression | Complete E2E regression run across all routes. Fix any broken tests from new features |
-| 7.4.8 | Sprint 7 Retrospective | Performance benchmarks, deployment checklist, free-tier budget audit |
+#### 7.4.1 — Performance Profiling + Optimization
 
-**Gate:** All routes accessible. Swagger docs live. axe-core clean. Full E2E regression green. Documentation current.
+| Layer | Detail |
+|-------|--------|
+| **Hot paths** | (1) RAG query — profile embedding generation + vector search + LLM answer, (2) Batch claims — profile CSV parse + sequential triage, (3) SignalR broadcast — measure message rate under load |
+| **Caching** | `IMemoryCache` for document list (5-min TTL), embedding lookup memoization (by content hash), provider health snapshot (30s TTL) |
+| **Optimizations** | Response compression middleware for JSON payloads >1KB, `AsNoTracking()` on read-only DB queries, connection pooling for SQLite |
+| **Benchmarks** | Log baseline metrics → optimize → log improved metrics. Target: RAG query <3s, batch claim <500ms/item |
 
-### New Files (Sprint 7)
+#### 7.4.2 — Rate Limit Dashboard (Full Stack)
 
-| # | File | Week |
-|---|------|------|
-| 1 | `Backend/Hubs/ClaimsHub.cs` | 1 |
-| 2 | `Backend/Hubs/ProviderHealthHub.cs` | 1 |
-| 3 | `Backend/Hubs/AnalyticsHub.cs` | 1 |
-| 4 | `Frontend/.../services/signalr.service.ts` | 1 |
-| 5 | `Frontend/.../components/live-dashboard/` | 1 |
-| 6 | `Frontend/.../components/notification-bell/` | 1 |
-| 7 | `staticwebapp.config.json` | 2 |
-| 8 | `.github/workflows/cd.yml` | 2 |
-| 9 | `Backend/Services/Fraud/IAnomalyDetectionService.cs` | 3 |
-| 10 | `Backend/Services/Fraud/StatisticalAnomalyService.cs` | 3 |
-| 11 | `Backend/Services/Fraud/FraudPatternEngine.cs` | 3 |
-| 12 | `Backend/Services/Notifications/IEmailAlertService.cs` | 3 |
-| 13 | `Backend/Services/Notifications/AzureCommunicationEmailService.cs` | 3 |
-| 14 | `Backend/Services/Notifications/AlertRulesEngine.cs` | 3 |
-| 15 | `Backend/Data/Entities/AlertRuleRecord.cs` | 3 |
-| 16 | `Frontend/.../components/alert-management/` | 3 |
-| 17 | `Frontend/.../components/fraud-analytics/` | 3 |
-| 18 | `Frontend/.../components/rate-limits/` | 4 |
-| 19 | `Frontend/.../components/user-preferences/` | 4 |
-| 20 | `Tests/ClaimsHubTests.cs` | 1 |
-| 21 | `Tests/AnomalyDetectionTests.cs` | 3 |
-| 22 | `Tests/FraudPatternEngineTests.cs` | 3 |
-| 23 | `Tests/EmailAlertServiceTests.cs` | 3 |
-| 24 | `Tests/AlertRulesEngineTests.cs` | 3 |
+| Layer | Detail |
+|-------|--------|
+| **C# Model** | `RateLimitStatus { ProviderName, ServiceType, CurrentUsage, Limit, Unit, UsagePercent, ResetAt }` |
+| **Endpoint** | `GET /api/insurance/health/rate-limits` in `ProviderHealthEndpoints.cs` |
+| **TS Interface** | `Frontend/.../models/rate-limit.ts` |
+| **Component** | `Frontend/.../components/rate-limits/rate-limits.ts` |
+| **Route** | `{ path: 'dashboard/rate-limits', component: RateLimitsComponent, canActivate: [authGuard], data: { breadcrumb: 'Rate Limits' } }` |
+| **UI** | Grouped by service type (LLM/Embedding/OCR/NER/STT/Safety/Translation). Each row: provider name, progress bar (green <50%, yellow 50-80%, red >80%), usage text ("142/250 req"), reset time |
+| **Auto-refresh** | Poll every 60s or via SignalR `ProviderHealthHub` if connected |
+| **Unit tests** | 6 tests: render progress bars, color coding, grouping, auto-refresh, empty state, responsive |
+| **E2E tests** | 3 tests: page loads, progress bars visible, navigation from provider health |
+
+#### 7.4.3 — API Documentation (Swagger/OpenAPI)
+
+| Layer | Detail |
+|-------|--------|
+| **NuGet** | `Swashbuckle.AspNetCore` 7.2.0 |
+| **Config** | `builder.Services.AddEndpointsApiExplorer()` + `builder.Services.AddSwaggerGen()` — XML comment integration via `IncludeXmlComments()` |
+| **Availability** | Dev only: `if (app.Environment.IsDevelopment()) { app.UseSwagger(); app.UseSwaggerUI(); }` |
+| **URL** | `http://localhost:5143/swagger` |
+| **Grouping** | Tag groups: Sentiment, Insurance, Claims, Fraud, Documents, CX Copilot, Provider Health, Alerts |
+| **Tests** | 1 test: Swagger endpoint returns valid OpenAPI JSON |
+
+#### 7.4.4 — User Preferences Component (Full Stack)
+
+| Layer | Detail |
+|-------|--------|
+| **Component** | `Frontend/.../components/user-preferences/user-preferences.ts` |
+| **Route** | `{ path: 'preferences', component: UserPreferencesComponent, canActivate: [authGuard], data: { breadcrumb: 'Preferences' } }` |
+| **Sections** | (1) **Theme** — light/dark/semi-dark radio group (integrates with existing `ThemeService`), (2) **Notifications** — toggle email alerts, toggle browser notifications, severity filter checkboxes, (3) **Dashboard** — default date range (7/30/90 days), auto-refresh interval, (4) **Provider override** — optional preferred LLM provider dropdown (skip chain, go direct) |
+| **Persistence** | `localStorage` key `user-preferences`. Load on app init, apply theme + settings |
+| **Unit tests** | 6 tests: theme switch, notification toggles, save to localStorage, load from localStorage, provider override, default values |
+| **E2E tests** | 3 tests: page loads, theme switch persists, navigation from nav menu |
+
+#### 7.4.5 — Accessibility Audit v2
+
+| Layer | Detail |
+|-------|--------|
+| **Scope** | All ~27 routes (22 existing + 5 new) |
+| **Focus areas** | (1) ARIA live regions for SignalR real-time updates (`aria-live="polite"` on notification bell, live dashboard metrics), (2) Screen reader announcements for toast notifications, (3) Keyboard navigation through notification dropdown, (4) Focus management on modal open/close in alert management |
+| **Tools** | axe-core via Playwright `@axe-core/playwright` in E2E specs |
+| **Tests** | Add `axe` scan to each new E2E spec (already counted in per-component E2E tests above) |
+
+#### 7.4.6 — Documentation Update
+
+| File | Updates |
+|------|---------|
+| `CLAUDE.md` | Add SignalR hubs, alert endpoints, new routes, fraud patterns, deployment info |
+| `docs/architecture.md` | SignalR architecture, VPS deployment diagram, anomaly detection flow |
+| `docs/api-reference.md` | 5 new endpoints (alert CRUD + test, fraud analytics, rate limits), SignalR hub contracts |
+| `docs/testing.md` | Updated test counts, new test categories (hub tests, anomaly tests) |
+| `docs/security.md` | Secrets management (dotenv/Infisical), CORS policy, Caddy HTTPS |
+| `SPRINT-ROADMAP.md` | Sprint 7 status → COMPLETE, stats table, Sprint 8 planning |
+
+#### 7.4.7 — E2E Full Regression
+
+| Layer | Detail |
+|-------|--------|
+| **Scope** | Run all E2E specs across all routes |
+| **Fix** | Fix any broken tests from new features (SignalR mock setup, new nav links) |
+| **Mock updates** | Add SignalR mock (stub `HubConnectionBuilder`), alert rules mock data, fraud analytics mock data to `e2e/fixtures/mock-data.ts` |
+| **Target** | 0 failures across ~700+ E2E tests |
+
+#### 7.4.8 — Sprint 7 Retrospective
+
+| Metric | Before | After | Delta |
+|--------|--------|-------|-------|
+| Angular components | 22 | 28 | +6 |
+| Routes | 17 | 22 | +5 |
+| Backend tests | 704 | ~750 | +~46 |
+| Frontend unit tests | 462 | ~506 | +~44 |
+| E2E tests | ~666 | ~698 | +~32 |
+| **Grand Total** | **~1,832** | **~1,954** | **+~122** |
+
+#### Week 4 Tests Summary
+
+| Test File | Count | Coverage |
+|-----------|-------|----------|
+| `rate-limits.spec.ts` | 6 | Progress bars, colors, grouping, refresh, empty, responsive |
+| `user-preferences.spec.ts` | 6 | Theme, notifications, save, load, provider, defaults |
+| `Tests/SwaggerTests.cs` | 1 | OpenAPI JSON valid |
+| `e2e/rate-limits.spec.ts` | 3 | Page load, bars, navigation |
+| `e2e/user-preferences.spec.ts` | 3 | Page load, theme persist, navigation |
+| **Week 4 Total** | **19** | |
+
+**Week 4 Gate:** All routes accessible. Swagger docs live at `/swagger`. axe-core clean on all routes. Full E2E regression green. Documentation current. Performance profiled + optimized.
+
+---
+
+### New Files (Sprint 7) — Complete List
+
+| # | File | Week | Type |
+|---|------|------|------|
+| 1 | `Backend/Hubs/ClaimsHub.cs` | 1 | SignalR Hub |
+| 2 | `Backend/Hubs/ProviderHealthHub.cs` | 1 | SignalR Hub |
+| 3 | `Backend/Hubs/AnalyticsHub.cs` | 1 | SignalR Hub |
+| 4 | `Backend/Services/Notifications/ProviderHealthBroadcaster.cs` | 1 | BackgroundService |
+| 5 | `Backend/Services/Notifications/AnalyticsAggregator.cs` | 1 | BackgroundService |
+| 6 | `Frontend/.../services/signalr.service.ts` | 1 | Angular Service |
+| 7 | `Frontend/.../services/signalr.service.spec.ts` | 1 | Test |
+| 8 | `Frontend/.../services/notification.service.ts` | 1 | Angular Service |
+| 9 | `Frontend/.../services/notification.service.spec.ts` | 1 | Test |
+| 10 | `Frontend/.../models/analytics.ts` | 1 | TS Interface |
+| 11 | `Frontend/.../models/notification.ts` | 1 | TS Interface |
+| 12 | `Frontend/.../components/live-dashboard/live-dashboard.ts` | 1 | Component |
+| 13 | `Frontend/.../components/live-dashboard/live-dashboard.spec.ts` | 1 | Test |
+| 14 | `Tests/ClaimsHubTests.cs` | 1 | xUnit Test |
+| 15 | `Tests/ProviderHealthHubTests.cs` | 1 | xUnit Test |
+| 16 | `Tests/AnalyticsHubTests.cs` | 1 | xUnit Test |
+| 17 | `docker-compose.prod.yml` | 2 | Production Docker Compose (backend + postgres + caddy) |
+| 18 | `Caddyfile` | 2 | Reverse proxy config (auto HTTPS) |
+| 19 | `.github/workflows/cd.yml` | 2 | CD Pipeline |
+| 20 | `scripts/smoke-test.sh` | 2 | Deploy Script |
+| 21 | `Frontend/.../environment.prod.ts` | 2 | Config |
+| 22 | `Frontend/_redirects` | 2 | Cloudflare Pages SPA routing |
+| 23 | `Frontend/_headers` | 2 | Cloudflare Pages security headers |
+| 24 | `Tests/EnvConfigTests.cs` | 2 | xUnit Test |
+| 25 | `Backend/Services/Fraud/IAnomalyDetectionService.cs` | 3 | Interface |
+| 26 | `Backend/Services/Fraud/StatisticalAnomalyService.cs` | 3 | Service |
+| 27 | `Backend/Services/Fraud/FraudPatternEngine.cs` | 3 | Service |
+| 28 | `Backend/Services/Notifications/IEmailAlertService.cs` | 3 | Interface |
+| 29 | `Backend/Services/Notifications/ResendEmailService.cs` | 3 | Service |
+| 30 | `Backend/Services/Notifications/AlertRulesEngine.cs` | 3 | Service |
+| 31 | `Backend/Endpoints/AlertEndpoints.cs` | 3 | API Endpoints |
+| 32 | `Backend/Data/Entities/AlertRuleRecord.cs` | 3 | DB Entity |
+| 33 | `Frontend/.../models/alert.ts` | 3 | TS Interface |
+| 34 | `Frontend/.../models/fraud-analytics.ts` | 3 | TS Interface |
+| 35 | `Frontend/.../models/rate-limit.ts` | 4 | TS Interface |
+| 36 | `Frontend/.../services/alert.service.ts` | 3 | Angular Service |
+| 37 | `Frontend/.../services/alert.service.spec.ts` | 3 | Test |
+| 38 | `Frontend/.../components/alert-management/alert-management.ts` | 3 | Component |
+| 39 | `Frontend/.../components/alert-management/alert-management.spec.ts` | 3 | Test |
+| 40 | `Frontend/.../components/fraud-analytics/fraud-analytics.ts` | 3 | Component |
+| 41 | `Frontend/.../components/fraud-analytics/fraud-analytics.spec.ts` | 3 | Test |
+| 42 | `Frontend/.../components/rate-limits/rate-limits.ts` | 4 | Component |
+| 43 | `Frontend/.../components/rate-limits/rate-limits.spec.ts` | 4 | Test |
+| 44 | `Frontend/.../components/user-preferences/user-preferences.ts` | 4 | Component |
+| 45 | `Frontend/.../components/user-preferences/user-preferences.spec.ts` | 4 | Test |
+| 46 | `Tests/AnomalyDetectionTests.cs` | 3 | xUnit Test |
+| 47 | `Tests/FraudPatternEngineTests.cs` | 3 | xUnit Test |
+| 48 | `Tests/EmailAlertServiceTests.cs` | 3 | xUnit Test |
+| 49 | `Tests/AlertRulesEngineTests.cs` | 3 | xUnit Test |
+| 50 | `e2e/alert-management.spec.ts` | 3 | E2E Test |
+| 51 | `e2e/fraud-analytics.spec.ts` | 3 | E2E Test |
+| 52 | `e2e/rate-limits.spec.ts` | 4 | E2E Test |
+| 53 | `e2e/user-preferences.spec.ts` | 4 | E2E Test |
+| 54 | `e2e/live-dashboard.spec.ts` | 1 | E2E Test |
+| 55 | `e2e/notification-bell.spec.ts` | 1 | E2E Test |
+
+### Modified Files (Sprint 7)
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `Backend/SentimentAnalyzer.API.csproj` | +4 NuGet: `Resend`, `Sentry.AspNetCore`, `Swashbuckle.AspNetCore`, `Npgsql.EntityFrameworkCore.PostgreSQL` |
+| 2 | `Backend/Program.cs` | SignalR registration, hub mappings, Sentry config, Swagger, CORS update, response compression, memory cache, PostgreSQL conditional |
+| 3 | `Backend/appsettings.json` | `SignalR`, `Resend`, `Sentry`, `Swagger` config sections |
+| 4 | `Backend/appsettings.Production.json` | `AllowedOrigins`, Sentry DSN, PostgreSQL connection string |
+| 5 | `Backend/Services/ClaimsProcessing/ClaimsOrchestrationService.cs` | Inject `IHubContext<ClaimsHub>`, broadcast after triage |
+| 6 | `Backend/Services/Fraud/FraudAnalysisService.cs` | Inject `IHubContext<ClaimsHub>`, broadcast fraud alerts. Call `FraudPatternEngine` + `AnomalyDetectionService` |
+| 7 | `Backend/Endpoints/FraudEndpoints.cs` | Add `GET /api/insurance/fraud/analytics` |
+| 8 | `Backend/Endpoints/ProviderHealthEndpoints.cs` | Add `GET /api/insurance/health/rate-limits` |
+| 9 | `Backend/Data/InsuranceDbContext.cs` | Add `DbSet<AlertRuleRecord>`, migration block |
+| 10 | `Frontend/.../app.routes.ts` | +5 routes: live dashboard, alert management, fraud analytics, rate limits, preferences |
+| 11 | `Frontend/.../components/nav/nav.ts` | Notification bell integration, new nav links (Live, Alerts, Analytics, Rate Limits, Preferences) |
+| 12 | `Frontend/.../services/fraud-correlation.service.ts` | Add `getAnalytics(days)` method |
+| 13 | `Frontend/package.json` | +1 npm: `@microsoft/signalr` |
+| 14 | `docker-compose.yml` | Updated for production: add postgres + caddy services |
+| 15 | `e2e/fixtures/mock-data.ts` | Alert rules, fraud analytics, rate limits, SignalR stubs mock data |
+| 16 | `e2e/helpers/api-mocks.ts` | Mock routes for alert, fraud analytics, rate limit endpoints |
+| 17 | `CLAUDE.md` | SignalR, alerts, deployment, new routes |
+| 18 | `docs/architecture.md` | SignalR diagram, VPS deployment, anomaly detection |
+| 19 | `docs/api-reference.md` | 5 new endpoints + hub contracts |
+| 20 | `docs/testing.md` | Updated counts |
+| 21 | `docs/security.md` | Secrets management, CORS, Caddy HTTPS |
 
 ### Sprint 7 Stats (Projected)
 
-| Metric | Sprint 6 End (Projected) | Sprint 7 Projected |
-|--------|-------------------------|-------------------|
-| Angular components | 22 | **~28** (+6: live-dashboard, notification-bell, alert-management, fraud-analytics, rate-limits, user-preferences) |
-| Routes | 16 | **~21** (+5: /live, /alerts/manage, /fraud/analytics, /rate-limits, /preferences) |
-| Backend tests (xUnit) | ~725 | **~767** (+~42: hubs + anomaly + fraud patterns + email + alert rules) |
-| Frontend unit tests | ~465 | **~505** (+~40: new components + SignalR service) |
-| E2E tests | ~475 | **~500** (+~25: real-time + alert management + fraud analytics) |
-| **Grand Total** | **~1,665** | **~1,772** |
-| SignalR hubs | None | **3** (Claims, ProviderHealth, Analytics) |
-| Cloud deployment | None | **Azure SWA + App Service** |
-| Fraud detection strategies | 4 | **8** (+velocity, amount escalation, geographic, holiday proximity) |
-| Email alerts | None | **Azure Communication Services** |
-| API documentation | None | **Swagger/OpenAPI** |
+| Metric | Sprint 6 Final | Sprint 7 Projected | Delta |
+|--------|---------------|-------------------|-------|
+| Angular components | 22 | **28** | +6 (live-dashboard, notification-bell*, alert-management, fraud-analytics, rate-limits, user-preferences) |
+| Routes | 17 | **22** | +5 (/dashboard/live, /alerts/manage, /fraud/analytics, /dashboard/rate-limits, /preferences) |
+| Backend tests (xUnit) | 704 | **~750** | +~46 (hubs + anomaly + fraud patterns + email + alert rules + Key Vault + Swagger) |
+| Frontend unit tests | 462 | **~506** | +~44 (SignalR service + notification service + 4 new components) |
+| E2E tests | ~666 | **~698** | +~32 (live dashboard + notifications + alerts + analytics + rate limits + preferences) |
+| **Grand Total** | **~1,832** | **~1,954** | **+~122** |
+| SignalR hubs | 0 | **3** | Claims, ProviderHealth, Analytics |
+| Background services | 0 | **2** | ProviderHealthBroadcaster, AnalyticsAggregator |
+| Cloud deployment | None | **VPS (Hetzner/Netcup) + Cloudflare Pages** | CD pipeline on main push, ~$4.51/mo total |
+| Fraud detection strategies | 4 (correlation) | **8** | +velocity, amount escalation, geographic, holiday proximity |
+| Email alerts | None | **Resend** | 3K emails/mo free |
+| API documentation | None | **Swagger/OpenAPI** | Dev-only at /swagger |
+| New NuGet packages | 0 | **4** | Resend, Sentry.AspNetCore, Swashbuckle, Npgsql.EFCore.PostgreSQL |
+| New npm packages | 0 | **1** | @microsoft/signalr |
+
+*\*notification-bell is embedded in nav.ts, not a separate routed component*
+
+### Sprint 7 Implementation Order (End-to-End per CLAUDE.md Rule #1)
+
+| Order | Item | Depends On | Week |
+|-------|------|-----------|------|
+| 1 | SignalR infrastructure (Program.cs + npm) | — | 1 |
+| 2 | Claims Hub (C# → TS interface → integrate) | 1 | 1 |
+| 3 | Provider Health Hub + Broadcaster | 1 | 1 |
+| 4 | Analytics Hub + Aggregator | 1 | 1 |
+| 5 | Angular SignalR Service | 1 | 1 |
+| 6 | Live Dashboard (model → endpoint → TS → component → tests → E2E) | 2,3,4,5 | 1 |
+| 7 | Notification Service + Bell | 2,3,4,5 | 1 |
+| 8 | Cloudflare Pages + VPS Docker Compose deploy | — | 2 |
+| 9 | Secrets (.env) + PostgreSQL migration | 8 | 2 |
+| 10 | CD pipeline (GitHub Actions → ghcr.io → SSH deploy) | 8,9 | 2 |
+| 11 | CORS + Caddy + Sentry/Grafana wire-up | 8 | 2 |
+| 12 | Smoke tests | 8,10 | 2 |
+| 13 | Anomaly Detection (C# service → tests) | — | 3 |
+| 14 | Fraud Pattern Engine (C# service → tests) | — | 3 |
+| 15 | Email Alert Service (C# → config → tests) | — | 3 |
+| 16 | Alert Rules Engine (C# → DB entity → endpoints → tests) | 15 | 3 |
+| 17 | Alert Management UI (TS model → service → component → E2E) | 16 | 3 |
+| 18 | Fraud Analytics (endpoint → TS → component → E2E) | 13,14 | 3 |
+| 19 | Rate Limit Dashboard (endpoint → TS → component → E2E) | — | 4 |
+| 20 | User Preferences (component → localStorage → E2E) | — | 4 |
+| 21 | Swagger/OpenAPI | — | 4 |
+| 22 | Performance profiling + caching | 6,18 | 4 |
+| 23 | Accessibility audit v2 | 6,7,17,18,19,20 | 4 |
+| 24 | Documentation + E2E regression | All | 4 |
 
 ### Sprint 7 Risk Register
 
 | Risk | Severity | Mitigation |
 |------|----------|-----------|
-| Azure App Service B1 cost ($13/mo) | Low | Use free trial 30 days, then evaluate. Can downgrade to F1 (limited) |
-| Azure Communication Services email deliverability | Low | Verify sender domain, use templates, test with internal addresses first |
-| SignalR connection limits on free tier | Medium | Use Azure SignalR Service free tier (20 concurrent, 20K msgs/day) if needed |
-| D3.js bundle size for fraud network graph | Low | Use Chart.js scatter plot as simpler alternative, lazy-load D3 if needed |
-| Key Vault access latency | Low | Cache secrets with 5-min TTL via `AzureKeyVaultConfigurationOptions.ReloadInterval` |
+| VPS provider downtime | Low | Choose reputable provider (Hetzner 99.9% SLA). Docker Compose restart policies. Health check alerts via Sentry |
+| VPS disk space exhaustion | Low | PostgreSQL WAL archiving + log rotation. Monitor via Grafana Cloud. 40-80GB NVMe is generous for this workload |
+| Resend email deliverability | Low | Verify sender domain (SPF/DKIM), use templates, test with internal addresses first |
+| SignalR self-hosted connection limits | Low | Self-hosted SignalR has no artificial limits — bounded only by VPS RAM (4GB handles 1000s of connections) |
+| D3.js bundle size for fraud network graph | Low | Use Chart.js scatter plot as simpler alternative, lazy-load if needed |
+| Caddy TLS cert renewal failure | Low | Caddy auto-renews Let's Encrypt certs 30 days before expiry. Sentry alert on renewal failure |
+| SignalR WebSocket blocked by corporate firewall | Medium | SignalR auto-negotiates transport: WebSocket → SSE → Long Polling. No action needed |
+| `@microsoft/signalr` version compatibility with .NET 10 | Low | Use matching major version. Test negotiate endpoint during Week 1 |
+| PostgreSQL migration data loss | Medium | Keep SQLite for local dev. Production migration is fresh (no existing prod data). Test migration script in staging |
 
 ---
 
@@ -436,11 +921,11 @@ All Week 4 items are done. See individual item rows in Week 4 table above for de
 ---
 
 ### Deferred to Sprint 8+
-- Azure AI Search (replace in-memory vector search)
-- Custom domain + SSL certificate
-- Azure SQL Free as alternate DB provider
+- Azure AI Search (replace in-memory vector search) — or self-hosted Meilisearch on VPS
+- Custom domain + SSL certificate (Caddy auto-HTTPS ready, just add domain)
 - Multi-tenant support
 - Webhook integrations for external claims systems
+- Auth provider migration (Clerk/Auth0/Firebase if Supabase free tier exceeded)
 
 ---
 
@@ -472,12 +957,16 @@ All Week 4 items are done. See individual item rows in Week 4 table above for de
 | Azure AI Language F0 | 5K records/mo | **Sprint 6** |
 | Azure AI Speech F0 | 5 hrs STT/mo | **Sprint 6** |
 | Azure AI Translator F0 | 2M chars/mo | **Sprint 6** |
-| Azure Communication Email | 100 emails/day | **Sprint 7** |
-| Azure SignalR Service Free | 20 concurrent, 20K msgs/day | **Sprint 7** (if needed) |
-| Azure Static Web Apps Free | 100 GB bandwidth/mo | **Sprint 7** |
-| Azure App Service B1 | $13/mo (30-day free trial) | **Sprint 7** |
-| Azure Key Vault | 10K transactions/mo free | **Sprint 7** |
+| Supabase Auth | 50K MAU (auth only, no DB) | **Sprint 7** — kept from existing setup |
+| Resend | 3K emails/mo (100/day) | **Sprint 7** |
+| Cloudflare Pages | Unlimited bandwidth, 500 builds/mo | **Sprint 7** |
+| VPS (Hetzner CX22 + IPv4) | **$4.09/mo** (2 vCPU, 4GB RAM, 40GB NVMe) | **Sprint 7** — only paid service |
+| Domain (.co.in) | **$5/yr** (~$0.42/mo) | **Sprint 7** — via Porkbun/Namecheap + Cloudflare DNS |
+| Sentry | 5K errors/mo, performance | **Sprint 7** |
+| Grafana Cloud | 50GB logs, 10K metrics/mo | **Sprint 7** |
+| Infisical | 5 users, E2E encrypted | **Sprint 7** (optional) |
+| ghcr.io | Free for public images | **Sprint 7** |
 
 ---
 
-*Last updated: 2026-03-08 | Sprint 6 COMPLETE (Weeks 1-4 + polish). All items done including 6.4.12-14 UI polish fixes. 704 backend + 462 frontend + ~666 E2E = ~1,832 total tests passing.*
+*Last updated: 2026-03-08 | Sprint 6 COMPLETE. Sprint 7 PLANNED with VPS+Cloudflare deployment (~$4.51/mo), Resend email, Sentry+Grafana monitoring, PostgreSQL+pgvector. 704 backend + 462 frontend + ~666 E2E = ~1,832 total tests passing.*

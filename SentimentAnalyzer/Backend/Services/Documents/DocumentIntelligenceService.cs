@@ -35,6 +35,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
     private readonly ILogger<DocumentIntelligenceService> _logger;
     private readonly IContentSafetyService? _contentSafety;
     private readonly IServiceProvider _serviceProvider;
+    private readonly Services.Notifications.AnalyticsAggregator? _analyticsAggregator;
 
     /// <summary>
     /// Initializes the Document Intelligence RAG service.
@@ -49,7 +50,8 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         IHybridRetrievalService hybridRetrieval,
         ILogger<DocumentIntelligenceService> logger,
         IServiceProvider serviceProvider,
-        IContentSafetyService? contentSafety = null)
+        IContentSafetyService? contentSafety = null,
+        Services.Notifications.AnalyticsAggregator? analyticsAggregator = null)
     {
         _ocrService = ocrService ?? throw new ArgumentNullException(nameof(ocrService));
         _chunkingService = chunkingService ?? throw new ArgumentNullException(nameof(chunkingService));
@@ -61,6 +63,7 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _contentSafety = contentSafety;
+        _analyticsAggregator = analyticsAggregator;
     }
 
     public async Task<DocumentUploadResult> UploadAsync(
@@ -466,6 +469,9 @@ public class DocumentIntelligenceService : IDocumentIntelligenceService
             }
 
             var avgScore = fusedResults.Average(r => r.Score);
+
+            // Sprint 7: Record doc query for real-time analytics
+            _analyticsAggregator?.RecordDocQuery();
 
             return new DocumentQueryResult
             {
