@@ -2,5 +2,5 @@ export const environment = {
   production: true,
   supabaseUrl: '',
   supabaseAnonKey: '',
-  apiUrl: 'http://localhost:5143'
+  apiUrl: 'https://api1.anshulghogre.co.in'
 };

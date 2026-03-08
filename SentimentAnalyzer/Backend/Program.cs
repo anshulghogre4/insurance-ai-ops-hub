@@ -37,13 +37,16 @@ builder.Services.AddSignalR();
 // Register MediatR for CQRS (scans this assembly for handlers)
 builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssemblyContaining<Program>());
 
-// Application Insights telemetry (production monitoring)
-var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"];
-if (!string.IsNullOrWhiteSpace(appInsightsConnectionString))
+// Sentry error tracking + performance monitoring (replaces Application Insights)
+var sentryDsn = builder.Configuration["Sentry:Dsn"];
+if (!string.IsNullOrWhiteSpace(sentryDsn))
 {
-    builder.Services.AddApplicationInsightsTelemetry(options =>
+    builder.WebHost.UseSentry(o =>
     {
-        options.ConnectionString = appInsightsConnectionString;
+        o.Dsn = sentryDsn;
+        o.TracesSampleRate = 0.2; // 20% of transactions for performance monitoring
+        o.SendDefaultPii = false; // Never send PII to Sentry
+        o.Environment = builder.Environment.EnvironmentName;
     });
 }
 
@@ -313,14 +316,17 @@ builder.Services.AddRateLimiter(options =>
     });
 });
 
-// Configure CORS for Angular frontend
+// Configure CORS for Angular frontend (config-driven for production)
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:4200"];
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("http://localhost:4200")
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
-              .AllowAnyMethod().AllowCredentials();
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 

@@ -1,0 +1,24 @@
+# Insurance AI Operations Hub — Reverse Proxy
+# Caddy auto-provisions Let's Encrypt TLS certificates
+
+api1.anshulghogre.co.in {
+	# Proxy all API + SignalR traffic to .NET backend
+	reverse_proxy backend:8080
+
+	# Gzip compression
+	encode gzip zstd
+
+	# Security headers
+	header {
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Logging
+	log {
+		output stdout
+		format console
+	}
+}
